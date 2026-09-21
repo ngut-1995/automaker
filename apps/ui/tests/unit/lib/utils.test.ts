@@ -21,7 +21,7 @@ describe('getModelDisplayName', () => {
   });
 
   it('renders an unrecognised Claude string as its tier name, not a raw ID', () => {
-    expect(getModelDisplayName('claude-opus-4-5')).toBe('Claude Opus');
+    expect(getModelDisplayName('claude-opus-1-9')).toBe('Claude Opus');
     expect(getModelDisplayName('claude-sonnet-4-6')).toBe('Claude Sonnet');
     expect(getModelDisplayName('claude-opus-9-9')).toBe('Claude Opus');
   });
@@ -48,7 +48,7 @@ describe('migrateModelId', () => {
   });
 
   it('leaves a pin the user wrote themselves intact', () => {
-    expect(migrateModelId('claude-sonnet-4-20250514')).toBe('claude-sonnet-4-20250514');
+    expect(migrateModelId('claude-sonnet-1-19991231')).toBe('claude-sonnet-1-19991231');
     expect(migrateModelId('claude-opus-4-7')).toBe('claude-opus-4-7');
   });
 

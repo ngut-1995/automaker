@@ -7,7 +7,7 @@ vi.mock('../../../../src/providers/provider-factory.js');
 vi.mock('../../../../src/lib/sdk-options.js');
 vi.mock('@automaker/model-resolver', () => ({
   resolveModelString: vi.fn((model, fallback) => model || fallback),
-  DEFAULT_MODELS: { claude: 'claude-3-5-sonnet' },
+  DEFAULT_MODELS: { claude: 'claude-sonnet' },
 }));
 
 import { AutoModeServiceFacade } from '../../../../src/services/auto-mode/facade.js';
@@ -166,7 +166,7 @@ describe('AutoModeServiceFacade Agent Runner', () => {
     const mockClaudeProvider = {
       id: 'zai-1',
       name: 'Zai',
-      models: [{ id: 'custom-model-1', mapsToClaudeModel: 'claude-3-opus' }],
+      models: [{ id: 'custom-model-1', mapsToClaudeModel: 'claude-opus' }],
     };
     (settingsHelpers.resolveProviderContext as any).mockResolvedValue({
       provider: mockClaudeProvider,

@@ -268,6 +268,31 @@ const CLAUDE_TIERS = Object.keys(CLAUDE_TIER_DISPLAY_NAMES) as ClaudeTier[];
  * (`cursor-opus-4.5`, `copilot-claude-opus-4.5`, `anthropic/claude-sonnet-4-5`)
  * are deliberately not claimed here, so their own display rules keep applying.
  *
+ * ## How the match is made
+ *
+ * Two different questions, matched two different ways:
+ *
+ * 1. **Is this a Claude string at all?** Exact prefix: `claude-`, or the whole
+ *    value equal to a bare tier alias. That is what keeps another provider's
+ *    model out, even when a tier name appears inside it.
+ * 2. **Which tier is it?** *Substring* search for `-<tier>` anywhere in the
+ *    value — not an exact match against a known list. So `claude-sonnet-4-6`,
+ *    `claude-1-9-haiku-19991231` and a version that ships tomorrow all resolve,
+ *    with no table to keep up to date.
+ *
+ * Elsewhere the spec says a pinned ID is recognised by "exact, known match";
+ * that rule governs *versions* — which model Automaker wrote, and which one it
+ * may collapse (see `PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP` in `./model.js`).
+ * Inferring the *tier* is a different and safe judgement: the tier names are a
+ * closed set Anthropic keeps in its identifiers, and a wrong guess would only
+ * mislabel a display string, never change which model runs. Guessing a version
+ * this way would not be safe, and this helper never does — it returns a tier and
+ * the version in the string is discarded.
+ *
+ * A consequence worth knowing: the first tier found wins, so a contrived string
+ * naming two tiers (`claude-opus-vs-sonnet`) resolves to whichever tier
+ * `CLAUDE_TIER_DISPLAY_NAMES` lists first. No real identifier does that.
+ *
  * @returns the tier alias, or undefined when the string is not a Claude model
  */
 export function getClaudeTier(model: string): ClaudeTier | undefined {

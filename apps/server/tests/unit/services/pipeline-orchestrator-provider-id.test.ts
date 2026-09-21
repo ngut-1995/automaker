@@ -79,8 +79,8 @@ vi.mock('@automaker/platform', () => ({
 
 // Mock model-resolver
 vi.mock('@automaker/model-resolver', () => ({
-  resolveModelString: vi.fn().mockReturnValue('claude-sonnet-4'),
-  DEFAULT_MODELS: { claude: 'claude-sonnet-4' },
+  resolveModelString: vi.fn().mockReturnValue('claude-sonnet'),
+  DEFAULT_MODELS: { claude: 'claude-sonnet' },
 }));
 
 describe('PipelineOrchestrator - providerId passthrough', () => {

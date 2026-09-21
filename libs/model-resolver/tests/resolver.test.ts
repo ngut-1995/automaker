@@ -31,7 +31,7 @@ describe('model-resolver', () => {
       });
 
       it('should return custom default when modelKey is undefined', () => {
-        const customDefault = 'claude-opus-4-20241113';
+        const customDefault = 'claude-opus-1-19991231';
         const result = resolveModelString(undefined, customDefault);
         expect(result).toBe(customDefault);
       });
@@ -92,7 +92,7 @@ describe('model-resolver', () => {
     describe('with hand-written pinned Claude model IDs', () => {
       it('should pass through a pinned Claude model ID unchanged', () => {
         // Not on the enumerated list, so it is treated as a deliberate pin.
-        const pinned = 'claude-sonnet-4-20250514';
+        const pinned = 'claude-sonnet-1-19991231';
         const result = resolveModelString(pinned);
 
         expect(result).toBe(pinned);
@@ -106,7 +106,7 @@ describe('model-resolver', () => {
       });
 
       it('should pass through full Claude model string unchanged', () => {
-        const fullModel = 'claude-sonnet-4-20250514';
+        const fullModel = 'claude-sonnet-1-19991231';
         const result = resolveModelString(fullModel);
 
         expect(result).toBe(fullModel);
@@ -116,14 +116,14 @@ describe('model-resolver', () => {
       });
 
       it('should handle claude-opus model strings', () => {
-        const fullModel = 'claude-opus-4-20241113';
+        const fullModel = 'claude-opus-1-19991231';
         const result = resolveModelString(fullModel);
 
         expect(result).toBe(fullModel);
       });
 
       it('should handle claude-haiku model strings', () => {
-        const fullModel = 'claude-3-5-haiku-20241022';
+        const fullModel = 'claude-1-9-haiku-19991231';
         const result = resolveModelString(fullModel);
 
         expect(result).toBe(fullModel);
@@ -259,7 +259,7 @@ describe('model-resolver', () => {
       });
 
       it('should ignore custom default for unknown model key (passthrough takes precedence)', () => {
-        const customDefault = 'claude-opus-4-20241113';
+        const customDefault = 'claude-opus-1-19991231';
         const result = resolveModelString('truly-unknown-model', customDefault);
 
         // Unknown models pass through unchanged, default is not used
@@ -279,10 +279,10 @@ describe('model-resolver', () => {
       });
 
       it('should handle mixed case in claude- strings', () => {
-        const result = resolveModelString('Claude-Sonnet-4-20250514');
+        const result = resolveModelString('Claude-Sonnet-1-19991231');
 
         // Capital 'C' means it won't match 'claude-', passed through as provider model
-        expect(result).toBe('Claude-Sonnet-4-20250514');
+        expect(result).toBe('Claude-Sonnet-1-19991231');
       });
     });
 
@@ -306,9 +306,9 @@ describe('model-resolver', () => {
   describe('getEffectiveModel', () => {
     describe('priority handling', () => {
       it('should prioritize explicit model over all others', () => {
-        const explicit = 'claude-opus-4-20241113';
-        const session = 'claude-sonnet-4-20250514';
-        const defaultModel = 'claude-3-5-haiku-20241022';
+        const explicit = 'claude-opus-1-19991231';
+        const session = 'claude-sonnet-1-19991231';
+        const defaultModel = 'claude-1-9-haiku-19991231';
 
         const result = getEffectiveModel(explicit, session, defaultModel);
 
@@ -316,8 +316,8 @@ describe('model-resolver', () => {
       });
 
       it('should use session model when explicit is undefined', () => {
-        const session = 'claude-sonnet-4-20250514';
-        const defaultModel = 'claude-3-5-haiku-20241022';
+        const session = 'claude-sonnet-1-19991231';
+        const defaultModel = 'claude-1-9-haiku-19991231';
 
         const result = getEffectiveModel(undefined, session, defaultModel);
 
@@ -325,7 +325,7 @@ describe('model-resolver', () => {
       });
 
       it('should use default model when both explicit and session are undefined', () => {
-        const defaultModel = 'claude-opus-4-20241113';
+        const defaultModel = 'claude-opus-1-19991231';
 
         const result = getEffectiveModel(undefined, undefined, defaultModel);
 
@@ -353,7 +353,7 @@ describe('model-resolver', () => {
       });
 
       it('should prioritize explicit alias over session full string', () => {
-        const result = getEffectiveModel('sonnet', 'claude-opus-4-20241113');
+        const result = getEffectiveModel('sonnet', 'claude-opus-1-19991231');
 
         expect(result).toBe(CLAUDE_MODEL_MAP.sonnet);
       });
@@ -361,7 +361,7 @@ describe('model-resolver', () => {
 
     describe('with empty strings', () => {
       it('should treat empty explicit string as undefined', () => {
-        const session = 'claude-sonnet-4-20250514';
+        const session = 'claude-sonnet-1-19991231';
 
         const result = getEffectiveModel('', session);
 
@@ -369,7 +369,7 @@ describe('model-resolver', () => {
       });
 
       it('should treat empty session string as undefined', () => {
-        const defaultModel = 'claude-opus-4-20241113';
+        const defaultModel = 'claude-opus-1-19991231';
 
         const result = getEffectiveModel(undefined, '', defaultModel);
 
@@ -388,7 +388,7 @@ describe('model-resolver', () => {
 
     describe('integration scenarios', () => {
       it('should handle user overriding session model with alias', () => {
-        const sessionModel = 'claude-sonnet-4-20250514';
+        const sessionModel = 'claude-sonnet-1-19991231';
         const userChoice = 'opus';
 
         const result = getEffectiveModel(userChoice, sessionModel);
@@ -397,7 +397,7 @@ describe('model-resolver', () => {
       });
 
       it('should pass through unknown model (may be provider model)', () => {
-        const result = getEffectiveModel('GLM-4.7', 'also-unknown', 'claude-opus-4-20241113');
+        const result = getEffectiveModel('GLM-4.7', 'also-unknown', 'claude-opus-1-19991231');
 
         // Unknown models pass through unchanged (could be provider models)
         expect(result).toBe('GLM-4.7');
@@ -451,7 +451,7 @@ describe('model-resolver', () => {
       });
 
       it('should use custom default when phaseModel is null', () => {
-        const customDefault = 'claude-opus-4-20241113';
+        const customDefault = 'claude-opus-1-19991231';
         const result = resolvePhaseModel(null, customDefault);
 
         expect(result.model).toBe(customDefault);
@@ -482,7 +482,7 @@ describe('model-resolver', () => {
       });
 
       it('should pass through full Claude model string', () => {
-        const fullModel = 'claude-sonnet-4-20250514';
+        const fullModel = 'claude-sonnet-1-19991231';
         const result = resolvePhaseModel(fullModel);
 
         expect(result.model).toBe(fullModel);
@@ -549,12 +549,12 @@ describe('model-resolver', () => {
       it('should handle full Claude model string in entry', () => {
         // A deliberate pin: not one of the versions Automaker itself wrote.
         const entry: PhaseModelEntry = {
-          model: 'claude-opus-4-20241113' as PhaseModelEntry['model'],
+          model: 'claude-opus-1-19991231' as PhaseModelEntry['model'],
           thinkingLevel: 'high',
         };
         const result = resolvePhaseModel(entry);
 
-        expect(result.model).toBe('claude-opus-4-20241113');
+        expect(result.model).toBe('claude-opus-1-19991231');
         expect(result.thinkingLevel).toBe('high');
       });
 

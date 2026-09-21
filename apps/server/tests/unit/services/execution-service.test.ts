@@ -88,8 +88,8 @@ vi.mock('@automaker/platform', () => ({
 
 // Mock model-resolver
 vi.mock('@automaker/model-resolver', () => ({
-  resolveModelString: vi.fn().mockReturnValue('claude-sonnet-4'),
-  DEFAULT_MODELS: { claude: 'claude-sonnet-4' },
+  resolveModelString: vi.fn().mockReturnValue('claude-sonnet'),
+  DEFAULT_MODELS: { claude: 'claude-sonnet' },
 }));
 
 // Mock provider-factory
@@ -246,7 +246,7 @@ describe('execution-service.ts', () => {
     vi.mocked(extractSummary).mockReturnValue('Test summary');
 
     // Re-setup model-resolver mock
-    vi.mocked(resolveModelString).mockReturnValue('claude-sonnet-4');
+    vi.mocked(resolveModelString).mockReturnValue('claude-sonnet');
 
     service = new ExecutionService(
       mockEventBus,
@@ -455,7 +455,7 @@ describe('execution-service.ts', () => {
       expect(callArgs[3]).toBeInstanceOf(AbortController);
       expect(callArgs[4]).toBe('/test/project');
       // Model (index 6) should be resolved
-      expect(callArgs[6]).toBe('claude-sonnet-4');
+      expect(callArgs[6]).toBe('claude-sonnet');
     });
 
     it('passes providerId to runAgentFn when present on feature', async () => {

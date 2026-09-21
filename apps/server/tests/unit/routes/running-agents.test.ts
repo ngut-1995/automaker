@@ -47,7 +47,7 @@ describe('running-agents routes', () => {
           projectPath: '/home/user/project',
           projectName: 'project',
           isAutoMode: true,
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-1-19991231',
           provider: 'claude',
           title: 'Implement login feature',
           description: 'Add user authentication with OAuth',
@@ -147,7 +147,7 @@ describe('running-agents routes', () => {
         projectPath: `/project-${i}`,
         projectName: `project-${i}`,
         isAutoMode: i % 2 === 0,
-        model: i % 3 === 0 ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5',
+        model: i % 3 === 0 ? 'claude-sonnet-1-19991231' : 'claude-haiku-1-19991231',
         provider: 'claude',
         title: `Feature ${i}`,
         description: `Description ${i}`,
@@ -175,7 +175,7 @@ describe('running-agents routes', () => {
           projectPath: '/workspace/project-alpha',
           projectName: 'project-alpha',
           isAutoMode: true,
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-1-19991231',
           provider: 'claude',
           title: 'Feature A',
           description: 'In project alpha',
@@ -212,7 +212,7 @@ describe('running-agents routes', () => {
           projectPath: '/project',
           projectName: 'project',
           isAutoMode: true,
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-1-19991231',
           provider: 'claude',
           title: 'Claude Feature',
           description: 'Using Claude model',
@@ -247,7 +247,7 @@ describe('running-agents routes', () => {
 
       // Assert
       const response = vi.mocked(res.json).mock.calls[0][0];
-      expect(response.runningAgents[0].model).toBe('claude-sonnet-4-20250514');
+      expect(response.runningAgents[0].model).toBe('claude-sonnet-1-19991231');
       expect(response.runningAgents[0].provider).toBe('claude');
       expect(response.runningAgents[1].model).toBe('codex-gpt-5.1');
       expect(response.runningAgents[1].provider).toBe('codex');

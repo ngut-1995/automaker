@@ -383,7 +383,8 @@ describe('settings-helpers.ts', () => {
 
       const result = await getProviderByModelId('custom-model-1', mockSettingsService);
       expect(result.resolvedModel).toBeDefined();
-      // resolveModelString('sonnet-3-5') usually returns 'claude-3-5-sonnet-20240620' or similar
+      // resolveModelString maps the provider's model to a Claude model string; which
+      // one is the provider's business, so this asserts only that one exists.
     });
 
     it('should ignore disabled providers', async () => {

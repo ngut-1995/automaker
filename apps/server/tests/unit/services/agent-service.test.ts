@@ -391,10 +391,10 @@ describe('agent-service.ts', () => {
       await service.sendMessage({
         sessionId: 'session-1',
         message: 'Hello',
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-1-19991231',
       });
 
-      expect(ProviderFactory.getProviderForModel).toHaveBeenCalledWith('claude-sonnet-4-20250514');
+      expect(ProviderFactory.getProviderForModel).toHaveBeenCalledWith('claude-sonnet-1-19991231');
     });
 
     it('should save session messages', async () => {

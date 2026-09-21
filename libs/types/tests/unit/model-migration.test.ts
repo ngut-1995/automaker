@@ -13,12 +13,16 @@ const entry = (model: string, rest: Partial<PhaseModelEntry> = {}): PhaseModelEn
 
 /**
  * Pinned Claude model IDs a user could plausibly have written by hand.
- * Deliberately NOT the IDs Automaker itself used to write.
+ *
+ * Deliberately NOT the IDs Automaker itself used to write — and deliberately
+ * fictional versions, so no Claude release can make this list stale or make a
+ * reader take one of these for a default. What matters is the *shape* of a
+ * hand-written pin, not that the version ever existed.
  */
 const DELIBERATE_PINS = [
-  'claude-sonnet-4-20250514',
-  'claude-opus-4-20241113',
-  'claude-3-5-haiku-20241022',
+  'claude-sonnet-1-19991231',
+  'claude-opus-1-19991231',
+  'claude-1-9-haiku-19991231',
   'claude-haiku-4-5',
   'claude-sonnet-4-6-20260101',
 ];

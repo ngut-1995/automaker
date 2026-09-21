@@ -44,7 +44,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
     title: 'Test Feature',
     description: 'Test feature',
     status: 'merge_conflict',
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-1-9',
     providerId: undefined,
     ...overrides,
   });
@@ -100,7 +100,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
           {
             id: 'moonshot-ai',
             name: 'Moonshot AI',
-            models: [{ id: 'claude-sonnet-4-5', displayName: 'Moonshot v1.8' }],
+            models: [{ id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' }],
           },
         ],
       };
@@ -109,7 +109,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
 
     const feature = createMockFeature({
       status: 'merge_conflict',
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-1-9',
       providerId: 'moonshot-ai',
     });
 
@@ -136,7 +136,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
   it('should show thinking level for merge_conflict Claude features', () => {
     const feature = createMockFeature({
       status: 'merge_conflict',
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-1-9',
       thinkingLevel: 'high',
     });
 

@@ -553,10 +553,10 @@ describe('ConcurrencyManager', () => {
         projectPath: '/project-a',
         isAutoMode: true,
       });
-      manager.updateRunningFeature('feature-1', { model: 'claude-sonnet-4', provider: 'claude' });
+      manager.updateRunningFeature('feature-1', { model: 'claude-sonnet', provider: 'claude' });
 
       const running = manager.getAllRunning();
-      expect(running[0].model).toBe('claude-sonnet-4');
+      expect(running[0].model).toBe('claude-sonnet');
       expect(running[0].provider).toBe('claude');
     });
   });
@@ -587,12 +587,12 @@ describe('ConcurrencyManager', () => {
       });
 
       manager.updateRunningFeature('feature-1', {
-        model: 'claude-opus-4-5-20251101',
+        model: 'claude-opus-1-19991231',
         provider: 'claude',
       });
 
       const entry = manager.getRunningFeature('feature-1');
-      expect(entry?.model).toBe('claude-opus-4-5-20251101');
+      expect(entry?.model).toBe('claude-opus-1-19991231');
       expect(entry?.provider).toBe('claude');
     });
 
@@ -611,13 +611,13 @@ describe('ConcurrencyManager', () => {
       const original = manager.getRunningFeature('feature-1');
       const originalStartTime = original?.startTime;
 
-      manager.updateRunningFeature('feature-1', { model: 'claude-sonnet-4' });
+      manager.updateRunningFeature('feature-1', { model: 'claude-sonnet' });
 
       const updated = manager.getRunningFeature('feature-1');
       expect(updated?.startTime).toBe(originalStartTime);
       expect(updated?.projectPath).toBe('/test/project');
       expect(updated?.isAutoMode).toBe(true);
-      expect(updated?.model).toBe('claude-sonnet-4');
+      expect(updated?.model).toBe('claude-sonnet');
     });
   });
 

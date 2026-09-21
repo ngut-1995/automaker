@@ -44,14 +44,14 @@ describe('AgentInfoPanel', () => {
       id: 'moonshot-ai',
       name: 'Moonshot AI',
       models: [
-        { id: 'claude-sonnet-4-5', displayName: 'Moonshot v1.8' },
+        { id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' },
         { id: 'claude-opus-4-6', displayName: 'Moonshot v1.8 Pro' },
       ],
     },
     {
       id: 'zhipu',
       name: 'Zhipu AI',
-      models: [{ id: 'claude-sonnet-4-5', displayName: 'GLM 4.7' }],
+      models: [{ id: 'claude-sonnet-1-9', displayName: 'GLM 4.7' }],
     },
   ];
 
@@ -59,7 +59,7 @@ describe('AgentInfoPanel', () => {
     id: 'feature-test-123',
     description: 'Test feature',
     status: 'backlog',
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-1-9',
     providerId: undefined,
     ...overrides,
   });
@@ -101,7 +101,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
         providerId: 'moonshot-ai',
       });
 
@@ -124,7 +124,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
         providerId: 'zhipu',
       });
 
@@ -147,7 +147,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
         providerId: 'unknown-provider',
       });
 
@@ -171,7 +171,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
         providerId: 'moonshot-ai',
       });
 
@@ -195,7 +195,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
         providerId: undefined,
       });
 
@@ -242,7 +242,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
         providerId: 'moonshot-ai',
       });
 
@@ -263,7 +263,7 @@ describe('AgentInfoPanel', () => {
     it('should show model info for backlog features', () => {
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
       });
 
       render(<AgentInfoPanel feature={feature} projectPath="/test/project" />, {
@@ -281,7 +281,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'in_progress',
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-1-9',
       });
 
       render(

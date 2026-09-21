@@ -47,18 +47,27 @@ describe('sdk-options.ts', () => {
     });
   });
 
+  /**
+   * These cases are about precedence between an explicit argument and the
+   * AUTOMAKER_MODEL_* environment variables, never about which model runs. The
+   * model strings below are deliberately fictional pinned Claude IDs
+   * (`claude-<tier>-1-<date>`, a Claude that predates Anthropic): they keep the
+   * shape of a hand-written pin, which is what the code path needs, while being
+   * impossible to mistake for a version Automaker writes or to go stale when a
+   * real model ships.
+   */
   describe('getModelForUseCase', () => {
     it('should return explicit model when provided', async () => {
       const { getModelForUseCase } = await import('@/lib/sdk-options.js');
-      const result = getModelForUseCase('spec', 'claude-sonnet-4-20250514');
-      expect(result).toBe('claude-sonnet-4-20250514');
+      const result = getModelForUseCase('spec', 'claude-sonnet-1-19991231');
+      expect(result).toBe('claude-sonnet-1-19991231');
     });
 
     it('should use environment variable for spec model', async () => {
-      process.env.AUTOMAKER_MODEL_SPEC = 'claude-sonnet-4-20250514';
+      process.env.AUTOMAKER_MODEL_SPEC = 'claude-sonnet-1-19991231';
       const { getModelForUseCase } = await import('@/lib/sdk-options.js');
       const result = getModelForUseCase('spec');
-      expect(result).toBe('claude-sonnet-4-20250514');
+      expect(result).toBe('claude-sonnet-1-19991231');
     });
 
     it('should use default model for spec when no override', async () => {
@@ -71,10 +80,10 @@ describe('sdk-options.ts', () => {
 
     it('should fall back to AUTOMAKER_MODEL_DEFAULT', async () => {
       delete process.env.AUTOMAKER_MODEL_SPEC;
-      process.env.AUTOMAKER_MODEL_DEFAULT = 'claude-sonnet-4-20250514';
+      process.env.AUTOMAKER_MODEL_DEFAULT = 'claude-sonnet-1-19991231';
       const { getModelForUseCase } = await import('@/lib/sdk-options.js');
       const result = getModelForUseCase('spec');
-      expect(result).toBe('claude-sonnet-4-20250514');
+      expect(result).toBe('claude-sonnet-1-19991231');
     });
   });
 
@@ -191,11 +200,11 @@ describe('sdk-options.ts', () => {
 
       const options = createChatOptions({
         cwd: '/test/path',
-        model: 'claude-opus-4-20250514',
-        sessionModel: 'claude-haiku-3-5-20241022',
+        model: 'claude-opus-1-19991231',
+        sessionModel: 'claude-haiku-1-19991231',
       });
 
-      expect(options.model).toBe('claude-opus-4-20250514');
+      expect(options.model).toBe('claude-opus-1-19991231');
     });
 
     it('should use session model when explicit model not provided', async () => {
@@ -203,10 +212,10 @@ describe('sdk-options.ts', () => {
 
       const options = createChatOptions({
         cwd: '/test/path',
-        sessionModel: 'claude-sonnet-4-20250514',
+        sessionModel: 'claude-sonnet-1-19991231',
       });
 
-      expect(options.model).toBe('claude-sonnet-4-20250514');
+      expect(options.model).toBe('claude-sonnet-1-19991231');
     });
   });
 

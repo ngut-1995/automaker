@@ -394,7 +394,7 @@ describe('claude-provider.ts', () => {
 
     it('should send a hand-written pinned model ID unchanged', async () => {
       // A version the user pinned on purpose is theirs, not Automaker's to rewrite.
-      const handWrittenPin = 'claude-opus-4-1-20250805';
+      const handWrittenPin = 'claude-opus-1-19991231';
       expect(await modelSentToSdk(handWrittenPin)).toBe(handWrittenPin);
     });
 

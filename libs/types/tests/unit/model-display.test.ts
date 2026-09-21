@@ -26,12 +26,12 @@ describe('getClaudeTierDisplayName', () => {
   it('names the tier for pinned model IDs, including dated ones', () => {
     expect(getClaudeTierDisplayName('claude-opus-4-6')).toBe('Claude Opus');
     expect(getClaudeTierDisplayName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
-    expect(getClaudeTierDisplayName('claude-sonnet-4-20250514')).toBe('Claude Sonnet');
+    expect(getClaudeTierDisplayName('claude-sonnet-1-19991231')).toBe('Claude Sonnet');
   });
 
   it('names the tier for versions Automaker has never heard of', () => {
     expect(getClaudeTierDisplayName('claude-opus-9-9')).toBe('Claude Opus');
-    expect(getClaudeTierDisplayName('claude-3-opus')).toBe('Claude Opus');
+    expect(getClaudeTierDisplayName('claude-1-opus')).toBe('Claude Opus');
   });
 
   it('does not claim models from other providers', () => {
@@ -45,7 +45,7 @@ describe('getClaudeTierDisplayName', () => {
   });
 
   it('does not claim Claude strings with no tier in them', () => {
-    expect(getClaudeTierDisplayName('claude-instant-1')).toBeUndefined();
+    expect(getClaudeTierDisplayName('claude-swift-1')).toBeUndefined();
   });
 });
 
@@ -68,13 +68,13 @@ describe('getModelDisplayName', () => {
   });
 
   it('renders an unrecognised Claude string as its tier name, not a raw ID', () => {
-    expect(getModelDisplayName('claude-opus-4-5')).toBe('Claude Opus');
-    expect(getModelDisplayName('claude-sonnet-4-20250514')).toBe('Claude Sonnet');
+    expect(getModelDisplayName('claude-opus-1-9')).toBe('Claude Opus');
+    expect(getModelDisplayName('claude-sonnet-1-19991231')).toBe('Claude Sonnet');
     expect(getModelDisplayName('claude-opus-9-9')).toBe('Claude Opus');
   });
 
-  it('renders a dated Haiku identifier as Claude Haiku', () => {
-    expect(getModelDisplayName('claude-haiku-4-5')).toBe('Claude Haiku');
+  it('renders an unrecognised Haiku identifier, dated or not, as Claude Haiku', () => {
+    expect(getModelDisplayName('claude-haiku-1-9')).toBe('Claude Haiku');
     expect(getModelDisplayName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
   });
 

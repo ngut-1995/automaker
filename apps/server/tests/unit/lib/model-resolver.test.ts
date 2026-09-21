@@ -64,7 +64,7 @@ describe('model-resolver.ts', () => {
     });
 
     it('should pass through a hand-written pinned Claude model ID', () => {
-      const handWrittenPin = 'claude-opus-4-1-20250805';
+      const handWrittenPin = 'claude-opus-1-19991231';
       expect(resolveModelString(handWrittenPin)).toBe(handWrittenPin);
       expect(consoleSpy.log).toHaveBeenCalledWith(
         expect.stringContaining('Using full Claude model string')

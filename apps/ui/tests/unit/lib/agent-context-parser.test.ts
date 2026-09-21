@@ -26,7 +26,7 @@ describe('agent-context-parser.ts', () => {
             id: 'moonshot-ai',
             name: 'Moonshot AI',
             models: [
-              { id: 'claude-sonnet-4-5', displayName: 'Moonshot v1.8' },
+              { id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' },
               { id: 'claude-opus-4-6', displayName: 'Moonshot v1.8 Pro' },
             ],
           },
@@ -37,7 +37,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Moonshot v1.8');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Moonshot v1.8');
         expect(formatModelName('claude-opus-4-6', options)).toBe('Moonshot v1.8 Pro');
       });
 
@@ -47,7 +47,7 @@ describe('agent-context-parser.ts', () => {
             id: 'zhipu',
             name: 'Zhipu AI',
             models: [
-              { id: 'claude-sonnet-4-5', displayName: 'GLM 4.7' },
+              { id: 'claude-sonnet-1-9', displayName: 'GLM 4.7' },
               { id: 'claude-opus-4-6', displayName: 'GLM 4.7 Pro' },
             ],
           },
@@ -58,7 +58,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('GLM 4.7');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('GLM 4.7');
       });
 
       it('should return provider displayName for MiniMax models', () => {
@@ -67,7 +67,7 @@ describe('agent-context-parser.ts', () => {
             id: 'minimax',
             name: 'MiniMax',
             models: [
-              { id: 'claude-sonnet-4-5', displayName: 'MiniMax M2.1' },
+              { id: 'claude-sonnet-1-9', displayName: 'MiniMax M2.1' },
               { id: 'claude-opus-4-6', displayName: 'MiniMax M2.1 Pro' },
             ],
           },
@@ -78,7 +78,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('MiniMax M2.1');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('MiniMax M2.1');
       });
 
       it('should fallback to default formatting when providerId is not found', () => {
@@ -86,7 +86,7 @@ describe('agent-context-parser.ts', () => {
           {
             id: 'moonshot-ai',
             name: 'Moonshot AI',
-            models: [{ id: 'claude-sonnet-4-5', displayName: 'Moonshot v1.8' }],
+            models: [{ id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' }],
           },
         ];
 
@@ -96,7 +96,7 @@ describe('agent-context-parser.ts', () => {
         };
 
         // Should fall through to default Claude formatting
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet');
       });
 
       it('should fallback to default formatting when model is not in provider models', () => {
@@ -104,7 +104,7 @@ describe('agent-context-parser.ts', () => {
           {
             id: 'moonshot-ai',
             name: 'Moonshot AI',
-            models: [{ id: 'claude-sonnet-4-5', displayName: 'Moonshot v1.8' }],
+            models: [{ id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' }],
           },
         ];
 
@@ -123,7 +123,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: [],
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet');
       });
 
       it('should handle provider with no models array', () => {
@@ -139,7 +139,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet');
       });
 
       it('should handle model with no displayName', () => {
@@ -147,7 +147,7 @@ describe('agent-context-parser.ts', () => {
           {
             id: 'moonshot-ai',
             name: 'Moonshot AI',
-            models: [{ id: 'claude-sonnet-4-5' } as unknown as ProviderModel], // No displayName
+            models: [{ id: 'claude-sonnet-1-9' } as unknown as ProviderModel], // No displayName
           },
         ];
 
@@ -156,7 +156,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet');
       });
 
       it('should ignore provider lookup when providerId is undefined', () => {
@@ -164,7 +164,7 @@ describe('agent-context-parser.ts', () => {
           {
             id: 'moonshot-ai',
             name: 'Moonshot AI',
-            models: [{ id: 'claude-sonnet-4-5', displayName: 'Moonshot v1.8' }],
+            models: [{ id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' }],
           },
         ];
 
@@ -173,7 +173,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet');
       });
 
       it('should ignore provider lookup when claudeCompatibleProviders is undefined', () => {
@@ -182,11 +182,11 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: undefined,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet');
       });
 
       it('should use default formatting when no options provided', () => {
-        expect(formatModelName('claude-sonnet-4-5')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9')).toBe('Claude Sonnet');
         expect(formatModelName('claude-opus-4-6')).toBe('Claude Opus');
       });
 
@@ -196,7 +196,7 @@ describe('agent-context-parser.ts', () => {
             id: 'openrouter',
             name: 'OpenRouter',
             models: [
-              { id: 'claude-sonnet-4-5', displayName: 'Claude Sonnet (OpenRouter)' },
+              { id: 'claude-sonnet-1-9', displayName: 'Claude Sonnet (OpenRouter)' },
               { id: 'claude-opus-4-6', displayName: 'Claude Opus (OpenRouter)' },
               { id: 'gpt-4o', displayName: 'GPT-4o (OpenRouter)' },
             ],
@@ -208,7 +208,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet (OpenRouter)');
+        expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet (OpenRouter)');
         expect(formatModelName('claude-opus-4-6', options)).toBe('Claude Opus (OpenRouter)');
         expect(formatModelName('gpt-4o', options)).toBe('GPT-4o (OpenRouter)');
       });
@@ -235,20 +235,20 @@ describe('agent-context-parser.ts', () => {
       });
 
       it('should name the tier for an opus string it does not recognise', () => {
-        expect(formatModelName('claude-opus-4-5')).toBe('Claude Opus');
+        expect(formatModelName('claude-opus-1-9')).toBe('Claude Opus');
         expect(formatModelName('claude-opus-9-9')).toBe('Claude Opus');
-        expect(formatModelName('claude-3-opus')).toBe('Claude Opus');
+        expect(formatModelName('claude-1-opus')).toBe('Claude Opus');
       });
 
       it('should name the tier for a sonnet string it does not recognise', () => {
-        expect(formatModelName('claude-sonnet-4-5')).toBe('Claude Sonnet');
-        expect(formatModelName('claude-sonnet-4-20250514')).toBe('Claude Sonnet');
-        expect(formatModelName('claude-3-sonnet')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-9')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-1-19991231')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-1-sonnet')).toBe('Claude Sonnet');
       });
 
       it('should name the tier for a dated haiku identifier rather than print its raw ID', () => {
         expect(formatModelName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
-        expect(formatModelName('claude-3-haiku')).toBe('Claude Haiku');
+        expect(formatModelName('claude-1-haiku')).toBe('Claude Haiku');
       });
     });
 

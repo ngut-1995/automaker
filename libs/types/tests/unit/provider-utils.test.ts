@@ -16,7 +16,7 @@ describe('provider-utils.ts', () => {
     describe('without expectedProvider parameter', () => {
       it('should accept valid bare model IDs', () => {
         expect(() => validateBareModelId('gpt-4', 'TestProvider')).not.toThrow();
-        expect(() => validateBareModelId('claude-3-opus', 'TestProvider')).not.toThrow();
+        expect(() => validateBareModelId('claude-1-opus', 'TestProvider')).not.toThrow();
         expect(() => validateBareModelId('2.5-flash', 'TestProvider')).not.toThrow();
         expect(() => validateBareModelId('composer-1', 'TestProvider')).not.toThrow();
       });
@@ -183,7 +183,7 @@ describe('provider-utils.ts', () => {
 
     it('should return unchanged model ID if no provider prefix', () => {
       expect(stripProviderPrefix('gpt-4')).toBe('gpt-4');
-      expect(stripProviderPrefix('claude-3-opus')).toBe('claude-3-opus');
+      expect(stripProviderPrefix('claude-1-opus')).toBe('claude-1-opus');
       expect(stripProviderPrefix('2.5-flash')).toBe('2.5-flash');
     });
 
@@ -244,7 +244,7 @@ describe('provider-utils.ts', () => {
         // because bare gpt models go to Codex, not Cursor
         expect(isCodexModel('cursor-gpt-4')).toBe(false);
         expect(isCodexModel('gemini-2.5-flash')).toBe(false);
-        expect(isCodexModel('claude-3-opus')).toBe(false);
+        expect(isCodexModel('claude-1-opus')).toBe(false);
       });
     });
 
