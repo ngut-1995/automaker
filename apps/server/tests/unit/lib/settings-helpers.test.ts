@@ -366,7 +366,8 @@ describe('settings-helpers.ts', () => {
       const mockModel = {
         id: 'custom-model-1',
         name: 'Custom Model',
-        mapsToClaudeModel: 'sonnet-3-5',
+        // A tier alias, which is the only thing mapsToClaudeModel accepts.
+        mapsToClaudeModel: 'sonnet',
       };
       const mockProvider = {
         id: 'provider-1',
@@ -382,9 +383,8 @@ describe('settings-helpers.ts', () => {
       } as unknown as SettingsService;
 
       const result = await getProviderByModelId('custom-model-1', mockSettingsService);
-      expect(result.resolvedModel).toBeDefined();
-      // resolveModelString maps the provider's model to a Claude model string; which
-      // one is the provider's business, so this asserts only that one exists.
+      // The tier alias maps to its canonical ID through the one tier table.
+      expect(result.resolvedModel).toBe('claude-sonnet');
     });
 
     it('should ignore disabled providers', async () => {

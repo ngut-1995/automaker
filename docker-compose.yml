@@ -6,7 +6,7 @@
 #   docker-compose up -d
 #   Then open http://localhost:3007
 #
-# See docs/docker-isolation.md for full documentation.
+# See the "Docker Deployment" section of README.md for full documentation.
 
 services:
   # Frontend UI

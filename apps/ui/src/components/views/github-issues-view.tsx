@@ -287,7 +287,7 @@ export function GitHubIssuesView() {
             status: 'backlog' as const,
             passes: false,
             priority: getFeaturePriority(validation.estimatedComplexity),
-            model: resolveModelString('opus'),
+            model: resolveModelString('claude-opus'),
             thinkingLevel: 'none' as const,
             branchName: currentBranch,
             planningMode: 'skip' as const,

@@ -15,7 +15,7 @@ import type {
   PhaseModelEntry,
   Credentials,
 } from '@automaker/types';
-import { DEFAULT_PHASE_MODELS } from '@automaker/types';
+import { CLAUDE_CANONICAL_ID_BY_TIER, DEFAULT_PHASE_MODELS } from '@automaker/types';
 import {
   mergeAutoModePrompts,
   mergeAgentPrompts,
@@ -804,8 +804,12 @@ export async function resolveProviderContext(
     // 3. Resolve the mapped Claude model if specified
     let resolvedModel: string | undefined;
     if (modelConfig?.mapsToClaudeModel) {
-      const { resolveModelString } = await import('@automaker/model-resolver');
-      resolvedModel = resolveModelString(modelConfig.mapsToClaudeModel);
+      // A tier alias maps to its canonical ID through the tier table, not the
+      // resolver: the resolver refuses a bare alias by type (see resolver.ts).
+      // An out-of-contract stored value (not a tier) is kept as-is rather than
+      // dropped, which is what the resolver used to do.
+      resolvedModel =
+        CLAUDE_CANONICAL_ID_BY_TIER[modelConfig.mapsToClaudeModel] ?? modelConfig.mapsToClaudeModel;
       logger.debug(
         `${logPrefix} Model "${modelId}" maps to Claude model "${modelConfig.mapsToClaudeModel}" -> "${resolvedModel}"`
       );
@@ -869,9 +873,13 @@ export async function getProviderByModelId(
         // Resolve the mapped Claude model if specified
         let resolvedModel: string | undefined;
         if (modelConfig.mapsToClaudeModel) {
-          // Import resolveModelString to convert alias to full model ID
-          const { resolveModelString } = await import('@automaker/model-resolver');
-          resolvedModel = resolveModelString(modelConfig.mapsToClaudeModel);
+          // A tier alias maps to its canonical ID through the tier table, not the
+          // resolver: the resolver refuses a bare alias by type (see resolver.ts).
+          // An out-of-contract stored value (not a tier) is kept as-is rather than
+          // dropped, which is what the resolver used to do.
+          resolvedModel =
+            CLAUDE_CANONICAL_ID_BY_TIER[modelConfig.mapsToClaudeModel] ??
+            modelConfig.mapsToClaudeModel;
           logger.info(
             `${logPrefix} Model "${modelId}" maps to Claude model "${modelConfig.mapsToClaudeModel}" -> "${resolvedModel}"`
           );

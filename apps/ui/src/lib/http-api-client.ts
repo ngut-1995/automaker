@@ -48,7 +48,13 @@ import type {
   ZaiUsageResponse,
 } from '@/store/app-store';
 import type { WorktreeAPI, GitAPI, ModelDefinition, ProviderStatus } from '@/types/electron';
-import type { ModelId, ThinkingLevel, ReasoningEffort, Feature } from '@automaker/types';
+import type {
+  ModelId,
+  ThinkingLevel,
+  ReasoningEffort,
+  Feature,
+  ClaudeTier,
+} from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 const logger = createLogger('HttpClient');
@@ -2891,7 +2897,7 @@ export class HttpApiClient implements ElectronAPI {
           description: string;
           prompt: string;
           tools?: string[];
-          model?: 'sonnet' | 'opus' | 'haiku' | 'inherit';
+          model?: ClaudeTier | 'inherit';
         };
         source: 'user' | 'project';
         filePath: string;

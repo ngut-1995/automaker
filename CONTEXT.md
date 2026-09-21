@@ -40,9 +40,9 @@ Automaker's user-facing choice of reasoning depth: `none`, `low`, `medium`, `hig
 
 ### Effort level
 
-The model-side control for reasoning depth: `low`, `medium`, `high`, `xhigh`, `max`. Replaces
-the older mechanism of granting a fixed reasoning-token budget. Which levels a model accepts
-is a property of that model.
+The model-side control for reasoning depth: `none`, `minimal`, `low`, `medium`, `high`,
+`xhigh`. Replaces the older mechanism of granting a fixed reasoning-token budget. Which levels
+a model accepts is a property of that model.
 
 **Adaptive thinking** means the model decides its own reasoning depth per request, rather than
 being given a budget. Whether a model supports it is a property of the model, not of the

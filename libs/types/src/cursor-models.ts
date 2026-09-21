@@ -262,6 +262,9 @@ export function cursorModelHasThinking(modelId: CursorModelId): boolean {
 
 /**
  * Helper: Get display name for model
+ *
+ * Reads the provider's own catalogue, which is the same input `MODEL_DISPLAY_NAMES`
+ * is assembled from -- not a second table.
  */
 export function getCursorModelLabel(modelId: CursorModelId): string {
   return CURSOR_MODEL_MAP[modelId]?.label ?? modelId;

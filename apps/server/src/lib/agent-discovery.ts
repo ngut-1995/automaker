@@ -12,6 +12,7 @@ import path from 'path';
 import os from 'os';
 import { createLogger } from '@automaker/utils';
 import { secureFs, systemPaths } from '@automaker/platform';
+import { CLAUDE_TIERS } from '@automaker/types';
 import type { AgentDefinition } from '@automaker/types';
 
 const logger = createLogger('AgentDiscovery');
@@ -63,10 +64,12 @@ function parseAgentContent(content: string, filePath: string): AgentDefinition |
   // Parse model (optional) - validate against allowed values
   const modelMatch = frontmatter.match(/model:\s*(\w+)/);
   const modelValue = modelMatch?.[1]?.trim();
-  const validModels = ['sonnet', 'opus', 'haiku', 'inherit'] as const;
+  // Subagents address Claude by bare tier alias, plus 'inherit'. Derived from
+  // the one tier table so a tier added there is accepted here too.
+  const validModels = [...CLAUDE_TIERS, 'inherit'] as const;
   const model =
-    modelValue && validModels.includes(modelValue as (typeof validModels)[number])
-      ? (modelValue as 'sonnet' | 'opus' | 'haiku' | 'inherit')
+    modelValue && (validModels as readonly string[]).includes(modelValue)
+      ? (modelValue as (typeof validModels)[number])
       : undefined;
 
   if (modelValue && !model) {

@@ -45,7 +45,7 @@ describe('AgentInfoPanel', () => {
       name: 'Moonshot AI',
       models: [
         { id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' },
-        { id: 'claude-opus-4-6', displayName: 'Moonshot v1.8 Pro' },
+        { id: 'claude-opus-1-19991231', displayName: 'Moonshot v1.8 Pro' },
       ],
     },
     {
@@ -219,7 +219,7 @@ describe('AgentInfoPanel', () => {
 
       const feature = createMockFeature({
         status: 'backlog',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus-1-19991231',
         providerId: 'moonshot-ai',
       });
 

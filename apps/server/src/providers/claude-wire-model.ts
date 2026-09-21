@@ -10,7 +10,12 @@
  * See docs/adr/0001-claude-tier-aliases.md.
  */
 
-import { claudeTierOf, isClaudeCanonicalId, type ClaudeTier } from '@automaker/types';
+import {
+  claudeTierOf,
+  isClaudeCanonicalId,
+  type ClaudeCanonicalId,
+  type ClaudeTier,
+} from '@automaker/types';
 
 declare const passedThroughModel: unique symbol;
 
@@ -42,6 +47,24 @@ export type PassedThroughClaudeModel = string & { readonly [passedThroughModel]:
 export type ClaudeWireModel = ClaudeTier | PassedThroughClaudeModel;
 
 /**
+ * What a bare tier alias becomes if it is passed to the boundary.
+ *
+ * A bare alias is not a valid *input*: it is the boundary's own output. Automaker
+ * names a model internally with a canonical ID, and lets the provider turn that
+ * into whatever "Opus" means today. Accepting `opus` in would let a value produced
+ * by this function flow back into code that reasons about canonical IDs.
+ *
+ * The type is deliberately not assignable to `string`. That turns the mistake into
+ * a compile error at the point of use: the rejected value cannot be handed to the
+ * SDK, stored, or -- the case the ADR calls out -- fed back into the model
+ * resolver. `never` would not do; it is assignable to everything, so it would
+ * silently allow exactly what this is meant to stop.
+ */
+export interface RejectedBareTierAlias {
+  readonly error: 'a bare tier alias is not a wire input; pass a canonical ID';
+}
+
+/**
  * Translate a model string into the value sent to the Claude Agent SDK.
  *
  * A canonical ID becomes its tier alias. Everything else -- a hand-written pinned
@@ -56,14 +79,26 @@ export type ClaudeWireModel = ClaudeTier | PassedThroughClaudeModel;
  * `getBareModelIdForCli` does this, both passing the `claude-` prefix through
  * deliberately.
  *
+ * ## Why the overloads
+ *
+ * The return type has to depend on what came in, and overloads are the only way to
+ * say so. A canonical ID returns the tier type itself, so the compiler knows the
+ * output is an alias and refuses to put it back where a canonical ID belongs. A
+ * bare alias is refused outright. A pass-through keeps its opaque brand.
+ *
  * @example
  * ```typescript
  * toClaudeWireModel('claude-opus');          // 'opus'          (tier alias)
  * toClaudeWireModel('claude-opus-4-6-xyz');  // unchanged       (hand-written pin)
  * toClaudeWireModel('GLM-4.7');              // unchanged       (provider's model)
+ * // toClaudeWireModel('opus');              // compile error   (a bare alias)
  * ```
  */
-export function toClaudeWireModel(model: string): ClaudeWireModel {
+export function toClaudeWireModel(model: ClaudeCanonicalId): ClaudeTier;
+export function toClaudeWireModel(model: PassedThroughClaudeModel): PassedThroughClaudeModel;
+export function toClaudeWireModel(model: ClaudeTier): RejectedBareTierAlias;
+export function toClaudeWireModel(model: string): PassedThroughClaudeModel;
+export function toClaudeWireModel(model: string): ClaudeWireModel | RejectedBareTierAlias {
   if (isClaudeCanonicalId(model)) {
     return claudeTierOf(model);
   }

@@ -18,27 +18,55 @@ const entry = (model: string, rest: Partial<PhaseModelEntry> = {}): PhaseModelEn
 /**
  * Pinned Claude model IDs a user could plausibly have written by hand.
  *
- * Deliberately NOT the IDs Automaker itself used to write — and deliberately
- * fictional versions, so no Claude release can make this list stale or make a
- * reader take one of these for a default. What matters is the *shape* of a
- * hand-written pin, not that the version ever existed.
+ * Deliberately NOT the IDs Automaker ever wrote, so no Claude release can make
+ * this list stale and no reader can mistake one of these for a default. What
+ * matters is the *shape* of a hand-written pin, not that the version exists, so
+ * the dates are from a Claude that predates Anthropic.
  */
 const DELIBERATE_PINS = [
   'claude-sonnet-1-19991231',
   'claude-opus-1-19991231',
   'claude-1-9-haiku-19991231',
-  'claude-haiku-4-5',
+];
+
+/**
+ * The enumerated pinned-by-accident map keys exactly as Automaker shipped them.
+ * Real identifiers on purpose: these are the values that used to be written
+ * onto cards, so they are the values the collapse must recognise.
+ */
+const ENUMERATED_PINNED_IDS = Object.keys(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP);
+
+/**
+ * Neighbouring releases of enumerated IDs. Real, and deliberately *not* on the
+ * list: exact equality is what keeps a deliberate pin from being unpinned.
+ */
+const NEAR_MISSES = [
+  'claude-opus-4-6-20260101',
+  'claude-opus-4-7',
+  'claude-opus-4-5',
   'claude-sonnet-4-6-20260101',
+  'claude-sonnet-4-5',
+  'claude-sonnet-4-20250515',
+  'claude-haiku-4-5-20251002',
+  'claude-haiku-4-5-1',
 ];
 
 describe('pinned-by-accident Claude model IDs', () => {
   describe('the enumerated list', () => {
-    it("contains exactly the three IDs Automaker wrote on the user's behalf", () => {
-      expect(Object.keys(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP).sort()).toEqual([
-        'claude-haiku-4-5-20251001',
-        'claude-opus-4-6',
-        'claude-sonnet-4-6',
-      ]);
+    it("contains every version Automaker ever wrote on the user's behalf", () => {
+      // Audited from the repository's history: each of these sat behind a tier
+      // alias or a default at some point, and cards created then still hold them.
+      expect(Object.keys(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP).sort()).toEqual(
+        [
+          'claude-opus-4-5-20251101',
+          'claude-opus-4-6',
+          'claude-sonnet-4-20250514',
+          'claude-sonnet-4-5-20250929',
+          'claude-sonnet-4-6',
+          'claude-haiku-4-5',
+          'claude-haiku-4-5-20251001',
+        ].sort()
+      );
     });
 
     it('maps every entry to a canonical ID', () => {
@@ -48,11 +76,12 @@ describe('pinned-by-accident Claude model IDs', () => {
     });
 
     it('recognises an entry only by exact equality, never by pattern', () => {
-      // Same tier, neighbouring spellings: not on the list, so not recognised.
-      expect(isPinnedByAccidentClaudeModelId('claude-opus-4-6')).toBe(true);
-      expect(isPinnedByAccidentClaudeModelId('claude-opus-4-7')).toBe(false);
-      expect(isPinnedByAccidentClaudeModelId('claude-opus-4-6-20260101')).toBe(false);
-      expect(isPinnedByAccidentClaudeModelId('claude-haiku-4-5')).toBe(false);
+      for (const enumerated of ENUMERATED_PINNED_IDS) {
+        expect(isPinnedByAccidentClaudeModelId(enumerated), enumerated).toBe(true);
+      }
+      for (const nearMiss of NEAR_MISSES) {
+        expect(isPinnedByAccidentClaudeModelId(nearMiss), nearMiss).toBe(false);
+      }
       expect(isPinnedByAccidentClaudeModelId('claude-opus')).toBe(false);
     });
   });
@@ -67,6 +96,11 @@ describe('pinned-by-accident Claude model IDs', () => {
 
     it.each(DELIBERATE_PINS)('leaves the deliberate pin %s intact', (pinned) => {
       expect(migrateModelId(pinned)).toBe(pinned);
+    });
+
+    it.each(NEAR_MISSES)('leaves the near-miss %s intact', (nearMiss) => {
+      // A pattern match would unpin this; exact equality is the point.
+      expect(migrateModelId(nearMiss)).toBe(nearMiss);
     });
 
     it.each(CLAUDE_CANONICAL_IDS)('leaves the canonical ID %s unchanged', (canonical) => {

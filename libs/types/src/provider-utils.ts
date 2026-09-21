@@ -359,9 +359,9 @@ export function normalizeModelString(model: string | undefined | null): string {
     return LEGACY_OPENCODE_MODEL_MAP[model as keyof typeof LEGACY_OPENCODE_MODEL_MAP];
   }
 
-  // Legacy Claude aliases
+  // Legacy Claude aliases - CLAUDE_MODEL_MAP is derived from the one tier table
   if (model in CLAUDE_MODEL_MAP) {
-    return `claude-${model}`;
+    return CLAUDE_MODEL_MAP[model];
   }
 
   // For Codex, bare gpt-* and o-series models need codex- prefix

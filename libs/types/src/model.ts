@@ -32,19 +32,32 @@ export {
  * are pinned-by-accident: the user never chose them, but nothing in the stored
  * value says so.
  *
+ * The list is the **complete** set of versions Automaker ever shipped as the
+ * value behind `haiku`, `sonnet` or `opus`, audited from this repository's
+ * history. It is not "the versions we still remember": a version that once sat
+ * in `CLAUDE_MODEL_MAP` or `DEFAULT_MODELS` is here even after the code moved on,
+ * because a card created then still holds it today. `claude-haiku-4-5` (undated)
+ * is here for exactly that reason -- it *was* written, before it was replaced by
+ * the dated spelling.
+ *
  * Membership is decided by **exact equality** against this list, never by a
  * pattern such as `claude-opus-*`. A pattern would also unpin versions a user
  * chose deliberately, and Automaker cannot tell the two apart by inspecting the
- * value. The cost is that this list gains an entry whenever the defaults
- * change; that is accepted as visible debt rather than logic that guesses wrong
- * (see docs/adr/0001-claude-tier-aliases.md).
- *
- * Note `claude-haiku-4-5` (undated) is deliberately absent: it appears in the
- * UI's display tables but was never a value Automaker wrote.
+ * value. The cost is that this list gains an entry whenever the defaults change;
+ * that is accepted as visible debt rather than logic that guesses wrong (see
+ * docs/adr/0001-claude-tier-aliases.md).
  */
 export const PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalIdType> = {
+  // Opus, oldest first. `claude-opus-4-5-20251101` was both the value of
+  // `CLAUDE_MODEL_MAP.opus` and `DEFAULT_MODELS.claude` before 4.6 shipped.
+  'claude-opus-4-5-20251101': 'claude-opus',
   'claude-opus-4-6': 'claude-opus',
+  // Sonnet, oldest first: 4.0, then 4.5, then 4.6.
+  'claude-sonnet-4-20250514': 'claude-sonnet',
+  'claude-sonnet-4-5-20250929': 'claude-sonnet',
   'claude-sonnet-4-6': 'claude-sonnet',
+  // Haiku: the undated alias first, then the dated spelling that replaced it.
+  'claude-haiku-4-5': 'claude-haiku',
   'claude-haiku-4-5-20251001': 'claude-haiku',
 } as const;
 

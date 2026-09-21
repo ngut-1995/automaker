@@ -47,7 +47,11 @@ import type {
   ProviderModel,
   ClaudeModelAlias,
 } from '@automaker/types';
-import { CLAUDE_PROVIDER_TEMPLATES, CLAUDE_TIER_DISPLAY_NAMES } from '@automaker/types';
+import {
+  CLAUDE_PROVIDER_TEMPLATES,
+  CLAUDE_TIERS,
+  CLAUDE_TIER_DISPLAY_NAMES,
+} from '@automaker/types';
 import { Badge } from '@/components/ui/badge';
 
 // Generate unique ID for providers
@@ -78,6 +82,15 @@ const PROVIDER_TYPE_COLORS: Record<ClaudeCompatibleProviderType, string> = {
   openrouter: 'bg-amber-500/20 text-amber-500',
   custom: 'bg-zinc-500/20 text-zinc-400',
 };
+
+/**
+ * The tiers a provider model can map to, derived from the one tier table so a
+ * tier added or renamed there appears here with no edit.
+ */
+const CLAUDE_TIER_OPTIONS = CLAUDE_TIERS.map((tier) => ({
+  value: tier,
+  label: CLAUDE_TIER_DISPLAY_NAMES[tier],
+}));
 
 interface ModelFormEntry {
   id: string;
@@ -639,9 +652,11 @@ export function ApiProfilesSection() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="haiku">Haiku (fast, efficient)</SelectItem>
-                                  <SelectItem value="sonnet">Sonnet (balanced)</SelectItem>
-                                  <SelectItem value="opus">Opus (powerful)</SelectItem>
+                                  {CLAUDE_TIER_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -750,9 +765,11 @@ export function ApiProfilesSection() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="haiku">Haiku (fast, efficient)</SelectItem>
-                                  <SelectItem value="sonnet">Sonnet (balanced)</SelectItem>
-                                  <SelectItem value="opus">Opus (powerful)</SelectItem>
+                                  {CLAUDE_TIER_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </div>

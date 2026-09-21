@@ -81,7 +81,7 @@ export function GitHubPRsView() {
         description: `Read the review requests on PR #${pr.number} and address any feedback the best you can.`,
         steps: [],
         status: 'backlog',
-        model: resolveModelString('opus'),
+        model: resolveModelString('claude-opus'),
         thinkingLevel: 'none',
         planningMode: 'skip',
         requirePlanApproval: false,

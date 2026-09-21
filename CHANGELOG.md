@@ -23,20 +23,21 @@ Notable behaviour changes. Release notes are generated from commits (see
 
 - **Existing feature cards follow their tier again.** Cards created before this change
   carry the specific Claude version that was current when you created them, because
-  Automaker wrote it on your behalf. Those three versions — `claude-opus-4-6`,
-  `claude-sonnet-4-6` and `claude-haiku-4-5-20251001` — are now recognised as tier
-  choices when a card is read, so an existing backlog runs current models without you
-  editing a single card. This applies to cards from every entry point (board, spec
-  parser, backlog planner, GitHub issue and PR views) and to phase models.
+  Automaker wrote it on your behalf. Every version Automaker ever wrote behind a tier or a
+  default — from `claude-opus-4-5-20251101` and `claude-sonnet-4-20250514` through to the
+  current `claude-opus-4-6`, `claude-sonnet-4-6` and `claude-haiku-4-5-20251001` — is now
+  recognised as a tier choice when a card is read, so an existing backlog runs current
+  models without you editing a single card. This applies to cards from every entry point
+  (board, spec parser, backlog planner, GitHub issue and PR views) and to phase models.
 
   Nothing on disk is rewritten, so there is nothing to roll back. Any other version you
-  wrote yourself is left exactly as it is — recognition is by exact match against those
-  three IDs, never by pattern — so a deliberate pin still works. The one caveat: if you
-  had deliberately pinned one of those three exact IDs, it now follows its tier instead;
-  use the `ANTHROPIC_DEFAULT_*_MODEL` environment variables to pin it back.
+  wrote yourself is left exactly as it is — recognition is by exact match against an
+  enumerated list, never by pattern — so a deliberate pin still works. The one caveat: if
+  you had deliberately pinned one of those exact IDs, it now follows its tier instead; use
+  the `ANTHROPIC_DEFAULT_*_MODEL` environment variables to pin it back.
 
-  Because those three IDs no longer name the model that runs, the UI shows the tier for
-  them rather than the version they spell.
+  Because those IDs no longer name the model that runs, the UI shows the tier for them
+  rather than the version they spell.
 
 - **Two dated Sonnet entries are gone from the Claude model picker.** `Claude Sonnet 4`
   (`claude-sonnet-4-20250514`) and `Claude 3.5 Sonnet` (`claude-3-5-sonnet-20241022`) were
@@ -45,11 +46,13 @@ Notable behaviour changes. Release notes are generated from commits (see
   hand-maintaining them, and every release would have to decide again whether they are still
   worth listing.
 
-  If a feature of yours already has one of them selected, it keeps running exactly as before —
-  a version you hold is treated as a hand-written pin and is sent to the provider unchanged.
-  You just cannot pick it again from the menu. To go on pinning a specific version, use the
-  `ANTHROPIC_DEFAULT_SONNET_MODEL` environment variable, or write the model ID on the feature
-  yourself.
+  If a feature of yours already has `claude-3-5-sonnet-20241022` selected, it keeps running
+  exactly as before — a version you hold is treated as a hand-written pin and is sent to the
+  provider unchanged. `claude-sonnet-4-20250514` is different: the history audit found
+  Automaker had written it on the user's behalf, so it now follows the Sonnet tier like the
+  others above. Either way you just cannot pick them again from the menu. To go on pinning a
+  specific version, use the `ANTHROPIC_DEFAULT_SONNET_MODEL` environment variable, or write the
+  model ID on the feature yourself.
 
 - **Every panel now names a model the same way, and names it the way you picked it.** Three
   separate functions used to answer "what do I call this model", each with its own table, and

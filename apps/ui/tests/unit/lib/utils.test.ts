@@ -8,7 +8,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getModelDisplayName, migrateModelId } from '../../../src/lib/utils';
+import { getModelDisplayName, getPhaseModelLabel, migrateModelId } from '../../../src/lib/utils';
+import type { ClaudeCompatibleProvider, PhaseModelEntry } from '@automaker/types';
 
 describe('getModelDisplayName', () => {
   it('keeps the existing labels for exact, known identifiers', () => {
@@ -40,6 +41,38 @@ describe('getModelDisplayName', () => {
     expect(getModelDisplayName('copilot-claude-opus-4.5')).toBe('Claude Opus 4.5');
     expect(getModelDisplayName('opencode-big-pickle')).toBe('Big Pickle');
     expect(getModelDisplayName('gemini-2.5-flash')).toBe('Gemini 2.5 Flash');
+  });
+});
+
+describe('getPhaseModelLabel', () => {
+  const entry = (model: string, providerId?: string): PhaseModelEntry =>
+    ({ model, providerId }) as PhaseModelEntry;
+
+  it('names a native model through the shared table', () => {
+    expect(getPhaseModelLabel(entry('claude-opus'), [])).toBe('Claude Opus');
+    // Not a raw identifier: another provider's model is named its own way.
+    expect(getPhaseModelLabel(entry('cursor-auto'), [])).toBe('Cursor Auto');
+    expect(getPhaseModelLabel(entry('codex-gpt-5.2'), [])).toBe('GPT-5.2');
+  });
+
+  it("prefers a Claude-compatible provider's own name, qualified by the provider", () => {
+    const providers = [
+      {
+        id: 'p1',
+        name: 'Moonshot',
+        models: [{ id: 'claude-opus', displayName: 'Kimi K2' }],
+      } as unknown as ClaudeCompatibleProvider,
+    ];
+
+    expect(getPhaseModelLabel(entry('claude-opus', 'p1'), providers)).toBe('Kimi K2 (Moonshot)');
+  });
+
+  it('falls back to the shared table when the provider or model is unknown', () => {
+    expect(getPhaseModelLabel(entry('claude-opus', 'missing'), [])).toBe('Claude Opus');
+    const providers = [
+      { id: 'p1', name: 'Moonshot', models: [] } as unknown as ClaudeCompatibleProvider,
+    ];
+    expect(getPhaseModelLabel(entry('claude-opus', 'p1'), providers)).toBe('Claude Opus');
   });
 });
 

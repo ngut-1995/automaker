@@ -608,8 +608,8 @@ Per PR workflow in DEVELOPMENT_WORKFLOW.md:
 
 ## Documentation
 
-After implementation, create comprehensive documentation at:
-`/home/dhanush/Projects/automaker/docs/terminal-custom-configs.md`
+After implementation, document the feature in the terminal reference at:
+`docs/terminal.md`
 
 **Documentation should cover**:
 

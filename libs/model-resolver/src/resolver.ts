@@ -14,11 +14,11 @@
  * - OpenCode: opencode-big-pickle, opencode-kimi-k2.5-free
  * - Copilot: copilot-gpt-5.1, copilot-claude-sonnet-4.5, copilot-gemini-3-pro-preview
  * - Gemini: gemini-2.5-flash, gemini-2.5-pro
- * - Claude: claude-haiku, claude-sonnet, claude-opus (also supports legacy aliases)
+ * - Claude: claude-haiku, claude-sonnet, claude-opus (legacy bare aliases are
+ *   migrated to these canonical IDs before anything else looks at the string)
  */
 
 import {
-  CLAUDE_MODEL_MAP,
   isClaudeCanonicalId,
   CURSOR_MODEL_MAP,
   CODEX_MODEL_MAP,
@@ -30,6 +30,7 @@ import {
   isGeminiModel,
   stripProviderPrefix,
   migrateModelId,
+  type ClaudeTier,
   type PhaseModelEntry,
   type ThinkingLevel,
   type ReasoningEffort,
@@ -43,16 +44,25 @@ const OPENAI_O_SERIES_ALLOWED_MODELS = new Set<string>();
 /**
  * Resolve a model key/alias to a canonical model ID
  *
- * Handles both canonical prefixed IDs and legacy aliases:
+ * Any bare legacy alias is migrated to its canonical prefixed ID first, so the
+ * branches below only ever see canonical IDs or provider model strings:
  * - Canonical: cursor-auto, cursor-gpt-5.2, opencode-big-pickle, claude-sonnet
- * - Legacy: auto, composer-1, sonnet, opus
+ * - Legacy (migrated before matching): auto, composer-1, sonnet, opus
+ *
+ * A **bare tier alias** is a compile error when it is statically known. A tier
+ * alias is what the Claude provider boundary produces on the way *out* to the
+ * SDK, so accepting one here would let that value flow back into code that
+ * reasons about canonical IDs (the containment property in
+ * docs/adr/0001-claude-tier-aliases.md). A `string` that merely happens to hold
+ * an alias at runtime still resolves -- legacy settings do -- but a value typed
+ * `ClaudeTier` is refused by the type checker.
  *
  * @param modelKey - Model key (e.g., "claude-opus", "cursor-composer-1", "sonnet")
  * @param defaultModel - Fallback model if modelKey is undefined
  * @returns Full model string
  */
-export function resolveModelString(
-  modelKey?: string,
+export function resolveModelString<T extends string>(
+  modelKey?: T extends ClaudeTier ? never : T,
   defaultModel: string = DEFAULT_MODELS.claude
 ): string {
   console.log(
@@ -111,19 +121,10 @@ export function resolveModelString(
     return canonicalKey;
   }
 
-  // Hand-written pinned Claude model ID (e.g., claude-sonnet-4-6) - pass through
+  // Hand-written pinned Claude model ID (e.g., claude-sonnet-1-19991231) - pass through
   if (canonicalKey.includes('claude-')) {
     console.log(`[ModelResolver] Using full Claude model string: ${canonicalKey}`);
     return canonicalKey;
-  }
-
-  // Legacy Claude model alias (sonnet, opus, haiku) - support for backward compatibility
-  const canonicalFromAlias = CLAUDE_MODEL_MAP[canonicalKey];
-  if (canonicalFromAlias) {
-    console.log(
-      `[ModelResolver] Resolved Claude legacy alias: "${canonicalKey}" -> "${canonicalFromAlias}"`
-    );
-    return canonicalFromAlias;
   }
 
   // OpenAI/Codex models - check for gpt- prefix

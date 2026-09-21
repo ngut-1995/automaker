@@ -25,7 +25,7 @@ import {
   codexModelHasThinking,
   getThinkingLevelsForModel,
 } from '@automaker/types';
-import { CLAUDE_TIERS } from '@automaker/types';
+import { CLAUDE_TIERS, CLAUDE_TIER_DISPLAY_NAMES } from '@automaker/types';
 import {
   CLAUDE_MODELS,
   CURSOR_MODELS,
@@ -110,6 +110,14 @@ const OPENCODE_SECTION_LABELS: Record<(typeof OPENCODE_SECTION_ORDER)[number], s
 const OPENCODE_STATIC_PROVIDER_BY_ID = new Map(
   OPENCODE_MODELS.map((model) => [model.id, model.provider])
 );
+
+/**
+ * Short tier labels for a provider model's "maps to" description, derived from
+ * the one tier table: "Claude Haiku" -> "Haiku".
+ */
+const CLAUDE_TIER_SHORT_LABELS = Object.fromEntries(
+  CLAUDE_TIERS.map((tier) => [tier, CLAUDE_TIER_DISPLAY_NAMES[tier].replace(/^Claude /, '')])
+) as Record<ClaudeModelAlias, string>;
 
 function formatProviderLabel(providerKey: string): string {
   return providerKey
@@ -1332,12 +1340,7 @@ export function PhaseModelSelector({
       ? storeDefaultThinkingLevel
       : providerAvailableLevels[0];
 
-    // Build description showing all mapped Claude models
-    const modelLabelMap: Record<ClaudeModelAlias, string> = {
-      haiku: 'Haiku',
-      sonnet: 'Sonnet',
-      opus: 'Opus',
-    };
+    // Build description showing all mapped Claude models.
     // Sorted in the order the tiers are declared (fastest first).
     const sortOrder: readonly ClaudeModelAlias[] = CLAUDE_TIERS;
     const sortedMappedModels = [...allMappedModels].sort(
@@ -1345,7 +1348,7 @@ export function PhaseModelSelector({
     );
     const mappedModelLabel =
       sortedMappedModels.length > 0
-        ? sortedMappedModels.map((m) => modelLabelMap[m]).join(', ')
+        ? sortedMappedModels.map((m) => CLAUDE_TIER_SHORT_LABELS[m]).join(', ')
         : 'Claude';
 
     // Get icon based on provider type, falling back to model-based detection

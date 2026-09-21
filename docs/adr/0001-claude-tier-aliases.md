@@ -28,17 +28,21 @@ is what the provider system is for — but it is a real behaviour change for GLM
 and it is also the supported way to pin a version deliberately.
 
 **Pinned IDs that Automaker wrote on the user's behalf are collapsed back to canonical on
-read**, by an exact-match list of the three IDs it used to write. Matching `claude-{tier}-*` by
-pattern would have been less maintenance but would also have silently unpinned versions a user
-chose on purpose, and nothing in the stored value distinguishes the two cases.
+read**, by an exact-match list (`PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP`) of every version it ever
+wrote behind a tier or a default, audited from history. Matching `claude-{tier}-*` by pattern
+would have been less maintenance but would also have silently unpinned versions a user chose on
+purpose, and nothing in the stored value distinguishes the two cases. The list grows by one entry
+whenever a default changes; that is accepted as visible debt.
 
 **The picker offers three Claude entries where it offered five.** The two extra entries were
 dated Sonnet versions, not tier duplicates, and they are not coming back: a catalogue entry is a
 pinned version someone has to keep current, which is the maintenance this decision removes. The
-cost falls only on re-selection — a version already stored on a feature is a hand-written pin
-and still reaches the SDK unchanged — and `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` remains
-the supported way to pin. `apps/server/tests/unit/providers/claude-provider.test.ts` asserts the
-catalogue is exactly the three tiers, so a fourth entry cannot reappear unnoticed.
+cost falls only on re-selection — a version already on a feature keeps reaching the SDK
+unchanged unless it is in the pinned-by-accident list, and `claude-sonnet-4-20250514` is, because
+the history audit found Automaker had written it — and
+`ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` remains the supported way to pin.
+`apps/server/tests/unit/providers/claude-provider.test.ts` asserts the catalogue is exactly the
+three tiers, so a fourth entry cannot reappear unnoticed.
 
 ## Rejected
 

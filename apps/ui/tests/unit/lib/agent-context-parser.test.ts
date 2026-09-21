@@ -38,7 +38,7 @@ const CLAUDE_MODEL_STRINGS = [
   'claude-sonnet-4-6',
   'claude-haiku-4-5-20251001',
   'claude-sonnet-4-20250514',
-  'claude-3-5-sonnet-20241022',
+  'claude-3-5-sonnet-19991231',
   'claude-opus-9-9',
   'claude-sonnet-1-19991231',
 ] as const;
@@ -61,7 +61,7 @@ describe('agent-context-parser.ts', () => {
             name: 'Moonshot AI',
             models: [
               { id: 'claude-sonnet-1-9', displayName: 'Moonshot v1.8' },
-              { id: 'claude-opus-4-6', displayName: 'Moonshot v1.8 Pro' },
+              { id: 'claude-opus-1-9', displayName: 'Moonshot v1.8 Pro' },
             ],
           },
         ];
@@ -72,7 +72,7 @@ describe('agent-context-parser.ts', () => {
         };
 
         expect(formatModelName('claude-sonnet-1-9', options)).toBe('Moonshot v1.8');
-        expect(formatModelName('claude-opus-4-6', options)).toBe('Moonshot v1.8 Pro');
+        expect(formatModelName('claude-opus-1-9', options)).toBe('Moonshot v1.8 Pro');
       });
 
       it('should return provider displayName for GLM models', () => {
@@ -82,7 +82,7 @@ describe('agent-context-parser.ts', () => {
             name: 'Zhipu AI',
             models: [
               { id: 'claude-sonnet-1-9', displayName: 'GLM 4.7' },
-              { id: 'claude-opus-4-6', displayName: 'GLM 4.7 Pro' },
+              { id: 'claude-opus-1-9', displayName: 'GLM 4.7 Pro' },
             ],
           },
         ];
@@ -102,7 +102,7 @@ describe('agent-context-parser.ts', () => {
             name: 'MiniMax',
             models: [
               { id: 'claude-sonnet-1-9', displayName: 'MiniMax M2.1' },
-              { id: 'claude-opus-4-6', displayName: 'MiniMax M2.1 Pro' },
+              { id: 'claude-opus-1-9', displayName: 'MiniMax M2.1 Pro' },
             ],
           },
         ];
@@ -221,7 +221,7 @@ describe('agent-context-parser.ts', () => {
 
       it('should use default formatting when no options provided', () => {
         expect(formatModelName('claude-sonnet-1-9')).toBe('Claude Sonnet');
-        expect(formatModelName('claude-opus-4-6')).toBe('Claude Opus');
+        expect(formatModelName('claude-opus-1-9')).toBe('Claude Opus');
       });
 
       it('should handle OpenRouter provider with multiple models', () => {
@@ -231,7 +231,7 @@ describe('agent-context-parser.ts', () => {
             name: 'OpenRouter',
             models: [
               { id: 'claude-sonnet-1-9', displayName: 'Claude Sonnet (OpenRouter)' },
-              { id: 'claude-opus-4-6', displayName: 'Claude Opus (OpenRouter)' },
+              { id: 'claude-opus-1-9', displayName: 'Claude Opus (OpenRouter)' },
               { id: 'gpt-4o', displayName: 'GPT-4o (OpenRouter)' },
             ],
           },
@@ -243,7 +243,7 @@ describe('agent-context-parser.ts', () => {
         };
 
         expect(formatModelName('claude-sonnet-1-9', options)).toBe('Claude Sonnet (OpenRouter)');
-        expect(formatModelName('claude-opus-4-6', options)).toBe('Claude Opus (OpenRouter)');
+        expect(formatModelName('claude-opus-1-9', options)).toBe('Claude Opus (OpenRouter)');
         expect(formatModelName('gpt-4o', options)).toBe('GPT-4o (OpenRouter)');
       });
     });
@@ -260,7 +260,7 @@ describe('agent-context-parser.ts', () => {
         // These collapse to their tier when read, so the version in the string
         // is not the version that runs. Naming it would report a model that
         // never executes.
-        expect(formatModelName('claude-opus-4-6')).toBe('Claude Opus');
+        expect(formatModelName('claude-opus-1-9')).toBe('Claude Opus');
         expect(formatModelName('claude-sonnet-4-6')).toBe('Claude Sonnet');
         expect(formatModelName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
       });

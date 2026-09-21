@@ -426,8 +426,9 @@ function getPatternedDisplayName(model: string): string | undefined {
  * Every surface that names a model on screen goes through here -- the UI's
  * `getModelDisplayName` is a re-export of this function and `formatModelName`
  * is a thin wrapper that adds one precedence rule in front of it. There is no
- * second table, and `libs/types/tests/unit/model-display.test.ts` asserts that
- * a third cannot appear without a test failing.
+ * second table; `model-display.test.ts` pins the table itself, and
+ * `model-name-source.test.ts` scans the source for a new source of names so
+ * that a fourth cannot appear without a test failing.
  *
  * ## Resolution order
  *

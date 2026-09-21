@@ -156,7 +156,7 @@ function buildGitHubIssueDialogFeature(
     status: 'backlog' as const,
     passes: false,
     priority: 2,
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-1-19991231',
     thinkingLevel: 'none',
     reasoningEffort: 'none',
     skipTests: false,

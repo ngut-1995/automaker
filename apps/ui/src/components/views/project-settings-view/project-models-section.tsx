@@ -2,16 +2,12 @@ import { useState } from 'react';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
 import { Workflow, RotateCcw, Globe, Check, Replace, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getPhaseModelLabel } from '@/lib/utils';
 import type { Project } from '@/lib/electron';
 import { PhaseModelSelector } from '@/components/views/settings-view/model-defaults/phase-model-selector';
 import { ProjectBulkReplaceDialog } from './project-bulk-replace-dialog';
 import type { PhaseModelKey, PhaseModelEntry } from '@automaker/types';
-import {
-  DEFAULT_PHASE_MODELS,
-  DEFAULT_GLOBAL_SETTINGS,
-  getModelDisplayName,
-} from '@automaker/types';
+import { DEFAULT_PHASE_MODELS, DEFAULT_GLOBAL_SETTINGS } from '@automaker/types';
 
 interface ProjectModelsSectionProps {
   project: Project;
@@ -107,28 +103,6 @@ function FeatureDefaultModelOverrideSection({ project }: { project: Project }) {
   const effectiveValue = projectOverride || globalValue;
 
   /**
-   * Formats a user-friendly model label.
-   *
-   * A Claude-compatible provider's own name for the model wins, qualified by the
-   * provider so two providers behind the same Claude-shaped ID stay
-   * distinguishable. Everything else is the shared `getModelDisplayName` -- this
-   * used to keep a Claude-only table of its own, which meant a Cursor or Codex
-   * model was shown here as a raw identifier while other panels named it.
-   */
-  const getPhaseModelLabel = (entry: PhaseModelEntry): string => {
-    if (entry.providerId) {
-      const provider = (claudeCompatibleProviders || []).find((p) => p.id === entry.providerId);
-      if (provider) {
-        const model = provider.models?.find((m) => m.id === entry.model);
-        if (model) {
-          return `${model.displayName} (${provider.name})`;
-        }
-      }
-    }
-    return getModelDisplayName(entry.model);
-  };
-
-  /**
    * Clears the project-level model override for this scope.
    */
   const handleClearOverride = () => {
@@ -181,12 +155,12 @@ function FeatureDefaultModelOverrideSection({ project }: { project: Project }) {
             </p>
             {hasOverride && (
               <p className="text-xs text-brand-500 mt-1 ml-10">
-                Using: {getPhaseModelLabel(effectiveValue)}
+                Using: {getPhaseModelLabel(effectiveValue, claudeCompatibleProviders)}
               </p>
             )}
             {!hasOverride && (
               <p className="text-xs text-muted-foreground/70 mt-1 ml-10">
-                Using global: {getPhaseModelLabel(globalValue)}
+                Using global: {getPhaseModelLabel(globalValue, claudeCompatibleProviders)}
               </p>
             )}
           </div>
@@ -237,28 +211,6 @@ function PhaseOverrideItem({
   const effectiveValue = projectOverride || globalValue;
 
   /**
-   * Formats a user-friendly model label.
-   *
-   * A Claude-compatible provider's own name for the model wins, qualified by the
-   * provider so two providers behind the same Claude-shaped ID stay
-   * distinguishable. Everything else is the shared `getModelDisplayName` -- this
-   * used to keep a Claude-only table of its own, which meant a Cursor or Codex
-   * model was shown here as a raw identifier while other panels named it.
-   */
-  const getPhaseModelLabel = (entry: PhaseModelEntry): string => {
-    if (entry.providerId) {
-      const provider = (claudeCompatibleProviders || []).find((p) => p.id === entry.providerId);
-      if (provider) {
-        const model = provider.models?.find((m) => m.id === entry.model);
-        if (model) {
-          return `${model.displayName} (${provider.name})`;
-        }
-      }
-    }
-    return getModelDisplayName(entry.model);
-  };
-
-  /**
    * Clears the project-level model override for this scope.
    */
   const handleClearOverride = () => {
@@ -297,11 +249,13 @@ function PhaseOverrideItem({
         </div>
         <p className="text-xs text-muted-foreground">{phase.description}</p>
         {hasOverride && (
-          <p className="text-xs text-brand-500 mt-1">Using: {getPhaseModelLabel(effectiveValue)}</p>
+          <p className="text-xs text-brand-500 mt-1">
+            Using: {getPhaseModelLabel(effectiveValue, claudeCompatibleProviders)}
+          </p>
         )}
         {!hasOverride && (
           <p className="text-xs text-muted-foreground/70 mt-1">
-            Using global: {getPhaseModelLabel(globalValue)}
+            Using global: {getPhaseModelLabel(globalValue, claudeCompatibleProviders)}
           </p>
         )}
       </div>

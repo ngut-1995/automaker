@@ -5,6 +5,8 @@ import {
   normalizeThinkingLevelForModel,
   normalizeReasoningEffortForModel,
   migrateClaudeModelId,
+  getModelDisplayName,
+  type ClaudeCompatibleProvider,
   type PhaseModelEntry,
 } from '@automaker/types';
 
@@ -119,7 +121,31 @@ export function getProviderFromModel(model?: string): ModelProvider {
  *
  * @see getModelDisplayName in libs/types/src/model-display.ts
  */
-export { getModelDisplayName } from '@automaker/types';
+export { getModelDisplayName };
+
+/**
+ * Format a phase entry's model for a "Using:" line.
+ *
+ * A Claude-compatible provider's own name for the model wins, qualified by the
+ * provider so two providers behind the same Claude-shaped ID stay
+ * distinguishable. Everything else is the shared `getModelDisplayName`.
+ *
+ * Lived twice -- once in each of the two project-settings components -- and is
+ * now the one definition both read (ngut-1995/harbor#43).
+ */
+export function getPhaseModelLabel(
+  entry: PhaseModelEntry,
+  claudeCompatibleProviders?: ClaudeCompatibleProvider[]
+): string {
+  if (entry.providerId) {
+    const provider = claudeCompatibleProviders?.find((p) => p.id === entry.providerId);
+    const model = provider?.models?.find((m) => m.id === entry.model);
+    if (provider && model) {
+      return `${model.displayName} (${provider.name})`;
+    }
+  }
+  return getModelDisplayName(entry.model);
+}
 
 /**
  * Truncate a description string with ellipsis

@@ -682,13 +682,13 @@ describe('agent-service.ts', () => {
 
     it('should set model for existing session', async () => {
       vi.mocked(fs.readFile).mockResolvedValue('{"session-1": {}}');
-      const result = await service.setSessionModel('session-1', 'claude-sonnet-4-6');
+      const result = await service.setSessionModel('session-1', 'claude-sonnet-1-19991231');
 
       expect(result).toBe(true);
     });
 
     it('should return false for non-existent session', async () => {
-      const result = await service.setSessionModel('nonexistent', 'claude-sonnet-4-6');
+      const result = await service.setSessionModel('nonexistent', 'claude-sonnet-1-19991231');
 
       expect(result).toBe(false);
     });
@@ -871,7 +871,7 @@ describe('agent-service.ts', () => {
       const result = await service.addToQueue('session-1', {
         message: 'Test prompt',
         imagePaths: ['/test/image.png'],
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-1-19991231',
       });
 
       expect(result.success).toBe(true);

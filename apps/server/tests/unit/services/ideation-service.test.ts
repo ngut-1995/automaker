@@ -25,7 +25,7 @@ const mockLogger = vi.hoisted(() => ({
 
 const mockCreateChatOptions = vi.hoisted(() =>
   vi.fn(() => ({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-sonnet-1-19991231',
     systemPrompt: 'test prompt',
   }))
 );

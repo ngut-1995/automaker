@@ -30,7 +30,6 @@ Normalise any model string to a canonical ID.
 
 ```typescript
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
-import { CLAUDE_MODEL_MAP } from '@automaker/types';
 
 // Legacy bare aliases become canonical IDs
 const model = resolveModelString('sonnet');
@@ -51,17 +50,15 @@ const model4 = resolveModelString('claude-opus-4-1-20250805');
 
 ### Get Effective Model
 
-Get the actual model that will be used.
+Get the actual model that will be used, by priority:
+explicit model > session model > default.
 
 ```typescript
 import { getEffectiveModel } from '@automaker/model-resolver';
 
-// Get effective model with fallback chain
-const model = getEffectiveModel({
-  requestedModel: 'sonnet',
-  featureModel: undefined,
-  defaultModel: 'claude-sonnet',
-});
+// getEffectiveModel(explicitModel?, sessionModel?, defaultModel?)
+const model = getEffectiveModel('sonnet', undefined, 'claude-sonnet');
+// Returns: 'claude-sonnet'
 ```
 
 ### Model Constants

@@ -36,6 +36,7 @@ import type {
   Feature,
   IdeationStreamEvent,
   IdeationAnalysisEvent,
+  ClaudeTier,
 } from '@automaker/types';
 import { DEFAULT_MAX_CONCURRENCY } from '@automaker/types';
 import { getJSON, setJSON, removeItem } from './storage';
@@ -1048,7 +1049,7 @@ export interface ElectronAPI {
           description: string;
           prompt: string;
           tools?: string[];
-          model?: 'sonnet' | 'opus' | 'haiku' | 'inherit';
+          model?: ClaudeTier | 'inherit';
         };
         source: 'user' | 'project';
         filePath: string;

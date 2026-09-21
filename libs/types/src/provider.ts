@@ -9,6 +9,7 @@ import type {
   Credentials,
 } from './settings.js';
 import type { CodexSandboxMode, CodexApprovalPolicy } from './codex.js';
+import type { ClaudeTier } from './claude-tiers.js';
 
 /**
  * Reasoning effort levels for Codex/OpenAI models
@@ -146,8 +147,8 @@ export interface AgentDefinition {
   prompt: string;
   /** Restricted tool list (if omitted, inherits all tools) */
   tools?: string[];
-  /** Model override for this agent */
-  model?: 'sonnet' | 'opus' | 'haiku' | 'inherit';
+  /** Model override for this agent, by tier alias or inherit */
+  model?: ClaudeTier | 'inherit';
 }
 
 /**

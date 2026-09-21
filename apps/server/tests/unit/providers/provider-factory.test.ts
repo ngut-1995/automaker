@@ -54,23 +54,25 @@ describe('provider-factory.ts', () => {
 
   describe('getProviderForModel', () => {
     describe('Claude models (claude-* prefix)', () => {
-      it('should return ClaudeProvider for claude-opus-4-6', () => {
-        const provider = ProviderFactory.getProviderForModel('claude-opus-4-6');
+      // Fictional pinned IDs: the routing only cares about the `claude-` prefix,
+      // never about the version.
+      it('should return ClaudeProvider for claude-opus-1-19991231', () => {
+        const provider = ProviderFactory.getProviderForModel('claude-opus-1-19991231');
         expect(provider).toBeInstanceOf(ClaudeProvider);
       });
 
-      it('should return ClaudeProvider for claude-sonnet-4-6', () => {
-        const provider = ProviderFactory.getProviderForModel('claude-sonnet-4-6');
+      it('should return ClaudeProvider for claude-sonnet-1-19991231', () => {
+        const provider = ProviderFactory.getProviderForModel('claude-sonnet-1-19991231');
         expect(provider).toBeInstanceOf(ClaudeProvider);
       });
 
-      it('should return ClaudeProvider for claude-haiku-4-5', () => {
-        const provider = ProviderFactory.getProviderForModel('claude-haiku-4-5');
+      it('should return ClaudeProvider for claude-1-9-haiku-19991231', () => {
+        const provider = ProviderFactory.getProviderForModel('claude-1-9-haiku-19991231');
         expect(provider).toBeInstanceOf(ClaudeProvider);
       });
 
       it('should be case-insensitive for claude models', () => {
-        const provider = ProviderFactory.getProviderForModel('CLAUDE-OPUS-4-6');
+        const provider = ProviderFactory.getProviderForModel('CLAUDE-OPUS-1-19991231');
         expect(provider).toBeInstanceOf(ClaudeProvider);
       });
     });

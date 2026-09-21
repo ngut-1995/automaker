@@ -16,6 +16,17 @@ import {
   type PhaseModelEntry,
 } from '@automaker/types';
 
+/**
+ * Present a bare legacy alias to the resolver as a plain `string`.
+ *
+ * `resolveModelString` refuses a statically-known `ClaudeTier` by type -- a tier
+ * alias is what the Claude provider boundary produces on the way out to the SDK,
+ * and feeding it back is the leak docs/adr/0001-claude-tier-aliases.md forbids.
+ * Legacy settings still hold one at runtime, so widening here is how a test asks
+ * for the migration path on purpose.
+ */
+const legacyAlias = (alias: string): string => alias;
+
 describe('model-resolver', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
@@ -146,7 +157,7 @@ describe('model-resolver', () => {
 
     describe('with model aliases', () => {
       it("should resolve 'sonnet' alias", () => {
-        const result = resolveModelString('sonnet');
+        const result = resolveModelString(legacyAlias('sonnet'));
 
         expect(result).toBe(CLAUDE_MODEL_MAP.sonnet);
         // Legacy aliases are migrated to canonical IDs then resolved
@@ -156,7 +167,7 @@ describe('model-resolver', () => {
       });
 
       it("should resolve 'opus' alias", () => {
-        const result = resolveModelString('opus');
+        const result = resolveModelString(legacyAlias('opus'));
 
         expect(result).toBe(CLAUDE_MODEL_MAP.opus);
         expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -165,13 +176,13 @@ describe('model-resolver', () => {
       });
 
       it("should resolve 'haiku' alias", () => {
-        const result = resolveModelString('haiku');
+        const result = resolveModelString(legacyAlias('haiku'));
 
         expect(result).toBe(CLAUDE_MODEL_MAP.haiku);
       });
 
       it('should log the resolution for aliases', () => {
-        resolveModelString('sonnet');
+        resolveModelString(legacyAlias('sonnet'));
 
         // Legacy aliases get migrated and resolved via canonical map
         expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -277,7 +288,7 @@ describe('model-resolver', () => {
     describe('case sensitivity', () => {
       it('should be case-sensitive for aliases', () => {
         const resultUpper = resolveModelString('SONNET');
-        const resultLower = resolveModelString('sonnet');
+        const resultLower = resolveModelString(legacyAlias('sonnet'));
 
         // Uppercase is passed through (could be a provider model)
         expect(resultUpper).toBe('SONNET');
@@ -463,7 +474,7 @@ describe('model-resolver', () => {
     });
 
     it.each(CLAUDE_TIERS)('resolves %s by alias and by canonical ID', (tier) => {
-      expect(resolveModelString(tier)).toBe(`claude-${tier}`);
+      expect(resolveModelString(legacyAlias(tier))).toBe(`claude-${tier}`);
       expect(resolveModelString(`claude-${tier}`)).toBe(`claude-${tier}`);
     });
 

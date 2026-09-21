@@ -155,11 +155,13 @@ export const DEFAULT_OPENCODE_MODEL: OpencodeModelId = 'opencode-big-pickle';
 
 /**
  * Helper: Get display name for model
+ *
+ * Reads the provider's own catalogue, which is the same input `MODEL_DISPLAY_NAMES`
+ * is assembled from -- not a second table.
  */
 export function getOpencodeModelLabel(modelId: OpencodeModelId): string {
   return OPENCODE_MODEL_CONFIG_MAP[modelId]?.label ?? modelId;
 }
-
 /**
  * Helper: Get all OpenCode model IDs
  */

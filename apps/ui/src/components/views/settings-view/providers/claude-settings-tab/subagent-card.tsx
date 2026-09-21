@@ -20,11 +20,22 @@ import {
   Wrench,
   FileCode,
 } from 'lucide-react';
+import { CLAUDE_TIER_ROW_BY_TIER, isClaudeTier, type ClaudeTierRank } from '@automaker/types';
 import type { SubagentWithScope } from './hooks/use-subagents';
 
 interface SubagentCardProps {
   agent: SubagentWithScope;
 }
+
+/**
+ * The accent is a function of the tier's rank, not its name, so a tier added to
+ * the one table is styled without an edit here.
+ */
+const MODEL_COLOR_BY_RANK: Record<ClaudeTierRank, string> = {
+  basic: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30',
+  standard: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
+  premium: 'text-violet-500 bg-violet-500/10 border-violet-500/30',
+};
 
 export function SubagentCard({ agent }: SubagentCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -40,12 +51,11 @@ export function SubagentCard({ agent }: SubagentCardProps) {
   const ScopeIcon = scope === 'global' ? Globe : FolderOpen;
   const scopeLabel = scope === 'global' ? 'User' : 'Project';
 
-  // Model color based on type
   const getModelColor = () => {
     const model = definition.model?.toLowerCase();
-    if (model === 'opus') return 'text-violet-500 bg-violet-500/10 border-violet-500/30';
-    if (model === 'sonnet') return 'text-blue-500 bg-blue-500/10 border-blue-500/30';
-    if (model === 'haiku') return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30';
+    if (model && isClaudeTier(model)) {
+      return MODEL_COLOR_BY_RANK[CLAUDE_TIER_ROW_BY_TIER[model].rank];
+    }
     return 'text-muted-foreground bg-muted/50 border-border/50';
   };
 

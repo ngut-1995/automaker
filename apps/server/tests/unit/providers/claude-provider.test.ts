@@ -24,11 +24,16 @@ vi.mock('@automaker/platform', () => ({
 }));
 
 /**
- * The two dated Sonnet entries the tier move removed from the catalogue, kept out on
- * purpose. They were not tier duplicates, so their removal is a decision in its own
+ * A dated Sonnet entry the tier move removed from the catalogue, kept out on
+ * purpose. It was not a tier duplicate, so its removal is a decision in its own
  * right: see CHANGELOG.md and docs/adr/0001-claude-tier-aliases.md.
+ *
+ * Note the other removed entry, `claude-sonnet-4-20250514`, is *not* here: the
+ * history audit behind ngut-1995/harbor#40 found Automaker had written it on the
+ * user's behalf, so the resolver collapses it to `claude-sonnet` before it can
+ * reach the provider at all.
  */
-const DROPPED_DATED_SONNET_IDS = ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022'];
+const DROPPED_DATED_SONNET_IDS = ['claude-3-5-sonnet-20241022'];
 
 describe('claude-provider.ts', () => {
   let provider: ClaudeProvider;
@@ -464,7 +469,6 @@ describe('claude-provider.ts', () => {
       // The containment property: the alias comes into existence here and the canonical
       // ID is what every other consumer keeps seeing.
       expect(wire.toClaudeWireModel(`claude-${tier}`)).toBe(tier);
-      expect(wire.toClaudeWireModel(tier)).toBe(tier);
     });
   });
 

@@ -28,7 +28,7 @@ import type {
 import {
   DEFAULT_PHASE_MODELS,
   DEFAULT_GLOBAL_SETTINGS,
-  CLAUDE_TIER_DISPLAY_NAMES,
+  getModelDisplayName,
 } from '@automaker/types';
 
 interface ProjectBulkReplaceDialogProps {
@@ -178,7 +178,9 @@ export function ProjectBulkReplaceDialog({
           return model?.displayName || currentEntry.model;
         }
       }
-      return CLAUDE_TIER_DISPLAY_NAMES[claudeAlias] || currentEntry.model;
+      // The one shared table names every model, Claude tier or another
+      // provider's -- not a raw identifier for the latter.
+      return getModelDisplayName(claudeAlias);
     };
 
     const getNewDisplay = (): string => {
@@ -186,7 +188,7 @@ export function ProjectBulkReplaceDialog({
         const model = selectedProviderConfig.models?.find((m) => m.id === newEntry.model);
         return model?.displayName || newEntry.model;
       }
-      return CLAUDE_TIER_DISPLAY_NAMES[newEntry.model as ClaudeModelAlias] || newEntry.model;
+      return getModelDisplayName(newEntry.model);
     };
 
     const isChanged =
