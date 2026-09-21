@@ -8,13 +8,13 @@
  * - Project-specific settings
  * - localStorage to file migration
  *
- * All endpoints use handler factories that receive the SettingsService instance.
- * Mounted at /api/settings in the main server.
+ * Every operation is registered from the shared operation contract; this file
+ * maps each to its handler.
  */
 
 import { Router } from 'express';
 import type { SettingsService } from '../../services/settings-service.js';
-import { validatePathParams } from '../../middleware/validate-paths.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createGetGlobalHandler } from './routes/get-global.js';
 import { createUpdateGlobalHandler } from './routes/update-global.js';
 import { createGetCredentialsHandler } from './routes/get-credentials.js';
@@ -25,57 +25,31 @@ import { createMigrateHandler } from './routes/migrate.js';
 import { createStatusHandler } from './routes/status.js';
 import { createDiscoverAgentsHandler } from './routes/discover-agents.js';
 
+export const SETTINGS_MOUNT = '/api/settings';
+
 /**
- * Create settings router with all endpoints
- *
- * Registers handlers for all settings-related HTTP endpoints.
- * Each handler is created with the provided SettingsService instance.
- *
- * Endpoints:
- * - GET /status - Check migration status and data availability
- * - GET /global - Get global settings
- * - PUT /global - Update global settings
- * - GET /credentials - Get masked credentials (safe for UI)
- * - PUT /credentials - Update API keys
- * - POST /project - Get project settings (requires projectPath in body)
- * - PUT /project - Update project settings
- * - POST /migrate - Migrate settings from localStorage
- * - POST /agents/discover - Discover filesystem agents from .claude/agents/ (read-only)
+ * Create settings operation handlers.
  *
  * @param settingsService - Instance of SettingsService for file I/O
- * @returns Express Router configured with all settings endpoints
  */
+export function createSettingsHandlers(settingsService: SettingsService): OperationHandlers {
+  return {
+    'settings.getStatus': createStatusHandler(settingsService),
+    'settings.getGlobal': createGetGlobalHandler(settingsService),
+    'settings.updateGlobal': createUpdateGlobalHandler(settingsService),
+    'settings.getCredentials': createGetCredentialsHandler(settingsService),
+    'settings.updateCredentials': createUpdateCredentialsHandler(settingsService),
+    'settings.getProject': createGetProjectHandler(settingsService),
+    'settings.updateProject': createUpdateProjectHandler(settingsService),
+    'settings.migrate': createMigrateHandler(settingsService),
+    'settings.discoverAgents': createDiscoverAgentsHandler(),
+  };
+}
+
 export function createSettingsRoutes(settingsService: SettingsService): Router {
-  const router = Router();
-
-  // Status endpoint (check if migration needed)
-  router.get('/status', createStatusHandler(settingsService));
-
-  // Global settings
-  router.get('/global', createGetGlobalHandler(settingsService));
-  router.put('/global', createUpdateGlobalHandler(settingsService));
-
-  // Credentials (separate for security)
-  router.get('/credentials', createGetCredentialsHandler(settingsService));
-  router.put('/credentials', createUpdateCredentialsHandler(settingsService));
-
-  // Project settings
-  router.post(
-    '/project',
-    validatePathParams('projectPath'),
-    createGetProjectHandler(settingsService)
+  return registerContractOperations(
+    Router(),
+    SETTINGS_MOUNT,
+    createSettingsHandlers(settingsService)
   );
-  router.put(
-    '/project',
-    validatePathParams('projectPath'),
-    createUpdateProjectHandler(settingsService)
-  );
-
-  // Migration from localStorage
-  router.post('/migrate', createMigrateHandler(settingsService));
-
-  // Filesystem agents discovery (read-only)
-  router.post('/agents/discover', createDiscoverAgentsHandler());
-
-  return router;
 }

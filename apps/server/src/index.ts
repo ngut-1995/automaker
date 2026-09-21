@@ -99,24 +99,9 @@ const DATA_DIR = process.env.DATA_DIR || './data';
 logger.info('[SERVER_STARTUP] process.env.DATA_DIR:', process.env.DATA_DIR);
 logger.info('[SERVER_STARTUP] Resolved DATA_DIR:', DATA_DIR);
 logger.info('[SERVER_STARTUP] process.cwd():', process.cwd());
-const ENABLE_REQUEST_LOGGING_DEFAULT = process.env.ENABLE_REQUEST_LOGGING !== 'false'; // Default to true
-
 // Runtime-configurable request logging flag (can be changed via settings)
-let requestLoggingEnabled = ENABLE_REQUEST_LOGGING_DEFAULT;
-
-/**
- * Enable or disable HTTP request logging at runtime
- */
-export function setRequestLoggingEnabled(enabled: boolean): void {
-  requestLoggingEnabled = enabled;
-}
-
-/**
- * Get current request logging state
- */
-export function isRequestLoggingEnabled(): boolean {
-  return requestLoggingEnabled;
-}
+import { setRequestLoggingEnabled, isRequestLoggingEnabled } from './lib/request-logging.js';
+export { setRequestLoggingEnabled, isRequestLoggingEnabled } from './lib/request-logging.js';
 
 // Width for log box content (excluding borders)
 const BOX_CONTENT_WIDTH = 67;
@@ -262,7 +247,7 @@ app.use(
   morgan(':method :url :status-colored', {
     // Skip when request logging is disabled or for health check endpoints
     skip: (req) =>
-      !requestLoggingEnabled ||
+      !isRequestLoggingEnabled() ||
       req.url === '/api/health' ||
       req.url === '/api/auto-mode/context-exists',
   })

@@ -53,13 +53,7 @@ import type {
   ZaiUsageResponse,
 } from '@/store/app-store';
 import type { WorktreeAPI, GitAPI, ModelDefinition, ProviderStatus } from '@/types/electron';
-import type {
-  ModelId,
-  ThinkingLevel,
-  ReasoningEffort,
-  Feature,
-  ClaudeTier,
-} from '@automaker/types';
+import type { ModelId, ThinkingLevel, ReasoningEffort, Feature } from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 const logger = createLogger('HttpClient');
@@ -2432,7 +2426,7 @@ export class HttpApiClient implements ElectronAPI {
       analyzeProject?: boolean,
       maxFeatures?: number
     ) =>
-      this.post('/api/spec-regeneration/create', {
+      this.request('specRegeneration.create', {
         projectPath,
         projectOverview,
         generateFeatures,
@@ -2446,7 +2440,7 @@ export class HttpApiClient implements ElectronAPI {
       analyzeProject?: boolean,
       maxFeatures?: number
     ) =>
-      this.post('/api/spec-regeneration/generate', {
+      this.request('specRegeneration.generate', {
         projectPath,
         projectDefinition,
         generateFeatures,
@@ -2454,18 +2448,13 @@ export class HttpApiClient implements ElectronAPI {
         maxFeatures,
       }),
     generateFeatures: (projectPath: string, maxFeatures?: number) =>
-      this.post('/api/spec-regeneration/generate-features', {
+      this.request('specRegeneration.generateFeatures', {
         projectPath,
         maxFeatures,
       }),
-    sync: (projectPath: string) => this.post('/api/spec-regeneration/sync', { projectPath }),
-    stop: (projectPath?: string) => this.post('/api/spec-regeneration/stop', { projectPath }),
-    status: (projectPath?: string) =>
-      this.get(
-        projectPath
-          ? `/api/spec-regeneration/status?projectPath=${encodeURIComponent(projectPath)}`
-          : '/api/spec-regeneration/status'
-      ),
+    sync: (projectPath: string) => this.request('specRegeneration.sync', { projectPath }),
+    stop: (projectPath?: string) => this.request('specRegeneration.stop', { projectPath }),
+    status: (projectPath?: string) => this.request('specRegeneration.status', { projectPath }),
     onEvent: (callback: (event: SpecRegenerationEvent) => void) => {
       return this.subscribeToEvent('spec-regeneration:event', callback as EventCallback);
     },
@@ -2642,151 +2631,26 @@ export class HttpApiClient implements ElectronAPI {
   // Settings API - persistent file-based settings
   settings = {
     // Get settings status (check if migration needed)
-    getStatus: (): Promise<{
-      success: boolean;
-      hasGlobalSettings: boolean;
-      hasCredentials: boolean;
-      dataDir: string;
-      needsMigration: boolean;
-    }> => this.get('/api/settings/status'),
+    getStatus: () => this.request('settings.getStatus'),
 
     // Global settings
-    getGlobal: (): Promise<{
-      success: boolean;
-      settings?: {
-        version: number;
-        theme: string;
-        sidebarOpen: boolean;
-        chatHistoryOpen: boolean;
-        maxConcurrency: number;
-        defaultSkipTests: boolean;
-        enableDependencyBlocking: boolean;
-        useWorktrees: boolean;
-        defaultPlanningMode: string;
-        defaultRequirePlanApproval: boolean;
-        muteDoneSound: boolean;
-        enhancementModel: string;
-        keyboardShortcuts: Record<string, string>;
-        projects: unknown[];
-        trashedProjects: unknown[];
-        projectHistory: string[];
-        projectHistoryIndex: number;
-        lastProjectDir?: string;
-        recentFolders: string[];
-        worktreePanelCollapsed: boolean;
-        lastSelectedSessionByProject: Record<string, string>;
-        mcpServers?: Array<{
-          id: string;
-          name: string;
-          description?: string;
-          type?: 'stdio' | 'sse' | 'http';
-          command?: string;
-          args?: string[];
-          env?: Record<string, string>;
-          url?: string;
-          headers?: Record<string, string>;
-          enabled?: boolean;
-        }>;
-        eventHooks?: Array<{
-          id: string;
-          trigger: string;
-          enabled: boolean;
-          action: Record<string, unknown>;
-          name?: string;
-        }>;
-        ntfyEndpoints?: Array<{
-          id: string;
-          name: string;
-          serverUrl: string;
-          topic: string;
-          authType: string;
-          enabled: boolean;
-        }>;
-      };
-      error?: string;
-    }> => this.get('/api/settings/global'),
+    getGlobal: () => this.request('settings.getGlobal'),
 
-    updateGlobal: (
-      updates: Record<string, unknown>
-    ): Promise<{
-      success: boolean;
-      settings?: Record<string, unknown>;
-      error?: string;
-    }> => this.put('/api/settings/global', updates),
+    updateGlobal: (updates: Record<string, unknown>) =>
+      this.request('settings.updateGlobal', updates),
 
     // Credentials (masked for security)
-    getCredentials: (): Promise<{
-      success: boolean;
-      credentials?: {
-        anthropic: { configured: boolean; masked: string };
-        google: { configured: boolean; masked: string };
-        openai: { configured: boolean; masked: string };
-      };
-      error?: string;
-    }> => this.get('/api/settings/credentials'),
+    getCredentials: () => this.request('settings.getCredentials'),
 
     updateCredentials: (updates: {
       apiKeys?: { anthropic?: string; google?: string; openai?: string };
-    }): Promise<{
-      success: boolean;
-      credentials?: {
-        anthropic: { configured: boolean; masked: string };
-        google: { configured: boolean; masked: string };
-        openai: { configured: boolean; masked: string };
-      };
-      error?: string;
-    }> => this.put('/api/settings/credentials', updates),
+    }) => this.request('settings.updateCredentials', updates),
 
     // Project settings
-    getProject: (
-      projectPath: string
-    ): Promise<{
-      success: boolean;
-      settings?: {
-        version: number;
-        theme?: string;
-        useWorktrees?: boolean;
-        currentWorktree?: { path: string | null; branch: string };
-        worktrees?: Array<{
-          path: string;
-          branch: string;
-          isMain: boolean;
-          hasChanges?: boolean;
-          changedFilesCount?: number;
-        }>;
-        boardBackground?: {
-          imagePath: string | null;
-          imageVersion?: number;
-          cardOpacity: number;
-          columnOpacity: number;
-          columnBorderEnabled: boolean;
-          cardGlassmorphism: boolean;
-          cardBorderEnabled: boolean;
-          cardBorderOpacity: number;
-          hideScrollbar: boolean;
-        };
-        worktreePanelVisible?: boolean;
-        showInitScriptIndicator?: boolean;
-        defaultDeleteBranchWithWorktree?: boolean;
-        autoDismissInitScriptIndicator?: boolean;
-        worktreeCopyFiles?: string[];
-        pinnedWorktreesCount?: number;
-        worktreeDropdownThreshold?: number;
-        alwaysUseWorktreeDropdown?: boolean;
-        lastSelectedSessionId?: string;
-        testCommand?: string;
-      };
-      error?: string;
-    }> => this.post('/api/settings/project', { projectPath }),
+    getProject: (projectPath: string) => this.request('settings.getProject', { projectPath }),
 
-    updateProject: (
-      projectPath: string,
-      updates: Record<string, unknown>
-    ): Promise<{
-      success: boolean;
-      settings?: Record<string, unknown>;
-      error?: string;
-    }> => this.put('/api/settings/project', { projectPath, updates }),
+    updateProject: (projectPath: string, updates: Record<string, unknown>) =>
+      this.request('settings.updateProject', { projectPath, updates }),
 
     // Migration from localStorage
     migrate: (data: {
@@ -2795,33 +2659,16 @@ export class HttpApiClient implements ElectronAPI {
       'worktree-panel-collapsed'?: string;
       'file-browser-recent-folders'?: string;
       'automaker:lastProjectDir'?: string;
-    }): Promise<{
-      success: boolean;
-      migratedGlobalSettings: boolean;
-      migratedCredentials: boolean;
-      migratedProjectCount: number;
-      errors: string[];
-    }> => this.post('/api/settings/migrate', { data }),
+    }) => this.request('settings.migrate', { data }),
 
     // Filesystem agents discovery (read-only)
-    discoverAgents: (
-      projectPath?: string,
-      sources?: Array<'user' | 'project'>
-    ): Promise<{
-      success: boolean;
-      agents?: Array<{
-        name: string;
-        definition: {
-          description: string;
-          prompt: string;
-          tools?: string[];
-          model?: ClaudeTier | 'inherit';
-        };
-        source: 'user' | 'project';
-        filePath: string;
-      }>;
-      error?: string;
-    }> => this.post('/api/settings/agents/discover', { projectPath, sources }),
+    discoverAgents: (projectPath?: string, sources?: Array<'user' | 'project'>) =>
+      this.request('settings.discoverAgents', { projectPath, sources }),
+  };
+
+  // Projects API — derived from the contract.
+  projects = {
+    getOverview: () => this.request('projects.getOverview'),
   };
 
   // Sessions API
@@ -2904,62 +2751,19 @@ export class HttpApiClient implements ElectronAPI {
 
   // Context API
   context = {
-    describeImage: (
-      imagePath: string
-    ): Promise<{
-      success: boolean;
-      description?: string;
-      error?: string;
-    }> => this.post('/api/context/describe-image', { imagePath }),
+    describeImage: (imagePath: string) => this.request('context.describeImage', { imagePath }),
 
-    describeFile: (
-      filePath: string
-    ): Promise<{
-      success: boolean;
-      description?: string;
-      error?: string;
-    }> => this.post('/api/context/describe-file', { filePath }),
+    describeFile: (filePath: string) => this.request('context.describeFile', { filePath }),
   };
 
   // Backlog Plan API
   backlogPlan = {
-    generate: (
-      projectPath: string,
-      prompt: string,
-      model?: string,
-      branchName?: string
-    ): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/backlog-plan/generate', { projectPath, prompt, model, branchName }),
+    generate: (projectPath: string, prompt: string, model?: string, branchName?: string) =>
+      this.request('backlogPlan.generate', { projectPath, prompt, model, branchName }),
 
-    stop: (): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/backlog-plan/stop', {}),
+    stop: () => this.request('backlogPlan.stop', {}),
 
-    status: (
-      projectPath: string
-    ): Promise<{
-      success: boolean;
-      isRunning?: boolean;
-      savedPlan?: {
-        savedAt: string;
-        prompt: string;
-        model?: string;
-        result: {
-          changes: Array<{
-            type: 'add' | 'update' | 'delete';
-            featureId?: string;
-            feature?: Record<string, unknown>;
-            reason: string;
-          }>;
-          summary: string;
-          dependencyUpdates: Array<{
-            featureId: string;
-            removedDependencies: string[];
-            addedDependencies: string[];
-          }>;
-        };
-      } | null;
-      error?: string;
-    }> => this.get(`/api/backlog-plan/status?projectPath=${encodeURIComponent(projectPath)}`),
+    status: (projectPath: string) => this.request('backlogPlan.status', { projectPath }),
 
     apply: (
       projectPath: string,
@@ -2978,11 +2782,9 @@ export class HttpApiClient implements ElectronAPI {
         }>;
       },
       branchName?: string
-    ): Promise<{ success: boolean; appliedChanges?: string[]; error?: string }> =>
-      this.post('/api/backlog-plan/apply', { projectPath, plan, branchName }),
+    ) => this.request('backlogPlan.apply', { projectPath, plan, branchName }),
 
-    clear: (projectPath: string): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/backlog-plan/clear', { projectPath }),
+    clear: (projectPath: string) => this.request('backlogPlan.clear', { projectPath }),
 
     onEvent: (callback: (data: unknown) => void): (() => void) => {
       return this.subscribeToEvent('backlog-plan:event', callback as EventCallback);

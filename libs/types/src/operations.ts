@@ -17,6 +17,9 @@
 import type { EventType } from './event.js';
 import type { Feature } from './feature.js';
 import type { MergeStateInfo } from './worktree.js';
+import type { MultiProjectOverview } from './project-overview.js';
+import type { AgentDefinition } from './provider.js';
+import type { Credentials, GlobalSettings, ProjectSettings } from './settings.js';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -1388,6 +1391,278 @@ export interface WorktreeRunInitScriptResponse {
   error?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Settings mount (/api/settings)
+// ---------------------------------------------------------------------------
+
+/** API-key status for each provider, masked for display. */
+export interface MaskedCredentials {
+  anthropic: { configured: boolean; masked: string };
+  google: { configured: boolean; masked: string };
+  openai: { configured: boolean; masked: string };
+  zai: { configured: boolean; masked: string };
+}
+
+export type SettingsGetStatusRequest = Record<string, never>;
+export interface SettingsGetStatusResponse {
+  success: boolean;
+  hasGlobalSettings: boolean;
+  hasCredentials: boolean;
+  dataDir: string;
+  needsMigration: boolean;
+}
+
+export type SettingsGetGlobalRequest = Record<string, never>;
+export interface SettingsGetGlobalResponse {
+  success: boolean;
+  settings?: GlobalSettings;
+  error?: string;
+}
+
+export type SettingsUpdateGlobalRequest = Record<string, unknown>;
+export interface SettingsUpdateGlobalResponse {
+  success: boolean;
+  settings?: GlobalSettings;
+  error?: string;
+}
+
+export type SettingsGetCredentialsRequest = Record<string, never>;
+export interface SettingsGetCredentialsResponse {
+  success: boolean;
+  credentials?: MaskedCredentials;
+  error?: string;
+}
+
+export interface SettingsUpdateCredentialsRequest {
+  version?: number;
+  apiKeys?: Partial<Credentials['apiKeys']>;
+}
+export interface SettingsUpdateCredentialsResponse {
+  success: boolean;
+  credentials?: MaskedCredentials;
+  error?: string;
+}
+
+export interface SettingsGetProjectRequest {
+  projectPath: string;
+}
+export interface SettingsGetProjectResponse {
+  success: boolean;
+  settings?: ProjectSettings;
+  error?: string;
+}
+
+export interface SettingsUpdateProjectRequest {
+  projectPath: string;
+  updates: Record<string, unknown>;
+}
+export interface SettingsUpdateProjectResponse {
+  success: boolean;
+  settings?: ProjectSettings;
+  error?: string;
+}
+
+export interface SettingsMigrationData {
+  'automaker-storage'?: string;
+  'automaker-setup'?: string;
+  'worktree-panel-collapsed'?: string;
+  'file-browser-recent-folders'?: string;
+  'automaker:lastProjectDir'?: string;
+}
+export interface SettingsMigrateRequest {
+  data: SettingsMigrationData;
+}
+export interface SettingsMigrateResponse {
+  success: boolean;
+  migratedGlobalSettings: boolean;
+  migratedCredentials: boolean;
+  migratedProjectCount: number;
+  errors: string[];
+}
+
+export interface SettingsDiscoverAgentsRequest {
+  projectPath?: string;
+  sources?: Array<'user' | 'project'>;
+}
+export interface SettingsDiscoverAgentsResponse {
+  success: boolean;
+  agents?: Array<{
+    name: string;
+    definition: AgentDefinition;
+    source: 'user' | 'project';
+    filePath: string;
+  }>;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Projects mount (/api/projects)
+// ---------------------------------------------------------------------------
+
+export type ProjectsGetOverviewRequest = Record<string, never>;
+export type ProjectsGetOverviewResponse =
+  | ({ success: true } & MultiProjectOverview)
+  | { success: false; error: string };
+
+// ---------------------------------------------------------------------------
+// Context mount (/api/context)
+// ---------------------------------------------------------------------------
+
+export interface ContextDescribeImageRequest {
+  imagePath: string;
+}
+export interface ContextDescribeImageResponse {
+  success: boolean;
+  description?: string;
+  error?: string;
+}
+
+export interface ContextDescribeFileRequest {
+  filePath: string;
+}
+export interface ContextDescribeFileResponse {
+  success: boolean;
+  description?: string;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Spec Regeneration mount (/api/spec-regeneration)
+// ---------------------------------------------------------------------------
+
+export interface SpecRegenerationCreateRequest {
+  projectPath: string;
+  projectOverview: string;
+  generateFeatures?: boolean;
+  analyzeProject?: boolean;
+  maxFeatures?: number;
+}
+export interface SpecRegenerationCreateResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SpecRegenerationGenerateRequest {
+  projectPath: string;
+  projectDefinition: string;
+  generateFeatures?: boolean;
+  analyzeProject?: boolean;
+  maxFeatures?: number;
+}
+export interface SpecRegenerationGenerateResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SpecRegenerationGenerateFeaturesRequest {
+  projectPath: string;
+  maxFeatures?: number;
+}
+export interface SpecRegenerationGenerateFeaturesResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SpecRegenerationSyncRequest {
+  projectPath: string;
+}
+export interface SpecRegenerationSyncResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SpecRegenerationStopRequest {
+  projectPath?: string;
+}
+export interface SpecRegenerationStopResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SpecRegenerationStatusRequest {
+  projectPath?: string;
+}
+export interface SpecRegenerationStatusResponse {
+  success: boolean;
+  isRunning?: boolean;
+  projectPath?: string;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Backlog Plan mount (/api/backlog-plan)
+// ---------------------------------------------------------------------------
+
+/** A proposed backlog change as carried over the wire (feature is free-form). */
+export interface BacklogPlanChange {
+  type: 'add' | 'update' | 'delete';
+  featureId?: string;
+  feature?: Record<string, unknown>;
+  reason: string;
+}
+export interface BacklogPlanDependencyUpdate {
+  featureId: string;
+  removedDependencies: string[];
+  addedDependencies: string[];
+}
+export interface BacklogPlanResultShape {
+  changes: BacklogPlanChange[];
+  summary: string;
+  dependencyUpdates: BacklogPlanDependencyUpdate[];
+}
+
+export interface BacklogPlanGenerateRequest {
+  projectPath: string;
+  prompt: string;
+  model?: string;
+  branchName?: string;
+}
+export interface BacklogPlanGenerateResponse {
+  success: boolean;
+  error?: string;
+}
+
+export type BacklogPlanStopRequest = Record<string, never>;
+export interface BacklogPlanStopResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface BacklogPlanStatusRequest {
+  projectPath?: string;
+}
+export interface BacklogPlanSavedPlan {
+  savedAt: string;
+  prompt: string;
+  model?: string;
+  result: BacklogPlanResultShape;
+}
+export interface BacklogPlanStatusResponse {
+  success: boolean;
+  isRunning?: boolean;
+  savedPlan?: BacklogPlanSavedPlan | null;
+  error?: string;
+}
+
+export interface BacklogPlanApplyRequest {
+  projectPath: string;
+  plan: BacklogPlanResultShape;
+  branchName?: string;
+}
+export interface BacklogPlanApplyResponse {
+  success: boolean;
+  appliedChanges?: string[];
+  error?: string;
+}
+
+export interface BacklogPlanClearRequest {
+  projectPath: string;
+}
+export interface BacklogPlanClearResponse {
+  success: boolean;
+  error?: string;
+}
+
 /**
  * The registry. Add one entry per operation, named `<namespace>.<method>` where
  * the namespace matches the client's API namespace.
@@ -2095,6 +2370,173 @@ export const OPERATIONS = {
     request: null as unknown as WorktreeStageFilesRequest,
     response: null as unknown as WorktreeStageFilesResponse,
     pathParams: ['worktreePath', 'files[]'],
+  },
+  'settings.getStatus': {
+    method: 'GET',
+    mount: '/api/settings',
+    path: '/status',
+    request: null as unknown as SettingsGetStatusRequest,
+    response: null as unknown as SettingsGetStatusResponse,
+  },
+  'settings.getGlobal': {
+    method: 'GET',
+    mount: '/api/settings',
+    path: '/global',
+    request: null as unknown as SettingsGetGlobalRequest,
+    response: null as unknown as SettingsGetGlobalResponse,
+  },
+  'settings.updateGlobal': {
+    method: 'PUT',
+    mount: '/api/settings',
+    path: '/global',
+    request: null as unknown as SettingsUpdateGlobalRequest,
+    response: null as unknown as SettingsUpdateGlobalResponse,
+  },
+  'settings.getCredentials': {
+    method: 'GET',
+    mount: '/api/settings',
+    path: '/credentials',
+    request: null as unknown as SettingsGetCredentialsRequest,
+    response: null as unknown as SettingsGetCredentialsResponse,
+  },
+  'settings.updateCredentials': {
+    method: 'PUT',
+    mount: '/api/settings',
+    path: '/credentials',
+    request: null as unknown as SettingsUpdateCredentialsRequest,
+    response: null as unknown as SettingsUpdateCredentialsResponse,
+  },
+  'settings.getProject': {
+    method: 'POST',
+    mount: '/api/settings',
+    path: '/project',
+    request: null as unknown as SettingsGetProjectRequest,
+    response: null as unknown as SettingsGetProjectResponse,
+    pathParams: ['projectPath'],
+  },
+  'settings.updateProject': {
+    method: 'PUT',
+    mount: '/api/settings',
+    path: '/project',
+    request: null as unknown as SettingsUpdateProjectRequest,
+    response: null as unknown as SettingsUpdateProjectResponse,
+    pathParams: ['projectPath'],
+  },
+  'settings.migrate': {
+    method: 'POST',
+    mount: '/api/settings',
+    path: '/migrate',
+    request: null as unknown as SettingsMigrateRequest,
+    response: null as unknown as SettingsMigrateResponse,
+  },
+  'settings.discoverAgents': {
+    method: 'POST',
+    mount: '/api/settings',
+    path: '/agents/discover',
+    request: null as unknown as SettingsDiscoverAgentsRequest,
+    response: null as unknown as SettingsDiscoverAgentsResponse,
+  },
+  'projects.getOverview': {
+    method: 'GET',
+    mount: '/api/projects',
+    path: '/overview',
+    request: null as unknown as ProjectsGetOverviewRequest,
+    response: null as unknown as ProjectsGetOverviewResponse,
+  },
+  'context.describeImage': {
+    method: 'POST',
+    mount: '/api/context',
+    path: '/describe-image',
+    request: null as unknown as ContextDescribeImageRequest,
+    response: null as unknown as ContextDescribeImageResponse,
+  },
+  'context.describeFile': {
+    method: 'POST',
+    mount: '/api/context',
+    path: '/describe-file',
+    request: null as unknown as ContextDescribeFileRequest,
+    response: null as unknown as ContextDescribeFileResponse,
+  },
+  'specRegeneration.create': {
+    method: 'POST',
+    mount: '/api/spec-regeneration',
+    path: '/create',
+    request: null as unknown as SpecRegenerationCreateRequest,
+    response: null as unknown as SpecRegenerationCreateResponse,
+  },
+  'specRegeneration.generate': {
+    method: 'POST',
+    mount: '/api/spec-regeneration',
+    path: '/generate',
+    request: null as unknown as SpecRegenerationGenerateRequest,
+    response: null as unknown as SpecRegenerationGenerateResponse,
+  },
+  'specRegeneration.generateFeatures': {
+    method: 'POST',
+    mount: '/api/spec-regeneration',
+    path: '/generate-features',
+    request: null as unknown as SpecRegenerationGenerateFeaturesRequest,
+    response: null as unknown as SpecRegenerationGenerateFeaturesResponse,
+  },
+  'specRegeneration.sync': {
+    method: 'POST',
+    mount: '/api/spec-regeneration',
+    path: '/sync',
+    request: null as unknown as SpecRegenerationSyncRequest,
+    response: null as unknown as SpecRegenerationSyncResponse,
+  },
+  'specRegeneration.stop': {
+    method: 'POST',
+    mount: '/api/spec-regeneration',
+    path: '/stop',
+    request: null as unknown as SpecRegenerationStopRequest,
+    response: null as unknown as SpecRegenerationStopResponse,
+  },
+  'specRegeneration.status': {
+    method: 'GET',
+    mount: '/api/spec-regeneration',
+    path: '/status',
+    request: null as unknown as SpecRegenerationStatusRequest,
+    response: null as unknown as SpecRegenerationStatusResponse,
+  },
+  'backlogPlan.generate': {
+    method: 'POST',
+    mount: '/api/backlog-plan',
+    path: '/generate',
+    request: null as unknown as BacklogPlanGenerateRequest,
+    response: null as unknown as BacklogPlanGenerateResponse,
+    pathParams: ['projectPath'],
+  },
+  'backlogPlan.stop': {
+    method: 'POST',
+    mount: '/api/backlog-plan',
+    path: '/stop',
+    request: null as unknown as BacklogPlanStopRequest,
+    response: null as unknown as BacklogPlanStopResponse,
+  },
+  'backlogPlan.status': {
+    method: 'GET',
+    mount: '/api/backlog-plan',
+    path: '/status',
+    request: null as unknown as BacklogPlanStatusRequest,
+    response: null as unknown as BacklogPlanStatusResponse,
+    pathParams: ['projectPath'],
+  },
+  'backlogPlan.apply': {
+    method: 'POST',
+    mount: '/api/backlog-plan',
+    path: '/apply',
+    request: null as unknown as BacklogPlanApplyRequest,
+    response: null as unknown as BacklogPlanApplyResponse,
+    pathParams: ['projectPath'],
+  },
+  'backlogPlan.clear': {
+    method: 'POST',
+    mount: '/api/backlog-plan',
+    path: '/clear',
+    request: null as unknown as BacklogPlanClearRequest,
+    response: null as unknown as BacklogPlanClearResponse,
+    pathParams: ['projectPath'],
   },
 } as const satisfies Record<string, OperationDefinition<unknown, unknown>>;
 

@@ -27,6 +27,14 @@ import {
   RUNNING_AGENTS_MOUNT,
 } from '@/routes/running-agents/index.js';
 import { createWorktreeHandlers, WORKTREE_MOUNT } from '@/routes/worktree/index.js';
+import { createSettingsHandlers, SETTINGS_MOUNT } from '@/routes/settings/index.js';
+import { createProjectsHandlers, PROJECTS_MOUNT } from '@/routes/projects/index.js';
+import { createContextHandlers, CONTEXT_MOUNT } from '@/routes/context/index.js';
+import {
+  createSpecRegenerationHandlers,
+  SPEC_REGENERATION_MOUNT,
+} from '@/routes/app-spec/index.js';
+import { createBacklogPlanHandlers, BACKLOG_PLAN_MOUNT } from '@/routes/backlog-plan/index.js';
 import { registerContractOperations, missingContractHandlers } from '@/routes/contract.js';
 import type { OperationHandlers } from '@/routes/contract.js';
 
@@ -109,5 +117,28 @@ describe('contract conformance', () => {
 
   it('worktree lifecycle mount', () => {
     expectContractMount(WORKTREE_MOUNT, createWorktreeHandlers({} as never));
+  });
+
+  it('settings mount', () => {
+    expectContractMount(SETTINGS_MOUNT, createSettingsHandlers({} as never));
+  });
+
+  it('projects mount', () => {
+    expectContractMount(
+      PROJECTS_MOUNT,
+      createProjectsHandlers({} as never, {} as never, {} as never, {} as never)
+    );
+  });
+
+  it('context mount', () => {
+    expectContractMount(CONTEXT_MOUNT, createContextHandlers());
+  });
+
+  it('spec-regeneration mount', () => {
+    expectContractMount(SPEC_REGENERATION_MOUNT, createSpecRegenerationHandlers({} as never));
+  });
+
+  it('backlog-plan mount', () => {
+    expectContractMount(BACKLOG_PLAN_MOUNT, createBacklogPlanHandlers({} as never));
   });
 });

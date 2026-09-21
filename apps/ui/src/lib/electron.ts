@@ -37,6 +37,8 @@ import type {
   IdeationStreamEvent,
   IdeationAnalysisEvent,
   ClaudeTier,
+  GlobalSettings,
+  ProjectSettings,
 } from '@automaker/types';
 import { getJSON, setJSON, removeItem } from './storage';
 
@@ -996,12 +998,12 @@ export interface ElectronAPI {
     }>;
     getGlobal: () => Promise<{
       success: boolean;
-      settings?: Record<string, unknown>;
+      settings?: GlobalSettings;
       error?: string;
     }>;
     updateGlobal: (updates: Record<string, unknown>) => Promise<{
       success: boolean;
-      settings?: Record<string, unknown>;
+      settings?: GlobalSettings;
       error?: string;
     }>;
     getCredentials: () => Promise<{
@@ -1026,7 +1028,7 @@ export interface ElectronAPI {
     }>;
     getProject: (projectPath: string) => Promise<{
       success: boolean;
-      settings?: Record<string, unknown>;
+      settings?: ProjectSettings;
       error?: string;
     }>;
     updateProject: (
@@ -1034,7 +1036,7 @@ export interface ElectronAPI {
       updates: Record<string, unknown>
     ) => Promise<{
       success: boolean;
-      settings?: Record<string, unknown>;
+      settings?: ProjectSettings;
       error?: string;
     }>;
     migrate: (data: Record<string, string>) => Promise<{
