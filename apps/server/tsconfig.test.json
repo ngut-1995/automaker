@@ -3,7 +3,14 @@
   "compilerOptions": {
     "types": ["vitest/globals", "node"],
     "moduleResolution": "Bundler",
-    "module": "ESNext"
+    "module": "ESNext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "rootDir": "../..",
+    "outDir": "./dist-test",
+    "noEmit": true
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]
