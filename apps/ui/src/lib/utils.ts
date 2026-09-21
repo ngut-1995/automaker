@@ -129,10 +129,14 @@ export function getModelDisplayName(model: ModelAlias | string): string {
     'claude-haiku': 'Claude Haiku',
     'claude-sonnet': 'Claude Sonnet',
     'claude-opus': 'Claude Opus',
-    // Claude full model IDs (returned by server)
+    // Claude pinned model IDs a feature card may still carry. `claude-opus-4-6`,
+    // `claude-sonnet-4-6` and `claude-haiku-4-5-20251001` are deliberately absent:
+    // those are the versions Automaker wrote on the user's behalf and they now
+    // collapse to their tier on read, so they can no longer reach this table
+    // (see PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP in @automaker/types). The rows
+    // that remain resolve to the same tier name the fallback below would give.
     'claude-haiku-4-5': 'Claude Haiku',
     'claude-sonnet-4-20250514': 'Claude Sonnet',
-    'claude-opus-4-6': 'Claude Opus',
     // Codex models
     'codex-gpt-5.2': 'GPT-5.2',
     'codex-gpt-5.1-codex-max': 'GPT-5.1 Codex Max',

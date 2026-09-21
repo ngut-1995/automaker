@@ -10,6 +10,33 @@ import {
   type FormatModelNameOptions,
 } from '../../../src/lib/agent-context-parser';
 import type { ClaudeCompatibleProvider, ProviderModel } from '@automaker/types';
+import { getModelDisplayName as getTypesModelDisplayName } from '@automaker/types';
+import { getModelDisplayName as getUiModelDisplayName } from '../../../src/lib/utils';
+
+/**
+ * Every shape of Claude model string a display helper can be handed: bare tier
+ * aliases, canonical IDs, the versions Automaker once pinned on the user's
+ * behalf, an undated tier-alias identifier, hand-written pins and versions that
+ * do not exist yet.
+ */
+const CLAUDE_MODEL_STRINGS = [
+  'haiku',
+  'sonnet',
+  'opus',
+  'claude-haiku',
+  'claude-sonnet',
+  'claude-opus',
+  'claude-haiku-4-5',
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5-20251001',
+  'claude-sonnet-4-20250514',
+  'claude-3-5-sonnet-20241022',
+  'claude-opus-9-9',
+  'claude-sonnet-1-19991231',
+] as const;
+
+const CLAUDE_TIER_NAMES = ['Claude Haiku', 'Claude Sonnet', 'Claude Opus'];
 
 describe('agent-context-parser.ts', () => {
   describe('DEFAULT_MODEL', () => {
@@ -113,8 +140,8 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        // Model not in provider's list, should use default
-        expect(formatModelName('claude-haiku-4-5', options)).toBe('Haiku 4.5');
+        // Model not in provider's list, should use the tier name
+        expect(formatModelName('claude-haiku-4-5', options)).toBe('Claude Haiku');
       });
 
       it('should handle empty providers array', () => {
@@ -215,8 +242,11 @@ describe('agent-context-parser.ts', () => {
     });
 
     describe('Claude model formatting (default)', () => {
-      it('should keep the label of an exact, known pinned model ID', () => {
-        expect(formatModelName('claude-haiku-4-5')).toBe('Haiku 4.5');
+      it('should name the tier for an undated Haiku identifier, which pins nothing', () => {
+        // `claude-haiku-4-5` is itself a tier alias: the provider's own
+        // ANTHROPIC_DEFAULT_HAIKU_MODEL can point it at any version, so the
+        // version in the string is not knowable and must not be shown.
+        expect(formatModelName('claude-haiku-4-5')).toBe('Claude Haiku');
       });
 
       it('should name the tier for a version Automaker pinned on the user\u2019s behalf', () => {
@@ -249,6 +279,59 @@ describe('agent-context-parser.ts', () => {
       it('should name the tier for a dated haiku identifier rather than print its raw ID', () => {
         expect(formatModelName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
         expect(formatModelName('claude-1-haiku')).toBe('Claude Haiku');
+      });
+
+      it('should never put a version number in a Claude label', () => {
+        for (const model of CLAUDE_MODEL_STRINGS) {
+          expect(formatModelName(model)).not.toMatch(/\d/);
+        }
+      });
+
+      it('should never render a Claude model as its raw identifier', () => {
+        for (const model of CLAUDE_MODEL_STRINGS) {
+          const label = formatModelName(model);
+          expect(label).not.toBe(model);
+          expect(CLAUDE_TIER_NAMES).toContain(label);
+        }
+      });
+    });
+
+    /**
+     * Criterion: two display helpers given the same Claude model string produce
+     * the same tier name.
+     *
+     * The three tables are deliberately still three -- unifying them is separate
+     * work -- so nothing structural stops them drifting apart again. This is the
+     * assertion that catches it, and it is the one most likely to rot.
+     */
+    describe('agreement with the other display helpers', () => {
+      it('agrees with the UI utils helper on every Claude model string', () => {
+        for (const model of CLAUDE_MODEL_STRINGS) {
+          expect(formatModelName(model)).toBe(getUiModelDisplayName(model));
+        }
+      });
+
+      it('agrees with the @automaker/types helper on every Claude model string', () => {
+        for (const model of CLAUDE_MODEL_STRINGS) {
+          expect(formatModelName(model)).toBe(getTypesModelDisplayName(model));
+        }
+      });
+
+      it("still lets a Claude-compatible provider's own displayName win over the tier name", () => {
+        // The agreement above is about the tier-name answer. A provider that
+        // serves its own model behind a Claude-shaped ID keeps naming it.
+        const options: FormatModelNameOptions = {
+          providerId: 'moonshot-ai',
+          claudeCompatibleProviders: [
+            {
+              id: 'moonshot-ai',
+              name: 'Moonshot AI',
+              models: [{ id: 'claude-haiku-4-5', displayName: 'Moonshot v1.8' }],
+            },
+          ],
+        };
+        expect(formatModelName('claude-haiku-4-5', options)).toBe('Moonshot v1.8');
+        expect(getUiModelDisplayName('claude-haiku-4-5')).toBe('Claude Haiku');
       });
     });
 

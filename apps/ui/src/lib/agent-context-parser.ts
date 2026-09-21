@@ -43,21 +43,6 @@ export interface FormatModelNameOptions {
 }
 
 /**
- * Labels for the exact pinned model IDs whose version is knowable from the
- * string. Matched by exact equality, never by pattern; anything else falls back
- * to a tier name.
- *
- * The IDs Automaker once wrote on the user's behalf (`claude-opus-4-6`,
- * `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`) are deliberately absent:
- * they now collapse to their tier when read, so the version they name is not
- * the version that runs. Only a pin Automaker never wrote can be labelled with
- * a version.
- */
-const CLAUDE_PINNED_MODEL_LABELS: Record<string, string> = {
-  'claude-haiku-4-5': 'Haiku 4.5',
-};
-
-/**
  * Formats a model name for display, with optional provider-aware lookup.
  *
  * When a providerId and providers array are supplied, this function will:
@@ -81,14 +66,24 @@ export function formatModelName(model: string, options?: FormatModelNameOptions)
     }
   }
 
-  // Claude models.
+  // Claude models: the tier name, for every Claude string, with no exceptions.
   //
-  // Automaker addresses Claude by tier alias and lets the provider pick the
-  // version, so a version can only be shown for an exact, known identifier
-  // (see docs/adr/0001-claude-tier-aliases.md). Every other Claude string --
-  // a canonical ID, a dated ID, a version released after this build -- renders
-  // as its tier name. Naming no version is correct; naming a wrong one is not.
-  if (model in CLAUDE_PINNED_MODEL_LABELS) return CLAUDE_PINNED_MODEL_LABELS[model];
+  // There is no table of version labels here, and deliberately so. Automaker
+  // addresses Claude by tier alias and the provider picks the version, so no
+  // identifier that reaches this function carries a version Automaker can
+  // vouch for:
+  //
+  // - a bare alias or canonical ID (`opus`, `claude-opus`) names no version;
+  // - an undated identifier such as `claude-haiku-4-5` is itself a tier alias,
+  //   which the provider's own ANTHROPIC_DEFAULT_HAIKU_MODEL can point at any
+  //   version, so its apparent version is not the version that runs;
+  // - the versions Automaker once wrote on the user's behalf collapse to their
+  //   tier when read, so labelling them would report a model that never
+  //   executes (see PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP in @automaker/types);
+  // - a version released after this build is unknown to any table anyway.
+  //
+  // Naming no version is correct; naming a wrong one is not. See
+  // docs/adr/0001-claude-tier-aliases.md.
   const claudeTierName = getClaudeTierDisplayName(model);
   if (claudeTierName) return claudeTierName;
 
