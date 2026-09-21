@@ -1,16 +1,25 @@
-# Adding New Cursor Models to AutoMaker
+# Adding New Cursor Models to Automaker
 
-This guide explains how to add new Cursor CLI models to AutoMaker. The process involves updating a single file with automatic propagation to the UI.
+This guide explains how to add a new Cursor CLI model to Automaker. Cursor models are
+enumerated in exactly one place — the Cursor catalogue — and every surface that lists
+them derives from it, so adding a model is a one-entry change.
 
 ## Overview
 
-Cursor models are defined in `libs/types/src/cursor-models.ts`. This file contains:
+The catalogue lives in `libs/types/src/cursor-models.ts`. That file holds:
 
-- `CursorModelId` - Union type of all valid model IDs
-- `CursorModelConfig` - Interface for model metadata
-- `CURSOR_MODEL_MAP` - Record mapping model IDs to their configs
+- `CursorModelId` — union type of all valid canonical model IDs (always `cursor-` prefixed)
+- `CursorModelRow` — the shape of one catalogue entry
+- `CURSOR_MODEL_CATALOGUE` — `Record<CursorModelId, CursorModelRow>`, the table itself
+- `CURSOR_CATALOGUE_ROWS` — the catalogue as a list, in catalogue order
+- `CURSOR_MODEL_DEFINITIONS` — the server's model list, derived from the rows
+- `DEFAULT_CURSOR_MODEL` — read off the row that declares `isDefault: true`
+- `CURSOR_MODEL_GROUPS` / `STANDALONE_CURSOR_MODELS` — how the picker groups variants
 
-The UI automatically reads from `CURSOR_MODEL_MAP`, so adding a model there makes it available everywhere.
+Nothing else declares Cursor model rows. `libs/types/tests/unit/model-row-source.test.ts`
+is a structural guard that scans `apps/` and `libs/` and fails on a model row declared
+outside a catalogue module — the failure mode that caused ngut-1995/harbor#78, where a
+hand-written UI list silently fell behind the shared table.
 
 ---
 
@@ -18,137 +27,230 @@ The UI automatically reads from `CURSOR_MODEL_MAP`, so adding a model there make
 
 ### Step 1: Add the Model ID to the Type
 
-Open `libs/types/src/cursor-models.ts` and add your model ID to the `CursorModelId` union type:
+Open `libs/types/src/cursor-models.ts` and add your canonical ID to `CursorModelId`. The
+`cursor-` prefix is required: it is what keeps `cursor-gpt-5.2-codex` distinct from
+`codex-gpt-5.2-codex`.
 
 ```typescript
 export type CursorModelId =
-  | 'auto'
-  | 'claude-sonnet-4'
-  | 'claude-sonnet-4-thinking'
-  | 'composer-1'
-  | 'gpt-4o'
-  | 'gpt-4o-mini'
-  | 'gemini-2.5-pro'
-  | 'o3-mini'
-  | 'your-new-model'; // <-- Add your model here
+  | 'cursor-auto' // Auto-select best model
+  | 'cursor-composer-1' // Cursor Composer agent model
+  | 'cursor-sonnet-4.6' // Claude Sonnet 4.6
+  // ... other models ...
+  | 'cursor-grok' // Grok
+  | 'cursor-your-new-model'; // <-- Add your model here
 ```
 
-### Step 2: Add the Model Config to the Map
+### Step 2: Add the Row to the Catalogue
 
-In the same file, add an entry to `CURSOR_MODEL_MAP`:
+In the same file, add an entry to `CURSOR_MODEL_CATALOGUE`, keyed by the canonical ID.
+Place it where the picker should offer it: every derived list inherits catalogue order.
 
 ```typescript
-export const CURSOR_MODEL_MAP: Record<CursorModelId, CursorModelConfig> = {
-  // ... existing models ...
+export const CURSOR_MODEL_CATALOGUE: Record<CursorModelId, CursorModelRow> = {
+  // ... existing rows ...
 
-  'your-new-model': {
-    id: 'your-new-model',
-    label: 'Your New Model', // Display name in UI
-    description: 'Description of the model capabilities',
-    hasThinking: false, // true if model has built-in reasoning
-    supportsVision: false, // true if model supports image inputs (currently all false)
+  'cursor-your-new-model': {
+    id: 'cursor-your-new-model',
+    label: 'Your New Model', // Display name in the picker and on the card
+    description: 'One sentence explaining what the model is for',
+    provider: 'cursor', // Always 'cursor'
+    supportsVision: false, // Always false: the Cursor CLI drops images
+    supportsTools: true, // Whether the model can call tools
+    hasThinking: false, // true for a '-thinking' variant
+    isDefault: false, // Exactly one row in the catalogue may be true
   },
 };
 ```
 
-### Step 3: Rebuild the Types Package
+### Step 3: Place the Model in the Picker
 
-After making changes, rebuild the types package:
+Every model must be reachable from the picker, either as a variant inside a group or as
+a standalone entry.
+
+If the model is a variant of one Automaker already offers (a compute level, a thinking
+mode, a capacity tier), add it to the matching group's `variants` in
+`CURSOR_MODEL_GROUPS`:
+
+```typescript
+{
+  baseId: 'cursor-your-model-group',
+  label: 'Your Model',
+  description: 'What the family is for',
+  variantType: 'compute', // 'compute' | 'thinking' | 'capacity'
+  variants: [
+    { id: 'cursor-your-new-model', label: 'Standard', description: 'Default compute level' },
+    {
+      id: 'cursor-your-new-model-high',
+      label: 'High',
+      description: 'High compute level',
+      badge: 'More tokens',
+    },
+  ],
+}
+```
+
+Otherwise add the ID to `STANDALONE_CURSOR_MODELS`.
+
+### Step 4: Add a Legacy Alias (only if one exists)
+
+`LegacyCursorModelId` and `LEGACY_CURSOR_MODEL_MAP` exist to migrate unprefixed IDs
+Automaker itself once stored (`opus-4.5` → `cursor-opus-4.5`). A genuinely new model has
+no history, so it needs no entry here. Add one only if the unprefixed form was already
+written to a feature card.
+
+### Step 5: Rebuild the Types Package
 
 ```bash
 npm run build -w @automaker/types
 ```
 
-### Step 4: Verify the Changes
+### Step 6: Run the Catalogue Tests
 
-The new model will automatically appear in:
+```bash
+npm run test:packages
+```
 
-- **Add Feature Dialog** > Model tab > Cursor CLI section
-- **Edit Feature Dialog** > Model tab > Cursor CLI section
-- **AI Profiles** > Create/Edit Profile > Cursor provider > Model selection
-- **Settings** > Cursor tab > Model configuration
+`libs/types/tests/unit/provider-catalogues.test.ts` checks the invariants a new row can
+break: the `cursor-` prefix, a non-empty label and description, the key matching the
+row's own `id`, exactly one `isDefault`, the picker list and the server model list
+matching the catalogue in catalogue order, and the picker name matching the name shown
+on the card.
 
 ---
 
-## Model Config Fields
+## Catalogue Row Fields
 
-| Field            | Type      | Description                                                     |
-| ---------------- | --------- | --------------------------------------------------------------- |
-| `id`             | `string`  | Must match the key in the map and the CLI model ID              |
-| `label`          | `string`  | Human-readable name shown in UI                                 |
-| `description`    | `string`  | Tooltip/help text explaining the model                          |
-| `hasThinking`    | `boolean` | Set `true` if model has built-in extended thinking              |
-| `supportsVision` | `boolean` | Set `true` if model supports image inputs (all false currently) |
+| Field            | Type                               | Description                                                              |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| `id`             | `CursorModelId`                    | Canonical `cursor-` prefixed ID; must match the key. Stored on features  |
+| `label`          | `string`                           | Display name — identical in picker, card badge and output header         |
+| `description`    | `string`                           | One sentence explaining what the model is for                            |
+| `provider`       | `Extract<ModelProvider, 'cursor'>` | Always `'cursor'`: the provider that serves the model                    |
+| `supportsVision` | `boolean`                          | Always `false` — the Cursor CLI does not pass images                     |
+| `supportsTools`  | `boolean`                          | Whether the model can call tools                                         |
+| `hasThinking`    | `boolean`                          | Whether the model takes Automaker's thinking level                       |
+| `isDefault`      | `boolean`                          | The model offered when Cursor is first chosen; exactly one row is `true` |
+
+A Cursor row carries no cost class, no context window and no picker badge: Cursor
+declares none for its models, and the catalogue does not invent a field the provider has
+never stated.
+
+Reasoning depth is spelled `hasThinking` because a Cursor model is chosen with a thinking
+variant of its own (`cursor-opus-4.5-thinking`), not with an effort level. See
+`CONTEXT.md`, "Reasoning depth".
 
 ---
 
 ## How It Works
 
-### Automatic UI Integration
+### Automatic Propagation
 
-The UI components read from `CURSOR_MODEL_MAP` at runtime:
+One row added to `CURSOR_MODEL_CATALOGUE` reaches every surface, each deriving rather
+than restating:
 
-1. **model-constants.ts** imports `CURSOR_MODEL_MAP` and creates `CURSOR_MODELS` array
-2. **ModelSelector** component renders Cursor models from this array
-3. **ProfileForm** component uses the map for Cursor model selection
+1. **`CURSOR_CATALOGUE_ROWS`** (`cursor-models.ts`) — `Object.values()` of the catalogue,
+   in catalogue order. This is what a surface maps over.
+2. **`CURSOR_MODELS`** (`libs/types/src/model-display.ts`) — the UI picker options, mapped
+   from `CURSOR_CATALOGUE_ROWS`. `apps/ui/.../board-view/shared/model-constants.ts` merely
+   re-exports it and folds it into `ALL_MODELS`; it builds nothing.
+3. **`CURSOR_MODEL_DEFINITIONS`** (`cursor-models.ts`) — the server's model list, returned
+   by `CursorProvider.getAvailableModels()`.
+4. **`MODEL_DISPLAY_NAMES`** (`model-display.ts`) — assembled from every provider's
+   catalogue rows, so the name on a card is by construction the name the model was picked
+   by.
+5. **`DEFAULT_CURSOR_MODEL`** (`cursor-models.ts`) — read off the row with
+   `isDefault: true`, and used as `cursorDefaultModel` in `libs/types/src/settings.ts`.
+
+The UI surfaces that consume these:
+
+- `board-view/shared/model-selector.tsx` — the feature model picker, filtering `CURSOR_MODELS`
+- `settings-view/model-defaults/phase-model-selector.tsx` — per-phase defaults, using
+  `CURSOR_MODELS` plus `CURSOR_MODEL_GROUPS` / `STANDALONE_CURSOR_MODELS` for grouping
+- `settings-view/providers/cursor-model-configuration.tsx` — Settings > Providers > Cursor,
+  mapping `CURSOR_CATALOGUE_ROWS` directly
 
 ### Provider Routing
 
-When a feature uses a Cursor model:
-
-1. The model string is stored as `cursor-{modelId}` (e.g., `cursor-composer-1`)
-2. `ProviderFactory.getProviderNameForModel()` detects the `cursor-` prefix
-3. `CursorProvider` is used for execution
-4. The model ID (without prefix) is passed to the Cursor CLI
+1. The canonical ID is stored on the feature as-is (e.g. `cursor-composer-1`) — the
+   `cursor-` prefix is part of the ID, not something added at the edge.
+2. `ProviderFactory.getProviderForModelName()` resolves the ID to the `cursor` provider.
+3. `stripProviderPrefix()` from `@automaker/types` produces the bare ID
+   (`cursor-composer-1` → `composer-1`) before it reaches `CursorProvider`, which asserts
+   this with `validateBareModelId()`.
+4. `CursorProvider` passes the bare ID to the Cursor CLI as `--model`, except for `auto`,
+   where the flag is omitted entirely.
 
 ---
 
 ## Example: Adding a Hypothetical Model
 
-Let's add a hypothetical "cursor-turbo" model:
+Let's add a hypothetical "Cursor Turbo":
 
 ```typescript
 // In libs/types/src/cursor-models.ts
 
-// Step 1: Add to type
+// Step 1: Add to the ID union
 export type CursorModelId =
-  | 'auto'
-  | 'claude-sonnet-4'
+  | 'cursor-auto'
+  | 'cursor-composer-1'
   // ... other models ...
   | 'cursor-turbo'; // New model
 
-// Step 2: Add to map
-export const CURSOR_MODEL_MAP: Record<CursorModelId, CursorModelConfig> = {
-  // ... existing entries ...
+// Step 2: Add to the catalogue
+export const CURSOR_MODEL_CATALOGUE: Record<CursorModelId, CursorModelRow> = {
+  // ... existing rows ...
 
   'cursor-turbo': {
     id: 'cursor-turbo',
     label: 'Cursor Turbo',
     description: 'Optimized for speed with good quality balance',
-    hasThinking: false,
+    provider: 'cursor',
     supportsVision: false,
+    supportsTools: true,
+    hasThinking: false,
+    isDefault: false,
   },
 };
+
+// Step 3: It has no variants, so it is standalone
+export const STANDALONE_CURSOR_MODELS: CursorModelId[] = [
+  'cursor-auto',
+  'cursor-composer-1',
+  // ... other standalone models ...
+  'cursor-turbo',
+];
 ```
 
-After rebuilding, "Cursor Turbo" will appear in all model selection UIs.
+After rebuilding, "Cursor Turbo" appears in every model selection UI, in the server's
+model list and in the display-name lookup — with no further edits.
 
 ---
 
 ## Checklist
 
-- [ ] Added model ID to `CursorModelId` type
-- [ ] Added config entry to `CURSOR_MODEL_MAP`
-- [ ] Rebuilt types package (`npm run build -w @automaker/types`)
-- [ ] Verified model appears in Add Feature dialog
-- [ ] Verified model appears in AI Profiles form
-- [ ] Tested execution with new model (if Cursor CLI supports it)
+- [ ] Added the canonical `cursor-` prefixed ID to `CursorModelId`
+- [ ] Added the row to `CURSOR_MODEL_CATALOGUE`, in the position the picker should offer it
+- [ ] Set all eight row fields, including `provider: 'cursor'`, `supportsTools` and `isDefault`
+- [ ] Placed the ID in a `CURSOR_MODEL_GROUPS` group or in `STANDALONE_CURSOR_MODELS`
+- [ ] Added a `LEGACY_CURSOR_MODEL_MAP` entry only if an unprefixed form was already stored
+- [ ] Did not declare the row anywhere outside `cursor-models.ts`
+- [ ] Rebuilt the types package (`npm run build -w @automaker/types`)
+- [ ] Ran `npm run test:packages` (catalogue and row-source guards pass)
+- [ ] Verified the model appears in the feature model picker
+- [ ] Verified the model appears in Settings > Providers > Cursor
+- [ ] Tested execution with the new model (if the Cursor CLI supports it)
 
 ---
 
 ## Notes
 
-- The model ID must exactly match what Cursor CLI expects
+- The bare model ID (canonical ID minus the `cursor-` prefix) must exactly match what the
+  Cursor CLI expects
 - Check Cursor's documentation for available models: https://cursor.com/docs
 - Models with `hasThinking: true` display a "Thinking" badge in the UI
-- Currently all models have `supportsVision: false` as Cursor CLI doesn't pass images to models
+- `supportsVision` is `false` throughout: the Cursor CLI does not pass images, whatever
+  the underlying model can do
+- `cursor-auto` is the one model whose card name differs from its catalogue label, because
+  "Auto (Recommended)" is a recommendation rather than a name. The exception is recorded in
+  `DISPLAY_NAME_OVERRIDES` in `model-display.ts`
