@@ -48,7 +48,7 @@ docker-compose up -d
 #    API at http://localhost:3008/api/health
 ```
 
-The container uses only Docker-managed volumes and has no access to your host filesystem. See [docker-isolation.md](docs/docker-isolation.md) for full documentation.
+The container uses only Docker-managed volumes and has no access to your host filesystem. See [`docker-compose.yml`](docker-compose.yml) and [`Dockerfile`](Dockerfile) for the exact isolation setup.
 
 ### 3. Limit Access
 
