@@ -3,7 +3,7 @@ import {
   CLAUDE_TIERS,
   CLAUDE_TIER_ROW_BY_TIER,
   CURSOR_MODEL_MAP,
-  CODEX_MODEL_MAP,
+  CODEX_MODELS,
   OPENCODE_MODELS as OPENCODE_MODEL_CONFIGS,
   GEMINI_MODEL_MAP,
   COPILOT_MODEL_MAP,
@@ -57,51 +57,14 @@ export const CURSOR_MODELS: ModelOption[] = Object.entries(CURSOR_MODEL_MAP).map
 );
 
 /**
- * Codex/OpenAI models
- * Official models from https://developers.openai.com/codex/models/
+ * Codex models.
+ *
+ * Not written out here: the list is the one the shared Codex catalogue derives,
+ * so the picker cannot drift from the models the server accepts. It used to be
+ * a hand-written copy, and it went stale at GPT-5.2 while the rest of Automaker
+ * already knew about GPT-5.3 (ngut-1995/harbor#78).
  */
-export const CODEX_MODELS: ModelOption[] = [
-  {
-    id: CODEX_MODEL_MAP.gpt52Codex,
-    label: 'GPT-5.2-Codex',
-    description: 'Most advanced agentic coding model for complex software engineering.',
-    badge: 'Premium',
-    provider: 'codex',
-    hasThinking: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51CodexMax,
-    label: 'GPT-5.1-Codex-Max',
-    description: 'Optimized for long-horizon, agentic coding tasks in Codex.',
-    badge: 'Premium',
-    provider: 'codex',
-    hasThinking: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51CodexMini,
-    label: 'GPT-5.1-Codex-Mini',
-    description: 'Smaller, more cost-effective version for faster workflows.',
-    badge: 'Speed',
-    provider: 'codex',
-    hasThinking: false,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt52,
-    label: 'GPT-5.2',
-    description: 'Best general agentic model for tasks across industries and domains.',
-    badge: 'Balanced',
-    provider: 'codex',
-    hasThinking: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51,
-    label: 'GPT-5.1',
-    description: 'Great for coding and agentic tasks across domains.',
-    badge: 'Balanced',
-    provider: 'codex',
-    hasThinking: true,
-  },
-];
+export { CODEX_MODELS };
 
 /**
  * OpenCode models derived from OPENCODE_MODEL_CONFIGS

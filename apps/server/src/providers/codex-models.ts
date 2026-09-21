@@ -1,170 +1,21 @@
 /**
- * Codex Model Definitions
+ * The server's Codex model list.
  *
- * Official Codex CLI models as documented at https://developers.openai.com/codex/models/
+ * Derived from the Codex catalogue in `@automaker/types`, which is the one place
+ * Codex models are enumerated. Writing the list out here a second time is how
+ * the picker and the server drifted apart in the first place
+ * (ngut-1995/harbor#78), so this module contributes the lookups and nothing else.
+ *
+ * Official Codex CLI models: https://developers.openai.com/codex/models/
  */
 
-import { CODEX_MODEL_MAP } from '@automaker/types';
+import { CODEX_MODEL_DEFINITIONS } from '@automaker/types';
 import type { ModelDefinition } from './types.js';
 
-const CONTEXT_WINDOW_256K = 256000;
-const CONTEXT_WINDOW_128K = 128000;
-const MAX_OUTPUT_32K = 32000;
-const MAX_OUTPUT_16K = 16000;
-
 /**
- * All available Codex models with their specifications
- * Based on https://developers.openai.com/codex/models/
+ * All available Codex models with their specifications, in catalogue order.
  */
-export const CODEX_MODELS: ModelDefinition[] = [
-  // ========== Recommended Codex Models ==========
-  {
-    id: CODEX_MODEL_MAP.gpt53Codex,
-    name: 'GPT-5.3-Codex',
-    modelString: CODEX_MODEL_MAP.gpt53Codex,
-    provider: 'openai',
-    description: 'Latest frontier agentic coding model.',
-    contextWindow: CONTEXT_WINDOW_256K,
-    maxOutputTokens: MAX_OUTPUT_32K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'premium' as const,
-    default: true,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt53CodexSpark,
-    name: 'GPT-5.3-Codex-Spark',
-    modelString: CODEX_MODEL_MAP.gpt53CodexSpark,
-    provider: 'openai',
-    description: 'Near-instant real-time coding model, 1000+ tokens/sec.',
-    contextWindow: CONTEXT_WINDOW_256K,
-    maxOutputTokens: MAX_OUTPUT_32K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'premium' as const,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt52Codex,
-    name: 'GPT-5.2-Codex',
-    modelString: CODEX_MODEL_MAP.gpt52Codex,
-    provider: 'openai',
-    description: 'Frontier agentic coding model.',
-    contextWindow: CONTEXT_WINDOW_256K,
-    maxOutputTokens: MAX_OUTPUT_32K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'premium' as const,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51CodexMax,
-    name: 'GPT-5.1-Codex-Max',
-    modelString: CODEX_MODEL_MAP.gpt51CodexMax,
-    provider: 'openai',
-    description: 'Codex-optimized flagship for deep and fast reasoning.',
-    contextWindow: CONTEXT_WINDOW_256K,
-    maxOutputTokens: MAX_OUTPUT_32K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'premium' as const,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51CodexMini,
-    name: 'GPT-5.1-Codex-Mini',
-    modelString: CODEX_MODEL_MAP.gpt51CodexMini,
-    provider: 'openai',
-    description: 'Optimized for codex. Cheaper, faster, but less capable.',
-    contextWindow: CONTEXT_WINDOW_128K,
-    maxOutputTokens: MAX_OUTPUT_16K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'basic' as const,
-    hasReasoning: false,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51Codex,
-    name: 'GPT-5.1-Codex',
-    modelString: CODEX_MODEL_MAP.gpt51Codex,
-    provider: 'openai',
-    description: 'Original GPT-5.1 Codex agentic coding model.',
-    contextWindow: CONTEXT_WINDOW_256K,
-    maxOutputTokens: MAX_OUTPUT_32K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'standard' as const,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt5Codex,
-    name: 'GPT-5-Codex',
-    modelString: CODEX_MODEL_MAP.gpt5Codex,
-    provider: 'openai',
-    description: 'Original GPT-5 Codex model.',
-    contextWindow: CONTEXT_WINDOW_128K,
-    maxOutputTokens: MAX_OUTPUT_16K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'standard' as const,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt5CodexMini,
-    name: 'GPT-5-Codex-Mini',
-    modelString: CODEX_MODEL_MAP.gpt5CodexMini,
-    provider: 'openai',
-    description: 'Smaller, cheaper GPT-5 Codex variant.',
-    contextWindow: CONTEXT_WINDOW_128K,
-    maxOutputTokens: MAX_OUTPUT_16K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'basic' as const,
-    hasReasoning: false,
-  },
-
-  // ========== General-Purpose GPT Models ==========
-  {
-    id: CODEX_MODEL_MAP.gpt52,
-    name: 'GPT-5.2',
-    modelString: CODEX_MODEL_MAP.gpt52,
-    provider: 'openai',
-    description: 'Latest frontier model with improvements across knowledge, reasoning and coding.',
-    contextWindow: CONTEXT_WINDOW_256K,
-    maxOutputTokens: MAX_OUTPUT_32K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'standard' as const,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51,
-    name: 'GPT-5.1',
-    modelString: CODEX_MODEL_MAP.gpt51,
-    provider: 'openai',
-    description: 'Great for coding and agentic tasks across domains.',
-    contextWindow: CONTEXT_WINDOW_256K,
-    maxOutputTokens: MAX_OUTPUT_32K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'standard' as const,
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt5,
-    name: 'GPT-5',
-    modelString: CODEX_MODEL_MAP.gpt5,
-    provider: 'openai',
-    description: 'Base GPT-5 model.',
-    contextWindow: CONTEXT_WINDOW_128K,
-    maxOutputTokens: MAX_OUTPUT_16K,
-    supportsVision: true,
-    supportsTools: true,
-    tier: 'standard' as const,
-    hasReasoning: true,
-  },
-];
+export const CODEX_MODELS: ModelDefinition[] = CODEX_MODEL_DEFINITIONS;
 
 /**
  * Get model definition by ID

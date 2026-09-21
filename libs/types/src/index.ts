@@ -261,6 +261,7 @@ export {
 export type { ModelOption, ThinkingLevelOption, ReasoningEffortOption } from './model-display.js';
 export {
   CLAUDE_MODELS,
+  CODEX_MODELS,
   GEMINI_MODELS,
   THINKING_LEVEL_OPTIONS,
   THINKING_LEVELS,

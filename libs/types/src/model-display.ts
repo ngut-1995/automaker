@@ -8,7 +8,7 @@
 import type { ModelAlias, ThinkingLevel, ModelProvider } from './settings.js';
 import type { ReasoningEffort } from './provider.js';
 import { CURSOR_MODEL_MAP, LEGACY_CURSOR_MODEL_MAP } from './cursor-models.js';
-import { CODEX_MODEL_MAP } from './model.js';
+import { CODEX_CATALOGUE_ROWS } from './codex-models.js';
 import {
   CLAUDE_TIERS,
   CLAUDE_TIER_DISPLAY_NAMES,
@@ -86,99 +86,24 @@ export const CLAUDE_MODELS: ModelOption[] = CLAUDE_TIERS.map((tier) => {
 });
 
 /**
- * Codex model options with full metadata for UI display
- * Official models from https://developers.openai.com/codex/models/
+ * Codex model options with full metadata for UI display.
+ *
+ * Derived from the Codex catalogue in `./codex-models.js`, which is the one
+ * place Codex models are enumerated: label, description and badge all come from
+ * the row that declares the model, so a model added there appears here, in the
+ * server's list and in the display names below with no further edit.
+ *
+ * Codex rows carry `hasReasoning` and never `hasThinking`: a Codex model takes
+ * an effort level, not Automaker's thinking level.
  */
-export const CODEX_MODELS: ModelOption[] = [
-  {
-    id: CODEX_MODEL_MAP.gpt53Codex,
-    label: 'GPT-5.3-Codex',
-    description: 'Latest frontier agentic coding model.',
-    badge: 'Premium',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt53CodexSpark,
-    label: 'GPT-5.3-Codex-Spark',
-    description: 'Near-instant real-time coding model, 1000+ tokens/sec.',
-    badge: 'Speed',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt52Codex,
-    label: 'GPT-5.2-Codex',
-    description: 'Frontier agentic coding model.',
-    badge: 'Premium',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51CodexMax,
-    label: 'GPT-5.1-Codex-Max',
-    description: 'Codex-optimized flagship for deep and fast reasoning.',
-    badge: 'Premium',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51CodexMini,
-    label: 'GPT-5.1-Codex-Mini',
-    description: 'Optimized for codex. Cheaper, faster, but less capable.',
-    badge: 'Speed',
-    provider: 'codex',
-    hasReasoning: false,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51Codex,
-    label: 'GPT-5.1-Codex',
-    description: 'Original GPT-5.1 Codex agentic coding model.',
-    badge: 'Balanced',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt5Codex,
-    label: 'GPT-5-Codex',
-    description: 'Original GPT-5 Codex model.',
-    badge: 'Balanced',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt5CodexMini,
-    label: 'GPT-5-Codex-Mini',
-    description: 'Smaller, cheaper GPT-5 Codex variant.',
-    badge: 'Speed',
-    provider: 'codex',
-    hasReasoning: false,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt52,
-    label: 'GPT-5.2',
-    description: 'Latest frontier model with improvements across knowledge, reasoning and coding.',
-    badge: 'Balanced',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt51,
-    label: 'GPT-5.1',
-    description: 'Great for coding and agentic tasks across domains.',
-    badge: 'Balanced',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-  {
-    id: CODEX_MODEL_MAP.gpt5,
-    label: 'GPT-5',
-    description: 'Base GPT-5 model.',
-    badge: 'Balanced',
-    provider: 'codex',
-    hasReasoning: true,
-  },
-];
+export const CODEX_MODELS: ModelOption[] = CODEX_CATALOGUE_ROWS.map((row) => ({
+  id: row.id,
+  label: row.label,
+  description: row.description,
+  badge: row.badge,
+  provider: row.provider,
+  hasReasoning: row.hasReasoning,
+}));
 
 /**
  * Gemini model options with full metadata for UI display

@@ -7,7 +7,13 @@ import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
 import { getModelProvider } from '@automaker/types';
 import type { ModelProvider, CursorModelId } from '@automaker/types';
-import { CLAUDE_MODELS, CURSOR_MODELS, OPENCODE_MODELS, ModelOption } from './model-constants';
+import {
+  CLAUDE_MODELS,
+  CURSOR_MODELS,
+  CODEX_MODELS,
+  OPENCODE_MODELS,
+  ModelOption,
+} from './model-constants';
 import { useEffect, useRef } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import { useOpencodeModels } from '@/hooks/queries';
@@ -87,7 +93,7 @@ export function ModelSelector({
     fetchOpencodeModels,
   ]);
 
-  // Transform codex models from store to ModelOption format
+  // Transform codex models reported by the Codex CLI into ModelOption format
   const dynamicCodexModels: ModelOption[] = codexModels.map((model) => {
     // Infer badge based on tier
     let badge: string | undefined;
@@ -101,9 +107,23 @@ export function ModelSelector({
       description: model.description,
       badge,
       provider: 'codex' as ModelProvider,
-      hasThinking: model.hasThinking,
+      // The cache calls it `hasThinking`; for a Codex model the fact is whether
+      // it accepts a reasoning effort, which is what the catalogue rows carry.
+      hasReasoning: model.hasThinking,
     };
   });
+
+  /**
+   * The Codex models to offer.
+   *
+   * Codex reports its own models when the CLI is installed and authenticated,
+   * which is the freshest answer available. Until it has answered -- not
+   * installed, not logged in, still loading -- the shared catalogue answers
+   * instead, so the picker offers the models this build supports rather than
+   * nothing at all (ngut-1995/harbor#78).
+   */
+  const codexModelOptions: ModelOption[] =
+    dynamicCodexModels.length > 0 ? dynamicCodexModels : CODEX_MODELS;
 
   // Filter static OpenCode models based on enabled models from global settings
   const filteredStaticOpencodeModels = OPENCODE_MODELS.filter((model) =>
@@ -156,8 +176,7 @@ export function ModelSelector({
     } else if (provider === 'codex' && selectedProvider !== 'codex') {
       // Switch to Codex's default model (use isDefault flag from dynamic models)
       const defaultModel = codexModels.find((m) => m.isDefault);
-      const defaultModelId = defaultModel?.id || codexModels[0]?.id || 'codex-gpt-5.2-codex';
-      onModelSelect(defaultModelId);
+      onModelSelect(defaultModel?.id ?? codexModelOptions[0].id);
     } else if (provider === 'claude' && selectedProvider !== 'claude') {
       // Switch to Claude's default model (canonical format)
       onModelSelect('claude-sonnet');
@@ -394,11 +413,11 @@ export function ModelSelector({
             </span>
           </div>
 
-          {/* Loading state */}
+          {/* Refreshing from the CLI; the catalogue is already on screen below. */}
           {codexModelsLoading && dynamicCodexModels.length === 0 && (
-            <div className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
               <Spinner size="sm" />
-              Loading models...
+              Checking Codex for newer models...
             </div>
           )}
 
@@ -419,65 +438,57 @@ export function ModelSelector({
             </div>
           )}
 
-          {/* Model list */}
-          {!codexModelsLoading && !codexModelsError && dynamicCodexModels.length === 0 && (
-            <div className="text-sm text-muted-foreground p-3 border border-dashed rounded-md text-center">
-              No Codex models available
-            </div>
-          )}
-
-          {!codexModelsLoading && dynamicCodexModels.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {dynamicCodexModels.map((option) => {
-                const isSelected = selectedModel === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => onModelSelect(option.id)}
-                    title={option.description}
-                    className={cn(
-                      'w-full px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-between',
-                      isSelected
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background hover:bg-accent border-border'
+          {/* Model list: the CLI's answer when it has one, the catalogue otherwise. */}
+          <div className="flex flex-col gap-2">
+            {codexModelOptions.map((option) => {
+              const isSelected = selectedModel === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onModelSelect(option.id)}
+                  title={option.description}
+                  className={cn(
+                    'w-full px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-between',
+                    isSelected
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-accent border-border'
+                  )}
+                  data-testid={`${testIdPrefix}-${option.id}`}
+                >
+                  <span>{option.label}</span>
+                  <div className="flex gap-1">
+                    {option.hasReasoning && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-xs',
+                          isSelected
+                            ? 'border-primary-foreground/50 text-primary-foreground'
+                            : 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400'
+                        )}
+                      >
+                        Reasoning
+                      </Badge>
                     )}
-                    data-testid={`${testIdPrefix}-${option.id}`}
-                  >
-                    <span>{option.label}</span>
-                    <div className="flex gap-1">
-                      {option.hasThinking && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'text-xs',
-                            isSelected
-                              ? 'border-primary-foreground/50 text-primary-foreground'
-                              : 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400'
-                          )}
-                        >
-                          Thinking
-                        </Badge>
-                      )}
-                      {option.badge && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            'text-xs',
-                            isSelected
-                              ? 'border-primary-foreground/50 text-primary-foreground'
-                              : 'border-muted-foreground/50 text-muted-foreground'
-                          )}
-                        >
-                          {option.badge}
-                        </Badge>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                    {option.badge && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-xs',
+                          isSelected
+                            ? 'border-primary-foreground/50 text-primary-foreground'
+                            : 'border-muted-foreground/50 text-muted-foreground'
+                        )}
+                      >
+                        {option.badge}
+                      </Badge>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

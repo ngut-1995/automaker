@@ -22,12 +22,13 @@ import {
   getModelGroup,
   isGroupSelected,
   getSelectedVariant,
-  codexModelHasThinking,
+  codexModelHasReasoning,
   getThinkingLevelsForModel,
 } from '@automaker/types';
 import { CLAUDE_TIERS, CLAUDE_TIER_DISPLAY_NAMES } from '@automaker/types';
 import {
   CLAUDE_MODELS,
+  CODEX_MODELS,
   CURSOR_MODELS,
   OPENCODE_MODELS,
   GEMINI_MODELS,
@@ -340,8 +341,17 @@ export function PhaseModelSelector({
     return () => observer.disconnect();
   }, [expandedProviderModel]);
 
-  // Transform dynamic Codex models from store to component format
-  const transformedCodexModels = useMemo(() => {
+  /**
+   * The Codex models to offer.
+   *
+   * Codex reports its own models when the CLI is installed and authenticated.
+   * Until it has answered, the shared catalogue answers instead, so a phase
+   * model can be chosen from the same set the board offers rather than from
+   * nothing at all (ngut-1995/harbor#78).
+   */
+  const transformedCodexModels: ModelOption[] = useMemo(() => {
+    if (codexModels.length === 0) return CODEX_MODELS;
+
     return codexModels.map((model) => ({
       id: model.id,
       label: model.label,
@@ -807,7 +817,7 @@ export function PhaseModelSelector({
   const renderCodexModelItem = (model: (typeof transformedCodexModels)[0]) => {
     const isSelected = selectedModel === model.id;
     const isFavorite = favoriteModels.includes(model.id);
-    const hasReasoning = codexModelHasThinking(model.id as CodexModelId);
+    const hasReasoning = codexModelHasReasoning(model.id as CodexModelId);
     const isExpanded = expandedCodexModel === model.id;
     const currentReasoning = isSelected ? selectedReasoningEffort : 'none';
 
