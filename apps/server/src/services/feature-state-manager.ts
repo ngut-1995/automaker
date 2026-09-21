@@ -29,6 +29,7 @@ import type { AutoModeEventType } from '@automaker/types';
 import { getNotificationService } from './notification-service.js';
 import { FeatureLoader } from './feature-loader.js';
 import type { FeatureTransitioner } from './feature-record.js';
+import { applyTransitionIgnoringIllegal } from './feature-record.js';
 import { pipelineService } from './pipeline-service.js';
 
 const logger = createLogger('FeatureStateManager');
@@ -166,15 +167,12 @@ export class FeatureStateManager {
       logger.info(`Marking feature ${featureId} as interrupted`);
     }
 
-    try {
-      await this.featureRecord.transition(projectPath, featureId, 'interrupt');
-    } catch (error) {
-      if (error instanceof Error && error.name === 'IllegalTransitionError') {
-        logger.debug(`Skipped interrupt for feature ${featureId}: ${error.message}`);
-        return;
-      }
-      throw error;
-    }
+    await applyTransitionIgnoringIllegal(
+      (p, f, t, c) => this.featureRecord.transition(p, f, t, c),
+      projectPath,
+      featureId,
+      'interrupt'
+    );
   }
 
   /**
@@ -285,25 +283,18 @@ export class FeatureStateManager {
 
         if (isActiveState) {
           const hasApprovedPlan = feature.planSpec?.status === 'approved';
-          try {
-            const transitionResult = await this.featureRecord.transition(
-              projectPath,
-              feature.id,
-              'reset',
-              { hasApprovedPlan }
-            );
+          const transitionResult = await applyTransitionIgnoringIllegal(
+            (p, f, t, c) => this.featureRecord.transition(p, f, t, c),
+            projectPath,
+            feature.id,
+            'reset',
+            { hasApprovedPlan }
+          );
+          if (transitionResult) {
             newStatus = transitionResult.feature.status;
             logger.info(
               `[${callerLabel}] Reset feature ${feature.id} from ${originalStatus} to ${newStatus}`
             );
-          } catch (error) {
-            if (error instanceof Error && error.name === 'IllegalTransitionError') {
-              logger.debug(
-                `[${callerLabel}] Skipped reset for feature ${feature.id}: ${error.message}`
-              );
-            } else {
-              throw error;
-            }
           }
         }
 

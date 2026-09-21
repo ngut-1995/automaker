@@ -414,6 +414,14 @@ export class FeatureLoader {
     enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer',
     preEnhancementDescription?: string
   ): Promise<Feature> {
+    if (updates.status !== undefined) {
+      throw new Error(
+        `FeatureLoader.update cannot write the status of feature ${featureId}: a Feature's ` +
+          `lifecycle state is owned solely by FeatureRecord.transition. Use ` +
+          `FeatureRecord.transition(projectPath, featureId, trigger, context) instead.`
+      );
+    }
+
     const feature = await this.get(projectPath, featureId);
     if (!feature) {
       throw new Error(`Feature ${featureId} not found`);

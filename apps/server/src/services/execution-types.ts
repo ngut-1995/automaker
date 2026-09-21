@@ -5,16 +5,15 @@
  * allowing the service to delegate to other services without circular dependencies.
  */
 
-import type {
-  Feature,
-  FeatureTrigger,
-  TransitionContext,
-  PlanningMode,
-  ThinkingLevel,
-  ReasoningEffort,
-} from '@automaker/types';
+import type { Feature, PlanningMode, ThinkingLevel, ReasoningEffort } from '@automaker/types';
 import type { loadContextFiles } from '@automaker/utils';
 import type { PipelineContext } from './pipeline-orchestrator.js';
+
+/**
+ * Function to apply a lifecycle trigger to a feature through the Feature record.
+ * Declared once in feature-record.ts and re-exported here for callers.
+ */
+export type { TransitionFeatureFn } from './feature-record.js';
 
 // =============================================================================
 // ExecutionService Callback Types
@@ -50,16 +49,6 @@ export type RunAgentFn = (
  * Function to execute pipeline steps
  */
 export type ExecutePipelineFn = (context: PipelineContext) => Promise<void>;
-
-/**
- * Function to apply a lifecycle trigger to a feature through the Feature record
- */
-export type TransitionFeatureFn = (
-  projectPath: string,
-  featureId: string,
-  trigger: FeatureTrigger,
-  context?: TransitionContext
-) => Promise<{ feature: Feature; changed: boolean }>;
 
 /**
  * Function to load a feature by ID

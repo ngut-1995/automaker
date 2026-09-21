@@ -24,6 +24,22 @@ import { finalizeInProgressTasks } from './feature-plan-tasks.js';
 import { getNotificationService } from './notification-service.js';
 
 const logger = createLogger('FeatureRecord');
+const transitionLogger = createLogger('FeatureTransition');
+
+// Notification type constants
+const NOTIFICATION_TYPE_WAITING_APPROVAL = 'feature_waiting_approval';
+const NOTIFICATION_TYPE_VERIFIED = 'feature_verified';
+
+// Notification title constants
+const NOTIFICATION_TITLE_WAITING_APPROVAL = 'Feature Ready for Review';
+const NOTIFICATION_TITLE_VERIFIED = 'Feature Verified';
+
+/**
+ * A transition lock per `projectPath:featureId`. Module-scoped so that every
+ * FeatureRecord instance writing the same feature serializes on the same lock,
+ * not just instances that happen to share a record object.
+ */
+const transitionLocks = new Map<string, Promise<void>>();
 
 /** Thrown when a caller asks for a transition the table does not allow. */
 export class IllegalTransitionError extends Error {
@@ -46,21 +62,51 @@ export interface TransitionResult {
 }
 
 /**
+ * The canonical signature for applying a lifecycle trigger through a record.
+ * Used by the record's structural interface and by the execution/pipeline
+ * callback types.
+ */
+export type TransitionFeatureFn = (
+  projectPath: string,
+  featureId: string,
+  trigger: FeatureTrigger,
+  context?: TransitionContext
+) => Promise<TransitionResult>;
+
+/**
  * The narrow view of a Feature record used by services that only need to apply
  * a lifecycle trigger. A FeatureRecord satisfies it structurally.
  */
 export interface FeatureTransitioner {
-  transition(
-    projectPath: string,
-    featureId: string,
-    trigger: FeatureTrigger,
-    context?: TransitionContext
-  ): Promise<TransitionResult>;
+  transition: TransitionFeatureFn;
+}
+
+/**
+ * Apply a trigger through any transition source, treating a rejected pair as a
+ * skip rather than an error. Returns the transition result, or null when the
+ * pair was illegal for the feature's current status.
+ */
+export async function applyTransitionIgnoringIllegal(
+  transition: TransitionFeatureFn,
+  projectPath: string,
+  featureId: string,
+  trigger: FeatureTrigger,
+  context?: TransitionContext
+): Promise<TransitionResult | null> {
+  try {
+    return await transition(projectPath, featureId, trigger, context);
+  } catch (error) {
+    if (error instanceof IllegalTransitionError) {
+      transitionLogger.debug(
+        `Skipped illegal transition '${trigger}' for feature ${featureId}: ${error.message}`
+      );
+      return null;
+    }
+    throw error;
+  }
 }
 
 export class FeatureRecord {
-  private readonly locks = new Map<string, Promise<void>>();
-
   constructor(
     private readonly eventBus: TypedEventBus,
     private readonly featureLoader: FeatureLoader = new FeatureLoader()
@@ -165,17 +211,17 @@ export class FeatureRecord {
 
       if (status === 'waiting_approval') {
         await notificationService.createNotification({
-          type: 'feature_waiting_approval',
+          type: NOTIFICATION_TYPE_WAITING_APPROVAL,
           title: displayName,
-          message: 'Feature Ready for Review',
+          message: NOTIFICATION_TITLE_WAITING_APPROVAL,
           featureId,
           projectPath,
         });
       } else if (status === 'verified') {
         await notificationService.createNotification({
-          type: 'feature_verified',
+          type: NOTIFICATION_TYPE_VERIFIED,
           title: displayName,
-          message: 'Feature Verified',
+          message: NOTIFICATION_TITLE_VERIFIED,
           featureId,
           projectPath,
         });
@@ -194,19 +240,19 @@ export class FeatureRecord {
   }
 
   private async withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
-    const previous = this.locks.get(key) ?? Promise.resolve();
+    const previous = transitionLocks.get(key) ?? Promise.resolve();
     const run = previous.then(() => fn());
     const chained = run.then(
       () => undefined,
       () => undefined
     );
-    this.locks.set(key, chained);
+    transitionLocks.set(key, chained);
 
     try {
       return await run;
     } finally {
-      if (this.locks.get(key) === chained) {
-        this.locks.delete(key);
+      if (transitionLocks.get(key) === chained) {
+        transitionLocks.delete(key);
       }
     }
   }

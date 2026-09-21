@@ -31,6 +31,7 @@ import type { ConcurrencyManager } from './concurrency-manager.js';
 import { pipelineService } from './pipeline-service.js';
 import type { TestRunnerService, TestRunStatus } from './test-runner-service.js';
 import { performMerge } from './merge-service.js';
+import { applyTransitionIgnoringIllegal } from './feature-record.js';
 import type {
   PipelineContext,
   PipelineStatusInfo,
@@ -78,17 +79,13 @@ export class PipelineOrchestrator {
     trigger: FeatureTrigger,
     context?: TransitionContext
   ): Promise<void> {
-    try {
-      await this.transitionFeatureFn(projectPath, featureId, trigger, context);
-    } catch (error) {
-      if (error instanceof Error && error.name === 'IllegalTransitionError') {
-        logger.debug(
-          `Skipped illegal transition '${trigger}' for feature ${featureId}: ${error.message}`
-        );
-        return;
-      }
-      throw error;
-    }
+    await applyTransitionIgnoringIllegal(
+      this.transitionFeatureFn,
+      projectPath,
+      featureId,
+      trigger,
+      context
+    );
   }
 
   async executePipeline(ctx: PipelineContext): Promise<void> {

@@ -272,7 +272,10 @@ export class FeatureExportService {
 
       // Create or update the feature
       if (existingFeature) {
-        await this.featureLoader.update(projectPath, featureId, featureToImport);
+        // Status is owned by the Feature record; importing a record must not
+        // reset a feature's lifecycle state.
+        const { status: _status, ...updates } = featureToImport;
+        await this.featureLoader.update(projectPath, featureId, updates);
         logger.info(`Updated feature ${featureId} via import`);
       } else {
         await this.featureLoader.create(projectPath, featureToImport);

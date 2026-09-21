@@ -153,7 +153,9 @@ export function createApplyHandler(settingsService?: SettingsService) {
         if (!change.featureId || !change.feature) continue;
 
         try {
-          const updated = await featureLoader.update(projectPath, change.featureId, change.feature);
+          // Lifecycle status is owned by the Feature record, not a plan field update.
+          const { status: _status, ...featureUpdates } = change.feature;
+          const updated = await featureLoader.update(projectPath, change.featureId, featureUpdates);
           appliedChanges.push(`updated:${change.featureId}`);
           featureMap.set(change.featureId, updated);
           logger.info(`[BacklogPlan] Updated feature ${change.featureId}`);

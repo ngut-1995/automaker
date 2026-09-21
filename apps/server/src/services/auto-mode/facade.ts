@@ -20,7 +20,7 @@ import {
   DEFAULT_MODELS,
   stripProviderPrefix,
   isRunnableFeatureStatus,
-  isDoneFeatureStatus,
+  isFinishedFeatureStatus,
 } from '@automaker/types';
 import { resolveModelString } from '@automaker/model-resolver';
 import { createLogger, loadContextFiles, classifyError } from '@automaker/utils';
@@ -426,7 +426,7 @@ export class AutoModeServiceFacade {
         getFacade().saveExecutionStateForProject(branchName, maxConcurrency),
       (pPath, branchName) => getFacade().clearExecutionState(branchName),
       (pPath) => featureStateManager.resetStuckFeatures(pPath),
-      (feature) => isDoneFeatureStatus(feature.status) || feature.status === 'waiting_approval',
+      (feature) => isFinishedFeatureStatus(feature.status),
       (featureId) => concurrencyManager.isRunning(featureId),
       async (pPath) => featureLoader.getAll(pPath)
     );

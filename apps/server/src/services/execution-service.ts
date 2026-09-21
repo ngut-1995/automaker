@@ -21,6 +21,7 @@ import type { TypedEventBus } from './typed-event-bus.js';
 import type { ConcurrencyManager, RunningFeature } from './concurrency-manager.js';
 import type { WorktreeResolver } from './worktree-resolver.js';
 import type { SettingsService } from './settings-service.js';
+import { applyTransitionIgnoringIllegal } from './feature-record.js';
 import { pipelineService } from './pipeline-service.js';
 
 // Re-export callback types from execution-types.ts for backward compatibility
@@ -114,17 +115,13 @@ export class ExecutionService {
     trigger: FeatureTrigger,
     context?: TransitionContext
   ): Promise<void> {
-    try {
-      await this.transitionFeatureFn(projectPath, featureId, trigger, context);
-    } catch (error) {
-      if (error instanceof Error && error.name === 'IllegalTransitionError') {
-        logger.debug(
-          `Skipped illegal transition '${trigger}' for feature ${featureId}: ${error.message}`
-        );
-        return;
-      }
-      throw error;
-    }
+    await applyTransitionIgnoringIllegal(
+      this.transitionFeatureFn,
+      projectPath,
+      featureId,
+      trigger,
+      context
+    );
   }
 
   private extractTitleFromDescription(description: string | undefined): string {

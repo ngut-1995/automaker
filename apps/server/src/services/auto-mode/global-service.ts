@@ -11,7 +11,11 @@
 
 import path from 'path';
 import { createLogger } from '@automaker/utils';
-import { isDoneFeatureStatus, isPipelineStatus, isRunnableFeatureStatus } from '@automaker/types';
+import {
+  isFinishedFeatureStatus,
+  isPipelineStatus,
+  isRunnableFeatureStatus,
+} from '@automaker/types';
 import type { EventEmitter } from '../../lib/events.js';
 import { TypedEventBus } from '../typed-event-bus.js';
 import { ConcurrencyManager } from '../concurrency-manager.js';
@@ -94,7 +98,7 @@ export class GlobalAutoModeService {
       // resetStuckFeaturesFn
       (pPath) => this.featureStateManager.resetStuckFeatures(pPath),
       // isFeatureDoneFn
-      (feature) => isDoneFeatureStatus(feature.status) || feature.status === 'waiting_approval',
+      (feature) => isFinishedFeatureStatus(feature.status),
       // isFeatureRunningFn
       (featureId) => this.concurrencyManager.isRunning(featureId)
     );

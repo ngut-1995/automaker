@@ -85,6 +85,7 @@ export {
   isRunnableFeatureStatus,
   isInProgressFeatureStatus,
   isDoneFeatureStatus,
+  isFinishedFeatureStatus,
 } from './feature-lifecycle.js';
 
 // Session types
