@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import type { Feature } from '@automaker/types';
+import type { Feature, FeatureTrigger, TransitionContext } from '@automaker/types';
 import { createLogger, classifyError, loadContextFiles, recordMemoryUsage } from '@automaker/utils';
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
 import { getFeatureDir } from '@automaker/platform';
@@ -27,7 +27,7 @@ import { pipelineService } from './pipeline-service.js';
 export type {
   RunAgentFn,
   ExecutePipelineFn,
-  UpdateFeatureStatusFn,
+  TransitionFeatureFn,
   LoadFeatureFn,
   GetPlanningPromptPrefixFn,
   SaveFeatureSummaryFn,
@@ -44,7 +44,7 @@ export type {
 import type {
   RunAgentFn,
   ExecutePipelineFn,
-  UpdateFeatureStatusFn,
+  TransitionFeatureFn,
   LoadFeatureFn,
   GetPlanningPromptPrefixFn,
   SaveFeatureSummaryFn,
@@ -75,7 +75,7 @@ export class ExecutionService {
     // Callback dependencies for delegation
     private runAgentFn: RunAgentFn,
     private executePipelineFn: ExecutePipelineFn,
-    private updateFeatureStatusFn: UpdateFeatureStatusFn,
+    private transitionFeatureFn: TransitionFeatureFn,
     private loadFeatureFn: LoadFeatureFn,
     private getPlanningPromptPrefixFn: GetPlanningPromptPrefixFn,
     private saveFeatureSummaryFn: SaveFeatureSummaryFn,
@@ -100,6 +100,31 @@ export class ExecutionService {
 
   private releaseRunningFeature(featureId: string, options?: { force?: boolean }): void {
     this.concurrencyManager.release(featureId, options);
+  }
+
+  /**
+   * Apply a lifecycle trigger through the Feature record. A rejected pair means
+   * the feature has already moved past the state this call was written for
+   * (e.g. a concurrent terminal write), so the transition is skipped rather than
+   * clobbering it. The record's transition table decides legality.
+   */
+  private async applyTransition(
+    projectPath: string,
+    featureId: string,
+    trigger: FeatureTrigger,
+    context?: TransitionContext
+  ): Promise<void> {
+    try {
+      await this.transitionFeatureFn(projectPath, featureId, trigger, context);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'IllegalTransitionError') {
+        logger.debug(
+          `Skipped illegal transition '${trigger}' for feature ${featureId}: ${error.message}`
+        );
+        return;
+      }
+      throw error;
+    }
   }
 
   private extractTitleFromDescription(description: string | undefined): string {
@@ -191,13 +216,8 @@ ${feature.spec}
       // feature still in 'backlog' status while it's actually being executed.
       // Only do this for the initial call (not internal/recursive calls which would
       // redundantly update the status).
-      if (
-        !options?._calledInternally &&
-        (feature.status === 'backlog' ||
-          feature.status === 'ready' ||
-          feature.status === 'interrupted')
-      ) {
-        await this.updateFeatureStatusFn(projectPath, featureId, 'in_progress');
+      if (!options?._calledInternally) {
+        await this.applyTransition(projectPath, featureId, 'start');
       }
 
       if (!options?.continuationPrompt) {
@@ -238,15 +258,10 @@ ${feature.spec}
       tempRunningFeature.branchName = branchName ?? null;
       // Ensure status is in_progress (may already be set from the early update above,
       // but internal/recursive calls skip the early update and need it here).
-      // Mirror the external guard: only transition when the feature is still in
-      // backlog, ready, or interrupted to avoid overwriting a concurrent terminal status.
-      if (
-        options?._calledInternally &&
-        (feature.status === 'backlog' ||
-          feature.status === 'ready' ||
-          feature.status === 'interrupted')
-      ) {
-        await this.updateFeatureStatusFn(projectPath, featureId, 'in_progress');
+      // The record rejects the trigger if the feature has already reached a
+      // terminal state, so a concurrent terminal write is not overwritten.
+      if (options?._calledInternally) {
+        await this.applyTransition(projectPath, featureId, 'start');
       }
       this.eventBus.emitAutoModeEvent('auto_mode_feature_start', {
         featureId,
@@ -459,23 +474,23 @@ Please continue from where you left off and complete all remaining tasks. Use th
       const isOutputTooShort = agentOutput.trim().length < MIN_MEANINGFUL_OUTPUT_LENGTH;
       const agentDidWork = hasToolUsage && !isOutputTooShort;
 
-      let finalStatus: 'verified' | 'waiting_approval';
+      let finalOutcome: 'verified' | 'waiting_approval';
       if (feature.skipTests) {
-        finalStatus = 'waiting_approval';
+        finalOutcome = 'waiting_approval';
       } else if (!agentDidWork) {
         // Agent didn't produce meaningful output (e.g., CLI exited quickly).
         // Route to waiting_approval so the user can review and re-run.
-        finalStatus = 'waiting_approval';
+        finalOutcome = 'waiting_approval';
         logger.warn(
           `[executeFeature] Feature ${featureId}: agent produced insufficient output ` +
             `(${agentOutput.trim().length}/${MIN_MEANINGFUL_OUTPUT_LENGTH} chars, toolUsage=${hasToolUsage}). ` +
             `Setting status to waiting_approval instead of verified.`
         );
       } else {
-        finalStatus = 'verified';
+        finalOutcome = 'verified';
       }
 
-      await this.updateFeatureStatusFn(projectPath, featureId, finalStatus);
+      await this.applyTransition(projectPath, featureId, 'finish', { outcome: finalOutcome });
       this.recordSuccessFn();
 
       // Check final task completion state for accurate reporting
@@ -509,7 +524,7 @@ Please continue from where you left off and complete all remaining tasks. Use th
 
       const elapsedSeconds = Math.round((Date.now() - tempRunningFeature.startTime) / 1000);
       let completionMessage = `Feature completed in ${elapsedSeconds}s`;
-      if (finalStatus === 'verified') completionMessage += ' - auto-verified';
+      if (finalOutcome === 'verified') completionMessage += ' - auto-verified';
       if (hasIncompleteTasks)
         completionMessage += ` (${completedTasks}/${totalTasks} tasks completed)`;
 
@@ -529,7 +544,7 @@ Please continue from where you left off and complete all remaining tasks. Use th
     } catch (error) {
       const errorInfo = classifyError(error);
       if (errorInfo.isAbort) {
-        await this.updateFeatureStatusFn(projectPath, featureId, 'interrupted');
+        await this.applyTransition(projectPath, featureId, 'interrupt');
         if (isAutoMode) {
           this.eventBus.emitAutoModeEvent('auto_mode_feature_complete', {
             featureId,
@@ -545,7 +560,6 @@ Please continue from where you left off and complete all remaining tasks. Use th
         logger.error(`Feature ${featureId} failed:`, error);
         // If pipeline steps completed successfully, don't send the feature back to backlog.
         // The pipeline work is done — set to waiting_approval so the user can review.
-        const fallbackStatus = pipelineCompleted ? 'waiting_approval' : 'backlog';
         if (pipelineCompleted) {
           logger.info(
             `[executeFeature] Feature ${featureId} failed after pipeline completed. ` +
@@ -565,7 +579,7 @@ Please continue from where you left off and complete all remaining tasks. Use th
           );
         }
         if (currentStatus !== 'merge_conflict') {
-          await this.updateFeatureStatusFn(projectPath, featureId, fallbackStatus);
+          await this.applyTransition(projectPath, featureId, 'fail', { pipelineCompleted });
         }
         this.eventBus.emitAutoModeEvent('auto_mode_error', {
           featureId,
@@ -597,7 +611,7 @@ Please continue from where you left off and complete all remaining tasks. Use th
     // eventually runs. By persisting and emitting the status change here, the
     // board updates immediately regardless of how long the subprocess takes to stop.
     try {
-      await this.updateFeatureStatusFn(projectPath, featureId, 'interrupted');
+      await this.applyTransition(projectPath, featureId, 'interrupt');
     } catch (err) {
       // Non-fatal: the abort still proceeds and executeFeature's catch block
       // will attempt the same update once the subprocess terminates.
