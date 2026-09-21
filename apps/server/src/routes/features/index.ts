@@ -8,7 +8,8 @@
 import { Router } from 'express';
 import { FeatureLoader } from '../../services/feature-loader.js';
 import type { SettingsService } from '../../services/settings-service.js';
-import type { AutoModeServiceCompat } from '../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../services/auto-mode/index.js';
+import type { FeatureTransitioner } from '../../services/feature-record.js';
 import type { EventEmitter } from '../../lib/events.js';
 import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createListHandler } from './routes/list.js';
@@ -34,10 +35,10 @@ export function createFeaturesHandlers(
   featureLoader: FeatureLoader,
   settingsService?: SettingsService,
   events?: EventEmitter,
-  autoModeService?: AutoModeServiceCompat
+  getFacade?: FacadeProvider,
+  featureRecord?: FeatureTransitioner
 ): OperationHandlers {
-  const listHandler = createListHandler(featureLoader, autoModeService);
-  const featureRecord = autoModeService?.getGlobalService().getSharedServices().featureRecord;
+  const listHandler = createListHandler(featureLoader, getFacade);
 
   return {
     'features.list': listHandler,
@@ -54,7 +55,7 @@ export function createFeaturesHandlers(
     'features.export': createExportHandler(featureLoader),
     'features.import': createImportHandler(featureLoader),
     'features.checkConflicts': createConflictCheckHandler(featureLoader),
-    'features.getOrphaned': createOrphanedListHandler(featureLoader, autoModeService),
+    'features.getOrphaned': createOrphanedListHandler(featureLoader, getFacade),
     'features.resolveOrphaned': createOrphanedResolveHandler(featureLoader, featureRecord),
     'features.bulkResolveOrphaned': createOrphanedBulkResolveHandler(featureLoader, featureRecord),
   };
@@ -64,11 +65,12 @@ export function createFeaturesRoutes(
   featureLoader: FeatureLoader,
   settingsService?: SettingsService,
   events?: EventEmitter,
-  autoModeService?: AutoModeServiceCompat
+  getFacade?: FacadeProvider,
+  featureRecord?: FeatureTransitioner
 ): Router {
   return registerContractOperations(
     Router(),
     FEATURES_MOUNT,
-    createFeaturesHandlers(featureLoader, settingsService, events, autoModeService)
+    createFeaturesHandlers(featureLoader, settingsService, events, getFacade, featureRecord)
   );
 }

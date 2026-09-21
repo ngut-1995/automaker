@@ -9,16 +9,13 @@
 
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { getErrorMessage, logError } from '../common.js';
 import { createLogger } from '@automaker/utils';
 
 const logger = createLogger('FeaturesListRoute');
 
-export function createListHandler(
-  featureLoader: FeatureLoader,
-  autoModeService?: AutoModeServiceCompat
-) {
+export function createListHandler(featureLoader: FeatureLoader, getFacade?: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const bodyProjectPath =
@@ -44,9 +41,9 @@ export function createListHandler(
       // This detects features whose branches no longer exist (e.g., after merge/delete)
       // We don't await this to keep the list response fast
       // Note: detectOrphanedFeatures handles errors internally and always resolves
-      if (autoModeService) {
-        autoModeService
-          .detectOrphanedFeatures(projectPath, features)
+      if (getFacade) {
+        getFacade(projectPath)
+          .detectOrphanedFeatures(features)
           .then((orphanedFeatures) => {
             if (orphanedFeatures.length > 0) {
               logger.info(

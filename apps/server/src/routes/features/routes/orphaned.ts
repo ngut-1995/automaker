@@ -9,7 +9,7 @@ import path from 'path';
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
 import type { FeatureTransitioner } from '../../../services/feature-record.js';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { getErrorMessage, logError } from '../common.js';
 import { execGitCommand } from '../../../lib/git.js';
 import { deleteWorktreeMetadata } from '../../../lib/worktree-metadata.js';
@@ -22,7 +22,7 @@ const VALID_ACTIONS: ResolveAction[] = ['delete', 'create-worktree', 'move-to-br
 
 export function createOrphanedListHandler(
   featureLoader: FeatureLoader,
-  autoModeService?: AutoModeServiceCompat
+  getFacade?: FacadeProvider
 ) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
@@ -33,12 +33,12 @@ export function createOrphanedListHandler(
         return;
       }
 
-      if (!autoModeService) {
+      if (!getFacade) {
         res.status(500).json({ success: false, error: 'Auto-mode service not available' });
         return;
       }
 
-      const orphanedFeatures = await autoModeService.detectOrphanedFeatures(projectPath);
+      const orphanedFeatures = await getFacade(projectPath).detectOrphanedFeatures();
 
       res.json({ success: true, orphanedFeatures });
     } catch (error) {

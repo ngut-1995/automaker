@@ -4,8 +4,6 @@ import os from 'os';
 import path from 'path';
 import type { Feature } from '@automaker/types';
 import { GlobalAutoModeService } from '@/services/auto-mode/global-service.js';
-import { AutoModeServiceCompat } from '@/services/auto-mode/compat.js';
-import { AutoModeFacadeCache } from '@/services/auto-mode/facade-cache.js';
 import { FeatureLoader } from '@/services/feature-loader.js';
 import { createEventEmitter, type EventEmitter } from '@/lib/events.js';
 
@@ -108,10 +106,9 @@ describe('GlobalAutoModeService', () => {
       expect(await readStatus(projectB, FEATURE_B)).toBe('interrupted');
     });
 
-    it('marks features across projects through the shutdown shim', async () => {
+    it('marks features across projects through the shutdown path', async () => {
       const loader = new FeatureLoader();
       const globalService = new GlobalAutoModeService(events, null, loader);
-      const compat = new AutoModeServiceCompat(globalService, new AutoModeFacadeCache({ events }));
 
       await seedFeature(projectA, makeFeature(FEATURE_A, 'in_progress'));
       await seedFeature(projectB, makeFeature(FEATURE_B, 'in_progress'));
@@ -120,7 +117,7 @@ describe('GlobalAutoModeService', () => {
       concurrencyManager.acquire({ featureId: FEATURE_A, projectPath: projectA, isAutoMode: true });
       concurrencyManager.acquire({ featureId: FEATURE_B, projectPath: projectB, isAutoMode: true });
 
-      await compat.markAllRunningFeaturesInterrupted('SIGTERM signal received');
+      await globalService.markAllRunningFeaturesInterrupted('SIGTERM signal received');
 
       expect(await readStatus(projectA, FEATURE_A)).toBe('interrupted');
       expect(await readStatus(projectB, FEATURE_B)).toBe('interrupted');

@@ -56,11 +56,7 @@ import {
 import { createSettingsRoutes } from './routes/settings/index.js';
 import { AgentService } from './services/agent-service.js';
 import { FeatureLoader } from './services/feature-loader.js';
-import {
-  AutoModeFacadeCache,
-  AutoModeServiceCompat,
-  GlobalAutoModeService,
-} from './services/auto-mode/index.js';
+import { AutoModeFacadeCache, GlobalAutoModeService } from './services/auto-mode/index.js';
 import { getTerminalService } from './services/terminal-service.js';
 import { SettingsService } from './services/settings-service.js';
 import { createSpecRegenerationRoutes } from './routes/app-spec/index.js';
@@ -330,8 +326,8 @@ const agentService = new AgentService(DATA_DIR, events, settingsService);
 const featureLoader = new FeatureLoader();
 
 // Auto-mode services: the composition root owns the shared global service and
-// the per-project facade cache; the compat shim is just a thin delegating
-// interface for routes.
+// the per-project facade cache. Routes receive the global service or a facade
+// provider directly; there is no compatibility shim.
 const globalAutoModeService = new GlobalAutoModeService(events, settingsService, featureLoader);
 const facadeCache = new AutoModeFacadeCache({
   events,
@@ -339,7 +335,6 @@ const facadeCache = new AutoModeFacadeCache({
   featureLoader,
   sharedServices: globalAutoModeService.getSharedServices(),
 });
-const autoModeService = new AutoModeServiceCompat(globalAutoModeService, facadeCache);
 const claudeUsageService = new ClaudeUsageService();
 const codexAppServerService = new CodexAppServerService();
 const codexModelCacheService = new CodexModelCacheService(DATA_DIR, codexAppServerService);
@@ -427,7 +422,7 @@ eventHookService.initialize(events, settingsService, eventHistoryService, featur
       if (globalSettings.projects && globalSettings.projects.length > 0) {
         let totalReconciled = 0;
         for (const project of globalSettings.projects) {
-          const count = await autoModeService.reconcileFeatureStates(project.path);
+          const count = await globalAutoModeService.reconcileFeatureStates(project.path);
           totalReconciled += count;
         }
         if (totalReconciled > 0) {
@@ -442,12 +437,15 @@ eventHookService.initialize(events, settingsService, eventHistoryService, featur
         // This handles features stuck in transient states (in_progress, pipeline_*)
         // or explicitly marked as interrupted. Running in background so it doesn't block startup.
         for (const project of globalSettings.projects) {
-          autoModeService.resumeInterruptedFeatures(project.path).catch((err) => {
-            logger.warn(
-              `[STARTUP] Failed to resume interrupted features for ${project.path}:`,
-              err
-            );
-          });
+          facadeCache
+            .getFacade(project.path)
+            .resumeInterruptedFeatures()
+            .catch((err) => {
+              logger.warn(
+                `[STARTUP] Failed to resume interrupted features for ${project.path}:`,
+                err
+              );
+            });
         }
         logger.info('[STARTUP] Initiated background resume of interrupted features');
       }
@@ -495,7 +493,13 @@ app.use('/api/agent', createAgentRoutes(agentService, events));
 app.use('/api/sessions', createSessionsRoutes(agentService));
 app.use(
   '/api/features',
-  createFeaturesRoutes(featureLoader, settingsService, events, autoModeService)
+  createFeaturesRoutes(
+    featureLoader,
+    settingsService,
+    events,
+    (p) => facadeCache.getFacade(p),
+    globalAutoModeService.getSharedServices().featureRecord
+  )
 );
 app.use(
   '/api/auto-mode',
@@ -972,7 +976,7 @@ const gracefulShutdown = async (signal: string) => {
   // Mark all running features as interrupted before shutdown
   // This ensures they can be resumed when the server restarts
   // Note: markAllRunningFeaturesInterrupted handles errors internally and never rejects
-  await autoModeService.markAllRunningFeaturesInterrupted(`${signal} signal received`);
+  await globalAutoModeService.markAllRunningFeaturesInterrupted(`${signal} signal received`);
 
   terminalService.cleanup();
   server.close(() => {
