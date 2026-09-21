@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { useOSDetection } from '@/hooks';
-import { apiPost } from '@/lib/api-fetch';
+import { getHttpApiClient } from '@/lib/http-api-client';
 import { cn } from '@/lib/utils';
 
 interface ProjectFileEntry {
@@ -30,15 +30,6 @@ interface ProjectFileEntry {
   relativePath: string;
   isDirectory: boolean;
   isFile: boolean;
-}
-
-interface BrowseResult {
-  success: boolean;
-  currentRelativePath: string;
-  parentRelativePath: string | null;
-  entries: ProjectFileEntry[];
-  warning?: string;
-  error?: string;
 }
 
 interface ProjectFileSelectorDialogProps {
@@ -96,17 +87,17 @@ export function ProjectFileSelectorDialog({
       setSearchQuery('');
 
       try {
-        const result = await apiPost<BrowseResult>('/api/fs/browse-project-files', {
+        const result = await getHttpApiClient().fs.browseProjectFiles(
           projectPath,
-          relativePath: relativePath || '',
-        });
+          relativePath || ''
+        );
 
         if (isCancelled()) return;
 
         if (result.success) {
-          setCurrentRelativePath(result.currentRelativePath);
-          setParentRelativePath(result.parentRelativePath);
-          setEntries(result.entries);
+          setCurrentRelativePath(result.currentRelativePath ?? '');
+          setParentRelativePath(result.parentRelativePath ?? null);
+          setEntries(result.entries ?? []);
           setWarning(result.warning || '');
         } else {
           setError(result.error || 'Failed to browse directory');

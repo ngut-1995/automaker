@@ -22,6 +22,19 @@ export type OperationHandlers = Partial<Record<OperationName, RequestHandler>>;
  */
 export type OperationMiddleware = Partial<Record<OperationName, RequestHandler[]>>;
 
+/**
+ * Controls which of a mount's contract operations a registration covers.
+ *
+ * A mount's operations may be split across two routers when they need
+ * different middleware (e.g. `/api/health`: check and environment are
+ * unauthenticated, `detailed` sits behind auth). `operations` selects the
+ * subset a given router registers; the handler map must still cover the whole
+ * mount, so an omission is caught rather than silently dropped.
+ */
+export interface RegisterContractOptions {
+  operations?: readonly OperationName[];
+}
+
 /** Contract operations for a mount that the given handlers do not cover. */
 export function missingContractHandlers(
   mount: string,
@@ -43,7 +56,8 @@ export function registerContractOperations(
   router: Router,
   mount: string,
   handlers: OperationHandlers,
-  middleware: OperationMiddleware = {}
+  middleware: OperationMiddleware = {},
+  options: RegisterContractOptions = {}
 ): Router {
   const missing = missingContractHandlers(mount, handlers);
   if (missing.length > 0) {
@@ -52,9 +66,18 @@ export function registerContractOperations(
     );
   }
 
-  for (const name of Object.keys(OPERATIONS) as OperationName[]) {
+  const explicit = options.operations;
+  const names = explicit ?? (Object.keys(OPERATIONS) as OperationName[]);
+
+  for (const name of names) {
     const definition: OperationDefinition<unknown, unknown> = OPERATIONS[name];
-    if (definition.mount !== mount) continue;
+    if (definition.mount !== mount) {
+      // A caller-supplied subset naming another mount is a mistake, not a skip.
+      if (explicit) {
+        throw new Error(`Operation ${name} does not belong to mount ${mount}`);
+      }
+      continue;
+    }
 
     const handler = handlers[name];
     if (!handler) continue;

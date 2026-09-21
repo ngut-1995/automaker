@@ -13,15 +13,7 @@
 
 import { useReducer, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import {
-  login,
-  getHttpApiClient,
-  getServerUrlSync,
-  getApiKey,
-  getSessionToken,
-  initApiKey,
-  waitForApiKeyInit,
-} from '@/lib/http-api-client';
+import { login, getHttpApiClient, initApiKey } from '@/lib/http-api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { KeyRound, AlertCircle, RefreshCw, ServerCrash } from 'lucide-react';
@@ -101,7 +93,6 @@ function reducer(state: State, action: Action): State {
 
 const MAX_RETRIES = 5;
 const BACKOFF_BASE_MS = 400;
-const NO_STORE_CACHE_MODE: RequestCache = 'no-store';
 
 // =============================================================================
 // Imperative Flow Logic (runs once on mount)
@@ -120,37 +111,14 @@ const NO_STORE_CACHE_MODE: RequestCache = 'no-store';
  * Throws: on network errors (for retry logic)
  */
 async function checkAuthStatusSafe(): Promise<{ authenticated: boolean }> {
-  const serverUrl = getServerUrlSync();
-
-  // Wait for API key to be initialized before checking auth
-  // This ensures we have a valid API key to send in the header
-  await waitForApiKeyInit();
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // Electron mode: use API key header
-  const apiKey = getApiKey();
-  if (apiKey) {
-    headers['X-API-Key'] = apiKey;
-  }
-
-  // Add session token header if available (web mode)
-  const sessionToken = getSessionToken();
-  if (sessionToken) {
-    headers['X-Session-Token'] = sessionToken;
-  }
-
-  const response = await fetch(`${serverUrl}/api/auth/status`, {
-    headers,
-    credentials: 'include',
+  // Contract-backed status call. `allowUnauthorized` keeps a 401/403 from
+  // triggering the global logout redirect: this is the login screen, and we
+  // only need to know whether the session is already valid.
+  const data = await getHttpApiClient().auth.status({
     signal: AbortSignal.timeout(5000),
-    cache: NO_STORE_CACHE_MODE,
+    allowUnauthorized: true,
   });
 
-  // Any response means server is reachable
-  const data = await response.json();
   return { authenticated: data.authenticated === true };
 }
 

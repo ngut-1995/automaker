@@ -2577,6 +2577,31 @@ export interface HealthEnvironmentResponse {
   skipSandboxWarning?: boolean;
 }
 
+export type HealthDetailedRequest = Record<string, never>;
+export interface HealthDetailedResponse {
+  status: string;
+  timestamp: string;
+  version: string;
+  uptime: number;
+  memory: {
+    rss: number;
+    heapTotal: number;
+    heapUsed: number;
+    external: number;
+    arrayBuffers: number;
+  };
+  dataDir: string;
+  auth: {
+    enabled: boolean;
+    method: string;
+  };
+  env: {
+    nodeVersion: string;
+    platform: string;
+    arch: string;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Auth mount (/api/auth)
 // ---------------------------------------------------------------------------
@@ -3375,9 +3400,15 @@ export interface SetupOpencodeModelInfo {
   tier: string;
   default?: boolean;
 }
+
+/**
+ * The OpenCode models handler returns full `ModelDefinition`s from the
+ * provider, so the response carries that shape rather than the narrower
+ * `SetupOpencodeModelInfo` projection.
+ */
 export interface SetupOpencodeModelsResponse {
   success: boolean;
-  models?: SetupOpencodeModelInfo[];
+  models?: ModelDefinition[];
   count?: number;
   cached?: boolean;
   error?: string;
@@ -4898,6 +4929,15 @@ export const OPERATIONS = {
     path: '/environment',
     request: null as unknown as HealthEnvironmentRequest,
     response: null as unknown as HealthEnvironmentResponse,
+  },
+  // Authenticated: registered on a second router mounted at /api/health *after*
+  // the auth middleware so it keeps its current protection.
+  'health.detailed': {
+    method: 'GET',
+    mount: '/api/health',
+    path: '/detailed',
+    request: null as unknown as HealthDetailedRequest,
+    response: null as unknown as HealthDetailedResponse,
   },
   'auth.status': {
     method: 'GET',

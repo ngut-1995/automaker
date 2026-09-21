@@ -34,7 +34,7 @@ import { authMiddleware, validateWsConnectionToken, checkRawAuthentication } fro
 import { requireJsonContentType } from './middleware/require-json-content-type.js';
 import { createAuthRoutes } from './routes/auth/index.js';
 import { createFsRoutes } from './routes/fs/index.js';
-import { createHealthRoutes, createDetailedHandler } from './routes/health/index.js';
+import { createHealthRoutes, createHealthDetailedRoutes } from './routes/health/index.js';
 import { createAgentRoutes } from './routes/agent/index.js';
 import { createSessionsRoutes } from './routes/sessions/index.js';
 import { createFeaturesRoutes } from './routes/features/index.js';
@@ -88,6 +88,7 @@ import { createEventHistoryRoutes } from './routes/event-history/index.js';
 import { getEventHistoryService } from './services/event-history-service.js';
 import { getTestRunnerService } from './services/test-runner-service.js';
 import { createProjectsRoutes } from './routes/projects/index.js';
+import { assertUniqueOperations } from '@automaker/types';
 
 // Load environment variables
 dotenv.config();
@@ -461,6 +462,9 @@ setInterval(() => {
 // This helps prevent CSRF and content-type confusion attacks
 app.use('/api', requireJsonContentType);
 
+// Fail fast if two contract operations claim the same method and path.
+assertUniqueOperations();
+
 // Mount API routes - health, auth, and setup are unauthenticated
 app.use('/api/health', createHealthRoutes());
 app.use('/api/auth', createAuthRoutes());
@@ -469,8 +473,9 @@ app.use('/api/setup', createSetupRoutes());
 // Apply authentication to all other routes
 app.use('/api', authMiddleware);
 
-// Protected health endpoint with detailed info
-app.get('/api/health/detailed', createDetailedHandler());
+// Protected health endpoint with detailed info, registered from the contract
+// after the auth middleware so it keeps its current protection.
+app.use('/api/health', createHealthDetailedRoutes());
 
 app.use('/api/fs', createFsRoutes(events));
 app.use('/api/agent', createAgentRoutes(agentService, events));

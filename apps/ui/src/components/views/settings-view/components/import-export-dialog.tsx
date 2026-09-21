@@ -9,18 +9,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { JsonSyntaxEditor } from '@/components/ui/json-syntax-editor';
-import { apiGet, apiPut } from '@/lib/api-fetch';
+import { getHttpApiClient } from '@/lib/http-api-client';
 import { toast } from 'sonner';
-import type { GlobalSettings } from '@automaker/types';
 
 interface ImportExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-interface SettingsResponse {
-  success: boolean;
-  settings: GlobalSettings;
 }
 
 export function ImportExportDialog({ open, onOpenChange }: ImportExportDialogProps) {
@@ -41,8 +35,8 @@ export function ImportExportDialog({ open, onOpenChange }: ImportExportDialogPro
   const loadSettings = async () => {
     setIsLoading(true);
     try {
-      const response = await apiGet<SettingsResponse>('/api/settings/global');
-      if (response.success) {
+      const response = await getHttpApiClient().settings.getGlobal();
+      if (response.success && response.settings) {
         const formatted = JSON.stringify(response.settings, null, 2);
         setJsonValue(formatted);
         setOriginalValue(formatted);
@@ -87,8 +81,8 @@ export function ImportExportDialog({ open, onOpenChange }: ImportExportDialogPro
     setIsSaving(true);
     try {
       const settings = JSON.parse(jsonValue);
-      const response = await apiPut<SettingsResponse>('/api/settings/global', settings);
-      if (response.success) {
+      const response = await getHttpApiClient().settings.updateGlobal(settings);
+      if (response.success && response.settings) {
         const formatted = JSON.stringify(response.settings, null, 2);
         setJsonValue(formatted);
         setOriginalValue(formatted);

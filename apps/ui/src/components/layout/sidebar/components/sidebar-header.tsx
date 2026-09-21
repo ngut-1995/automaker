@@ -8,7 +8,7 @@ import { formatShortcut } from '@/store/app-store';
 import { isElectron, type Project } from '@/lib/electron';
 import { initializeProject } from '@/lib/project-init';
 import { MACOS_ELECTRON_TOP_PADDING_CLASS } from '../constants';
-import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
+import { getHttpApiClient } from '@/lib/http-api-client';
 import { useAppStore } from '@/store/app-store';
 import {
   DropdownMenu,
@@ -86,7 +86,7 @@ export function SidebarHeader({
     if (project.customIconPath) {
       return (
         <img
-          src={getAuthenticatedImageUrl(project.customIconPath, project.path)}
+          src={getHttpApiClient().fs.getImageUrl(project.customIconPath, project.path)}
           alt={project.name}
           className={cn(sizeClasses, 'rounded-lg object-cover ring-1 ring-border/50')}
         />

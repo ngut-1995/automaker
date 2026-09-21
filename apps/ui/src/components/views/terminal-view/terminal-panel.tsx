@@ -51,7 +51,7 @@ import {
 import { DEFAULT_FONT_VALUE } from '@/config/ui-font-options';
 import { toast } from 'sonner';
 import { getElectronAPI } from '@/lib/electron';
-import { getApiKey, getSessionToken, getServerUrlSync } from '@/lib/http-api-client';
+import { getApiKey, getHttpApiClient, getServerUrlSync } from '@/lib/http-api-client';
 import { writeToClipboard, readFromClipboard } from '@/lib/clipboard-utils';
 import { useIsMobile, useIsTablet } from '@/hooks/use-media-query';
 import { useVirtualKeyboardResize } from '@/hooks/use-virtual-keyboard-resize';
@@ -60,7 +60,6 @@ import { applyStickyModifier, type StickyModifier } from './sticky-modifier-keys
 import { TerminalScriptsDropdown } from './terminal-scripts-dropdown';
 
 const logger = createLogger('Terminal');
-const NO_STORE_CACHE_MODE: RequestCache = 'no-store';
 
 // Font size constraints
 const MIN_FONT_SIZE = 8;
@@ -626,30 +625,12 @@ export function TerminalPanel({
   const serverUrl = import.meta.env.VITE_SERVER_URL || getServerUrlSync();
   const wsUrl = serverUrl.replace(/^http/, 'ws');
 
-  // Fetch a short-lived WebSocket token for secure authentication
+  // Fetch a short-lived WebSocket token for secure authentication.
+  // `allowUnauthorized` keeps a 401/403 from triggering the global logout
+  // cascade while the terminal is merely reconnecting.
   const fetchWsToken = useCallback(async (): Promise<string | null> => {
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      const sessionToken = getSessionToken();
-      if (sessionToken) {
-        headers['X-Session-Token'] = sessionToken;
-      }
-
-      const response = await fetch(`${serverUrl}/api/auth/token`, {
-        headers,
-        credentials: 'include',
-        cache: NO_STORE_CACHE_MODE,
-      });
-
-      if (!response.ok) {
-        logger.warn('Failed to fetch wsToken:', response.status);
-        return null;
-      }
-
-      const data = await response.json();
+      const data = await getHttpApiClient().auth.token({ allowUnauthorized: true });
       if (data.success && data.token) {
         return data.token;
       }
@@ -659,7 +640,7 @@ export function TerminalPanel({
       logger.error('Error fetching wsToken:', error);
       return null;
     }
-  }, [serverUrl]);
+  }, []);
 
   // Draggable - only the drag handle triggers drag
   const {

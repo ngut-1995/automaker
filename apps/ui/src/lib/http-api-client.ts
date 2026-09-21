@@ -67,6 +67,37 @@ const logger = createLogger('HttpClient');
 const NO_STORE_CACHE_MODE: RequestCache = 'no-store';
 
 /**
+ * Error thrown for a non-ok HTTP response. Carries the status and the parsed
+ * body so callers (e.g. the terminal session-limit flow) can react to a
+ * specific server response without re-implementing the transport.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+
+  constructor(message: string, status: number, body?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+/** Options accepted by the shared transport and the JSON helpers on top of it. */
+interface TransportOptions {
+  body?: unknown;
+  signal?: AbortSignal;
+  /** Extra headers merged over the auth headers (e.g. X-Terminal-Token). */
+  headers?: Record<string, string>;
+  /**
+   * When true, a 401/403 is returned to the caller instead of triggering the
+   * global logout cascade. Used by the auth-bootstrap flows, which must not
+   * redirect the user mid-login.
+   */
+  allowUnauthorized?: boolean;
+}
+
+/**
  * Append a request object to a path as a query string (used by GET operations).
  * Undefined and null values are omitted.
  */
@@ -109,6 +140,14 @@ const queryInputWithoutPathParams = (path: string, input: unknown): unknown => {
   return rest;
 };
 
+/**
+ * Build the header that carries a terminal session token. Terminal operations
+ * below the public status/auth/logout routes are protected by
+ * `terminalAuthMiddleware`, which reads `X-Terminal-Token`.
+ */
+const terminalTokenHeaders = (token?: string): Record<string, string> | undefined =>
+  token ? { 'X-Terminal-Token': token } : undefined;
+
 // Cached server URL (set during initialization in Electron mode)
 let cachedServerUrl: string | null = null;
 
@@ -125,21 +164,27 @@ const notifyLoggedOut = (): void => {
   }
 };
 
+/** Guards the logout call inside handleUnauthorized against re-entry. */
+let handlingUnauthorized = false;
+
 /**
  * Handle an unauthorized response in cookie/session auth flows.
  * Clears in-memory token and attempts to clear the cookie (best-effort),
- * then notifies the UI to redirect.
+ * then notifies the UI to redirect. The logout goes through the contract-
+ * backed client; the transport used there does not re-enter this handler.
  */
 const handleUnauthorized = (): void => {
   clearSessionToken();
   // Best-effort cookie clear (avoid throwing)
-  fetch(`${getServerUrl()}/api/auth/logout`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: '{}',
-    cache: NO_STORE_CACHE_MODE,
-  }).catch(() => {});
+  if (!handlingUnauthorized) {
+    handlingUnauthorized = true;
+    void getHttpApiClient()
+      .logout()
+      .catch(() => {})
+      .finally(() => {
+        handlingUnauthorized = false;
+      });
+  }
   notifyLoggedOut();
 };
 
@@ -200,15 +245,9 @@ export const handleServerOffline = (): void => {
   setTimeout(() => {
     (async () => {
       try {
-        const response = await fetch(`${getServerUrl()}/api/health`, {
-          method: 'GET',
-          cache: NO_STORE_CACHE_MODE,
-          signal: AbortSignal.timeout(5000),
-        });
-        if (response.ok) {
-          logger.info('Server health check passed, ignoring transient connection error');
-          return;
-        }
+        await getHttpApiClient().health.check(AbortSignal.timeout(5000));
+        logger.info('Server health check passed, ignoring transient connection error');
+        return;
       } catch {
         // Health check failed - server is genuinely offline
       }
@@ -423,220 +462,51 @@ export const initApiKey = async (): Promise<void> => {
 };
 
 /**
- * Check authentication status with the server
+ * Check authentication status with the server.
+ * Delegates to the contract-backed client method.
  */
-export const checkAuthStatus = async (): Promise<{
+export const checkAuthStatus = (): Promise<{
   authenticated: boolean;
   required: boolean;
-}> => {
-  try {
-    const response = await fetch(`${getServerUrl()}/api/auth/status`, {
-      credentials: 'include',
-      headers: getApiKey() ? { 'X-API-Key': getApiKey()! } : undefined,
-      cache: NO_STORE_CACHE_MODE,
-    });
-    const data = await response.json();
-    return {
-      authenticated: data.authenticated ?? false,
-      required: data.required ?? true,
-    };
-  } catch (error) {
-    logger.error('Failed to check auth status:', error);
-    return { authenticated: false, required: true };
-  }
-};
+}> => getHttpApiClient().checkAuthStatus();
 
 /**
- * Login with API key (for web mode)
- * After login succeeds, verifies the session is actually working by making
- * a request to an authenticated endpoint.
+ * Login with API key (for web mode).
+ * Delegates to the contract-backed client method, which stores the session
+ * token and verifies the session after a successful login.
  */
-export const login = async (
+export const login = (
   apiKey: string
-): Promise<{ success: boolean; error?: string; token?: string }> => {
-  try {
-    const response = await fetch(`${getServerUrl()}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ apiKey }),
-      cache: NO_STORE_CACHE_MODE,
-    });
-    const data = await response.json();
-
-    // Store the session token if login succeeded
-    if (data.success && data.token) {
-      setSessionToken(data.token);
-      logger.info('Session token stored after login');
-
-      // Verify the session is actually working by making a request to an authenticated endpoint
-      const verified = await verifySession();
-      if (!verified) {
-        logger.error('Login appeared successful but session verification failed');
-        return {
-          success: false,
-          error: 'Session verification failed. Please try again.',
-        };
-      }
-      logger.info('Login verified successfully');
-    }
-
-    return data;
-  } catch (error) {
-    logger.error('Login failed:', error);
-    return { success: false, error: 'Network error' };
-  }
-};
+): Promise<{ success: boolean; error?: string; token?: string }> =>
+  getHttpApiClient().login(apiKey);
 
 /**
- * Check if the session cookie is still valid by making a request to an authenticated endpoint.
- * Note: This does NOT retrieve the session token - on page refresh we rely on cookies alone.
- * The session token is only available after a fresh login.
+ * Check if the session cookie is still valid.
+ * Delegates to the contract-backed client method.
  */
-export const fetchSessionToken = async (): Promise<boolean> => {
-  // On page refresh, we can't retrieve the session token (it's stored in HTTP-only cookie).
-  // We just verify the cookie is valid by checking auth status.
-  // The session token is only stored in memory after a fresh login.
-  try {
-    const response = await fetch(`${getServerUrl()}/api/auth/status`, {
-      credentials: 'include', // Send the session cookie
-      cache: NO_STORE_CACHE_MODE,
-    });
-
-    if (!response.ok) {
-      logger.info('Failed to check auth status');
-      return false;
-    }
-
-    const data = await response.json();
-    if (data.success && data.authenticated) {
-      logger.info('Session cookie is valid');
-      return true;
-    }
-
-    logger.info('Session cookie is not authenticated');
-    return false;
-  } catch (error) {
-    logger.error('Failed to check session:', error);
-    return false;
-  }
-};
+export const fetchSessionToken = (): Promise<boolean> => getHttpApiClient().fetchSessionToken();
 
 /**
- * Logout (for web mode)
+ * Logout (for web mode).
+ * Delegates to the contract-backed client method.
  */
-export const logout = async (): Promise<{ success: boolean }> => {
-  try {
-    const response = await fetch(`${getServerUrl()}/api/auth/logout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      cache: NO_STORE_CACHE_MODE,
-    });
-
-    // Clear the cached session token
-    clearSessionToken();
-    logger.info('Session token cleared on logout');
-
-    return await response.json();
-  } catch (error) {
-    logger.error('Logout failed:', error);
-    return { success: false };
-  }
-};
+export const logout = (): Promise<{ success: boolean }> => getHttpApiClient().logout();
 
 /**
- * Verify that the current session is still valid by making a request to an authenticated endpoint.
- * If the session has expired or is invalid, clears the session and returns false.
- * This should be called:
- * 1. After login to verify the cookie was set correctly
- * 2. On app load to verify the session hasn't expired
- *
- * Returns:
- * - true: Session is valid
- * - false: Session is definitively invalid (401/403 auth failure)
- * - throws: Network error or server not ready (caller should retry)
+ * Verify that the current session is still valid.
+ * Delegates to the contract-backed client method.
  */
-export const verifySession = async (): Promise<boolean> => {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // Electron mode: use API key header
-  const apiKey = getApiKey();
-  if (apiKey) {
-    headers['X-API-Key'] = apiKey;
-  }
-
-  // Add session token header if available (web mode)
-  const sessionToken = getSessionToken();
-  if (sessionToken) {
-    headers['X-Session-Token'] = sessionToken;
-  }
-
-  // Make a request to an authenticated endpoint to verify the session
-  // We use /api/settings/status as it requires authentication and is lightweight
-  // Note: fetch throws on network errors, which we intentionally let propagate
-  const response = await fetch(`${getServerUrl()}/api/settings/status`, {
-    headers,
-    credentials: 'include',
-    cache: NO_STORE_CACHE_MODE,
-    // Avoid hanging indefinitely during backend reloads or network issues
-    signal: AbortSignal.timeout(2500),
-  });
-
-  // Check for authentication errors - these are definitive "invalid session" responses
-  if (response.status === 401 || response.status === 403) {
-    logger.warn('Session verification failed - session expired or invalid');
-    // Clear the in-memory/localStorage session token since it's no longer valid
-    // Note: We do NOT call logout here - that would destroy a potentially valid
-    // cookie if the issue was transient (e.g., token not sent due to timing)
-    clearSessionToken();
-    return false;
-  }
-
-  // For other non-ok responses (5xx, etc.), throw to trigger retry
-  if (!response.ok) {
-    const error = new Error(`Session verification failed with status: ${response.status}`);
-    logger.warn('Session verification failed with status:', response.status);
-    throw error;
-  }
-
-  logger.info('Session verified successfully');
-  return true;
-};
+export const verifySession = (): Promise<boolean> => getHttpApiClient().verifySession();
 
 /**
  * Check if the server is running in a containerized (sandbox) environment.
- * This endpoint is unauthenticated so it can be checked before login.
+ * Delegates to the contract-backed client method.
  */
-export const checkSandboxEnvironment = async (): Promise<{
+export const checkSandboxEnvironment = (): Promise<{
   isContainerized: boolean;
   skipSandboxWarning?: boolean;
   error?: string;
-}> => {
-  try {
-    const response = await fetch(`${getServerUrl()}/api/health/environment`, {
-      method: 'GET',
-      cache: NO_STORE_CACHE_MODE,
-      signal: AbortSignal.timeout(5000),
-    });
-
-    if (!response.ok) {
-      logger.warn('Failed to check sandbox environment');
-      return { isContainerized: false, error: 'Failed to check environment' };
-    }
-
-    const data = await response.json();
-    return {
-      isContainerized: data.isContainerized ?? false,
-      skipSandboxWarning: data.skipSandboxWarning ?? false,
-    };
-  } catch (error) {
-    logger.error('Sandbox environment check failed:', error);
-    return { isContainerized: false, error: 'Network error' };
-  }
-};
+}> => getHttpApiClient().checkSandboxEnvironment();
 
 /**
  * Dev server log event payloads for WebSocket streaming
@@ -828,20 +698,8 @@ export class HttpApiClient implements ElectronAPI {
    */
   private async fetchWsToken(options?: { silent?: boolean }): Promise<string | null> {
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      // Add session token header if available
-      const sessionToken = getSessionToken();
-      if (sessionToken) {
-        headers['X-Session-Token'] = sessionToken;
-      }
-
-      const response = await fetch(`${this.serverUrl}/api/auth/token`, {
-        headers,
-        credentials: 'include',
-        cache: NO_STORE_CACHE_MODE,
+      const response = await this.transport(operationPath('auth.token'), 'GET', {
+        allowUnauthorized: true,
       });
 
       if (response.status === 401 || response.status === 403) {
@@ -1054,134 +912,80 @@ export class HttpApiClient implements ElectronAPI {
     return headers;
   }
 
-  private async post<T>(endpoint: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  /**
+   * The one low-level transport. Every HTTP request the client makes goes
+   * through here (JSON helpers, contract-backed calls and the streaming
+   * download); the `fetch` call lives in this method and nowhere else.
+   *
+   * A 401/403 triggers the global logout cascade unless the caller opts out
+   * with `allowUnauthorized` (used by the auth-bootstrap flows).
+   */
+  private async transport(
+    endpoint: string,
+    method: string,
+    options: TransportOptions = {}
+  ): Promise<Response> {
     // Ensure API key is initialized before making request
     await waitForApiKeyInit();
     const response = await fetch(`${this.serverUrl}${endpoint}`, {
-      method: 'POST',
-      headers: this.getHeaders(),
+      method,
+      headers: { ...this.getHeaders(), ...options.headers },
       credentials: 'include', // Include cookies for session auth
-      body: body ? JSON.stringify(body) : undefined,
-      signal,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      ...(method === 'GET' ? { cache: NO_STORE_CACHE_MODE } : {}),
+      signal: options.signal,
     });
 
-    if (response.status === 401 || response.status === 403) {
+    if (!options.allowUnauthorized && (response.status === 401 || response.status === 403)) {
       handleUnauthorized();
       throw new Error('Unauthorized');
     }
 
+    return response;
+  }
+
+  /** Parse a JSON response, surfacing the server's error message as an ApiError. */
+  private async parseJson<T>(response: Response): Promise<T> {
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      let errorBody: unknown;
       try {
         const errorData = await response.json();
+        errorBody = errorData;
         if (errorData.error) {
           errorMessage = errorData.error;
         }
       } catch {
         // If parsing JSON fails, use status text
       }
-      throw new Error(errorMessage);
+      throw new ApiError(errorMessage, response.status, errorBody);
     }
 
     return response.json();
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    // Ensure API key is initialized before making request
-    await waitForApiKeyInit();
-    const response = await fetch(`${this.serverUrl}${endpoint}`, {
-      headers: this.getHeaders(),
-      credentials: 'include', // Include cookies for session auth
-      cache: NO_STORE_CACHE_MODE,
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      handleUnauthorized();
-      throw new Error('Unauthorized');
-    }
-
-    if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      } catch {
-        // If parsing JSON fails, use status text
-      }
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
+  private async post<T>(endpoint: string, body?: unknown, options?: TransportOptions): Promise<T> {
+    return this.parseJson<T>(await this.transport(endpoint, 'POST', { ...options, body }));
   }
 
-  async put<T>(endpoint: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-    // Ensure API key is initialized before making request
-    await waitForApiKeyInit();
-    const response = await fetch(`${this.serverUrl}${endpoint}`, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      credentials: 'include', // Include cookies for session auth
-      body: body ? JSON.stringify(body) : undefined,
-      signal,
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      handleUnauthorized();
-      throw new Error('Unauthorized');
-    }
-
-    if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      } catch {
-        // If parsing JSON fails, use status text
-      }
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
+  async get<T>(endpoint: string, options?: TransportOptions): Promise<T> {
+    return this.parseJson<T>(await this.transport(endpoint, 'GET', options));
   }
 
-  private async httpDelete<T>(endpoint: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-    // Ensure API key is initialized before making request
-    await waitForApiKeyInit();
-    const response = await fetch(`${this.serverUrl}${endpoint}`, {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-      credentials: 'include', // Include cookies for session auth
-      body: body ? JSON.stringify(body) : undefined,
-      signal,
-    });
+  private async put<T>(endpoint: string, body?: unknown, options?: TransportOptions): Promise<T> {
+    return this.parseJson<T>(await this.transport(endpoint, 'PUT', { ...options, body }));
+  }
 
-    if (response.status === 401 || response.status === 403) {
-      handleUnauthorized();
-      throw new Error('Unauthorized');
-    }
-
-    if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      } catch {
-        // If parsing JSON fails, use status text
-      }
-      throw new Error(errorMessage);
-    }
-
-    return response.json();
+  private async httpDelete<T>(
+    endpoint: string,
+    body?: unknown,
+    options?: TransportOptions
+  ): Promise<T> {
+    return this.parseJson<T>(await this.transport(endpoint, 'DELETE', { ...options, body }));
   }
 
   /**
-   * The single transport method behind every contract-backed client call.
+   * The single contract-backed request method.
    *
    * It resolves the path from the contract and types the result by the
    * operation's declared response shape, so a path can never drift from its
@@ -1190,7 +994,7 @@ export class HttpApiClient implements ElectronAPI {
   private async request<N extends OperationName>(
     name: N,
     input?: RequestOf<N>,
-    options?: { signal?: AbortSignal }
+    options?: TransportOptions
   ): Promise<ResponseOf<N>> {
     const path = operationPath(name);
     const resolvedPath = resolvePathParams(path, input);
@@ -1198,36 +1002,164 @@ export class HttpApiClient implements ElectronAPI {
     switch (definition.method) {
       case 'GET':
         return this.get<ResponseOf<N>>(
-          appendQuery(resolvedPath, queryInputWithoutPathParams(path, input))
+          appendQuery(resolvedPath, queryInputWithoutPathParams(path, input)),
+          options
         );
       case 'PUT':
-        return this.put<ResponseOf<N>>(resolvedPath, input, options?.signal);
+        return this.put<ResponseOf<N>>(resolvedPath, input, options);
       case 'DELETE':
         // Some DELETE operations take query args (e.g. cursor permissions);
         // path params are stripped so they are not repeated.
         return this.httpDelete<ResponseOf<N>>(
           appendQuery(resolvedPath, queryInputWithoutPathParams(path, input)),
           input,
-          options?.signal
+          options
         );
       default:
-        return this.post<ResponseOf<N>>(resolvedPath, input, options?.signal);
+        return this.post<ResponseOf<N>>(resolvedPath, input, options);
+    }
+  }
+
+  /**
+   * Verify the session by touching a lightweight authenticated operation.
+   * Returns false on 401/403 (clearing the token) and throws on other
+   * failures so the caller can distinguish "invalid" from "transient".
+   */
+  async verifySession(): Promise<boolean> {
+    const response = await this.transport(operationPath('settings.getStatus'), 'GET', {
+      signal: AbortSignal.timeout(2500),
+      allowUnauthorized: true,
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      logger.warn('Session verification failed - session expired or invalid');
+      clearSessionToken();
+      return false;
+    }
+
+    if (!response.ok) {
+      logger.warn('Session verification failed with status:', response.status);
+      throw new Error(`Session verification failed with status: ${response.status}`);
+    }
+
+    logger.info('Session verified successfully');
+    return true;
+  }
+
+  /** Login with an API key, storing and verifying the returned session token. */
+  async login(apiKey: string): Promise<{ success: boolean; error?: string; token?: string }> {
+    try {
+      const response = await this.transport(operationPath('auth.login'), 'POST', {
+        body: { apiKey },
+        allowUnauthorized: true,
+      });
+      const data = await response.json();
+
+      if (data.success && data.token) {
+        setSessionToken(data.token);
+        logger.info('Session token stored after login');
+
+        const verified = await this.verifySession();
+        if (!verified) {
+          logger.error('Login appeared successful but session verification failed');
+          return { success: false, error: 'Session verification failed. Please try again.' };
+        }
+        logger.info('Login verified successfully');
+      }
+
+      return data;
+    } catch (error) {
+      logger.error('Login failed:', error);
+      return { success: false, error: 'Network error' };
+    }
+  }
+
+  /** Logout (web mode): clears the cookie and the cached session token. */
+  async logout(): Promise<{ success: boolean }> {
+    try {
+      const response = await this.transport(operationPath('auth.logout'), 'POST', {
+        allowUnauthorized: true,
+      });
+      clearSessionToken();
+      logger.info('Session token cleared on logout');
+      return await response.json();
+    } catch (error) {
+      logger.error('Logout failed:', error);
+      return { success: false };
+    }
+  }
+
+  /** Check authentication status with the server. */
+  async checkAuthStatus(): Promise<{ authenticated: boolean; required: boolean }> {
+    try {
+      const data = await this.request('auth.status');
+      return {
+        authenticated: data.authenticated ?? false,
+        required: data.required ?? true,
+      };
+    } catch (error) {
+      logger.error('Failed to check auth status:', error);
+      return { authenticated: false, required: true };
+    }
+  }
+
+  /** Check if the session cookie is still valid. */
+  async fetchSessionToken(): Promise<boolean> {
+    try {
+      const data = await this.request('auth.status');
+      if (data.success && data.authenticated) {
+        logger.info('Session cookie is valid');
+        return true;
+      }
+      logger.info('Session cookie is not authenticated');
+      return false;
+    } catch (error) {
+      logger.error('Failed to check session:', error);
+      return false;
+    }
+  }
+
+  /** Check if the server is running in a containerized (sandbox) environment. */
+  async checkSandboxEnvironment(): Promise<{
+    isContainerized: boolean;
+    skipSandboxWarning?: boolean;
+    error?: string;
+  }> {
+    try {
+      const response = await this.transport(operationPath('health.environment'), 'GET', {
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) {
+        logger.warn('Failed to check sandbox environment');
+        return { isContainerized: false, error: 'Failed to check environment' };
+      }
+
+      const data = await response.json();
+      return {
+        isContainerized: data.isContainerized ?? false,
+        skipSandboxWarning: data.skipSandboxWarning ?? false,
+      };
+    } catch (error) {
+      logger.error('Sandbox environment check failed:', error);
+      return { isContainerized: false, error: 'Network error' };
     }
   }
 
   // Health API — derived from the contract.
   health = {
-    check: () => this.request('health.check'),
+    check: (signal?: AbortSignal) => this.request('health.check', undefined, { signal }),
     environment: () => this.request('health.environment'),
+    detailed: () => this.request('health.detailed'),
   };
 
-  // Auth API — derived from the contract. Existing login/logout helpers use a
-  // raw fetch (bypass to be migrated in #57); these are the contract-backed
-  // equivalents.
+  // Auth API — derived from the contract.
   auth = {
-    status: () => this.request('auth.status'),
+    status: (options?: { signal?: AbortSignal; allowUnauthorized?: boolean }) =>
+      this.request('auth.status', undefined, options),
     login: (apiKey: string) => this.request('auth.login', { apiKey }),
-    token: () => this.request('auth.token'),
+    token: (options?: { allowUnauthorized?: boolean }) =>
+      this.request('auth.token', undefined, options),
     logout: () => this.request('auth.logout'),
   };
 
@@ -1408,7 +1340,7 @@ export class HttpApiClient implements ElectronAPI {
   async getPath(name: string): Promise<string> {
     // Server provides data directory
     if (name === 'userData') {
-      const result = await this.get<{ dataDir: string }>('/api/health/detailed');
+      const result = await this.health.detailed();
       return result.dataDir || '/data';
     }
     return `/data/${name}`;
@@ -1452,7 +1384,7 @@ export class HttpApiClient implements ElectronAPI {
     };
     error?: string;
   }> {
-    return this.get('/api/setup/claude-status');
+    return this.setup.getClaudeStatus();
   }
 
   // Model API
@@ -1795,42 +1727,11 @@ export class HttpApiClient implements ElectronAPI {
     }> => this.request('setup.getOpencodeStatus'),
 
     // OpenCode Dynamic Model Discovery
-    getOpencodeModels: (
-      refresh?: boolean
-    ): Promise<{
-      success: boolean;
-      models?: Array<{
-        id: string;
-        name: string;
-        modelString: string;
-        provider: string;
-        description: string;
-        supportsTools: boolean;
-        supportsVision: boolean;
-        tier: string;
-        default?: boolean;
-      }>;
-      count?: number;
-      cached?: boolean;
-      error?: string;
-    }> => this.request('setup.getOpencodeModels', { refresh }),
+    getOpencodeModels: (refresh?: boolean): Promise<ResponseOf<'setup.getOpencodeModels'>> =>
+      this.request('setup.getOpencodeModels', { refresh }),
 
-    refreshOpencodeModels: (): Promise<{
-      success: boolean;
-      models?: Array<{
-        id: string;
-        name: string;
-        modelString: string;
-        provider: string;
-        description: string;
-        supportsTools: boolean;
-        supportsVision: boolean;
-        tier: string;
-        default?: boolean;
-      }>;
-      count?: number;
-      error?: string;
-    }> => this.request('setup.refreshOpencodeModels'),
+    refreshOpencodeModels: (): Promise<ResponseOf<'setup.refreshOpencodeModels'>> =>
+      this.request('setup.refreshOpencodeModels'),
 
     getOpencodeProviders: (): Promise<{
       success: boolean;
@@ -2593,32 +2494,12 @@ export class HttpApiClient implements ElectronAPI {
     ): Promise<WriteResult & { exists?: boolean }> =>
       this.request('fs.move', { sourcePath, destinationPath, overwrite }),
 
-    // The download endpoint streams a file, so it keeps its raw-fetch implementation.
+    // The download endpoint streams a file, so it uses the shared transport
+    // directly (its response is a blob, not JSON).
     downloadItem: async (filePath: string): Promise<void> => {
-      const serverUrl = getServerUrl();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      const apiKey = getApiKey();
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-      const token = getSessionToken();
-      if (token) {
-        headers['X-Session-Token'] = token;
-      }
-
-      const response = await fetch(`${serverUrl}${operationPath('fs.download')}`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
-        body: JSON.stringify({ filePath }),
+      const response = await this.transport(operationPath('fs.download'), 'POST', {
+        body: { filePath },
       });
-
-      if (response.status === 401 || response.status === 403) {
-        handleUnauthorized();
-        throw new Error('Unauthorized');
-      }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Download failed' }));
@@ -2650,20 +2531,36 @@ export class HttpApiClient implements ElectronAPI {
 
     logout: (token?: string) => this.request('terminal.logout', { token }),
 
-    listSessions: () => this.request('terminal.sessions'),
+    listSessions: (token?: string) =>
+      this.request('terminal.sessions', undefined, { headers: terminalTokenHeaders(token) }),
 
-    createSession: (options?: { cwd?: string; cols?: number; rows?: number; shell?: string }) =>
-      this.request('terminal.createSession', options),
+    createSession: (
+      options?: { cwd?: string; cols?: number; rows?: number; shell?: string },
+      token?: string
+    ) =>
+      this.request('terminal.createSession', options, {
+        headers: terminalTokenHeaders(token),
+      }),
 
-    deleteSession: (id: string) => this.request('terminal.deleteSession', { id }),
+    deleteSession: (id: string, token?: string) =>
+      this.request('terminal.deleteSession', { id }, { headers: terminalTokenHeaders(token) }),
 
-    resizeSession: (id: string, cols: number, rows: number) =>
-      this.request('terminal.resizeSession', { id, cols, rows }),
+    resizeSession: (id: string, cols: number, rows: number, token?: string) =>
+      this.request(
+        'terminal.resizeSession',
+        { id, cols, rows },
+        { headers: terminalTokenHeaders(token) }
+      ),
 
-    getSettings: () => this.request('terminal.getSettings'),
+    getSettings: (token?: string) =>
+      this.request('terminal.getSettings', undefined, { headers: terminalTokenHeaders(token) }),
 
-    updateSettings: (maxSessions?: number) =>
-      this.request('terminal.updateSettings', { maxSessions }),
+    updateSettings: (maxSessions?: number, token?: string) =>
+      this.request(
+        'terminal.updateSettings',
+        { maxSessions },
+        { headers: terminalTokenHeaders(token) }
+      ),
   };
 
   // Workspace API

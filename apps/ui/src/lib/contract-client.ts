@@ -208,6 +208,7 @@ export const CLIENT_OPERATION_METHODS: Record<OperationName, ClientMethodRef> = 
   'mcp.listTools': { namespace: 'mcp', method: 'listTools' },
   'health.check': { namespace: 'health', method: 'check' },
   'health.environment': { namespace: 'health', method: 'environment' },
+  'health.detailed': { namespace: 'health', method: 'detailed' },
   'auth.status': { namespace: 'auth', method: 'status' },
   'auth.login': { namespace: 'auth', method: 'login' },
   'auth.token': { namespace: 'auth', method: 'token' },

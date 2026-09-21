@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
-import { apiGet, apiPut, apiDelete } from '@/lib/api-fetch';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';
 import { getHttpApiClient } from '@/lib/http-api-client';
@@ -33,14 +32,6 @@ const EMPTY_FILES: string[] = [];
 
 interface WorktreePreferencesSectionProps {
   project: Project;
-}
-
-interface InitScriptResponse {
-  success: boolean;
-  exists: boolean;
-  content: string;
-  path: string;
-  error?: string;
 }
 
 export function WorktreePreferencesSection({ project }: WorktreePreferencesSectionProps) {
@@ -159,9 +150,7 @@ export function WorktreePreferencesSection({ project }: WorktreePreferencesSecti
     const loadInitScript = async () => {
       setIsLoading(true);
       try {
-        const response = await apiGet<InitScriptResponse>(
-          `/api/worktree/init-script?projectPath=${encodeURIComponent(currentPath)}`
-        );
+        const response = await getHttpApiClient().worktree.getInitScript(currentPath);
 
         // Avoid updating state if component unmounted or project changed
         if (isCancelled) return;
@@ -194,13 +183,7 @@ export function WorktreePreferencesSection({ project }: WorktreePreferencesSecti
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const response = await apiPut<{ success: boolean; error?: string }>(
-        '/api/worktree/init-script',
-        {
-          projectPath: project.path,
-          content: scriptContent,
-        }
-      );
+      const response = await getHttpApiClient().worktree.setInitScript(project.path, scriptContent);
       if (response.success) {
         setOriginalContent(scriptContent);
         setScriptExists(true);
@@ -227,12 +210,7 @@ export function WorktreePreferencesSection({ project }: WorktreePreferencesSecti
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
     try {
-      const response = await apiDelete<{ success: boolean; error?: string }>(
-        '/api/worktree/init-script',
-        {
-          body: { projectPath: project.path },
-        }
-      );
+      const response = await getHttpApiClient().worktree.deleteInitScript(project.path);
       if (response.success) {
         setScriptContent('');
         setOriginalContent('');

@@ -7,7 +7,7 @@ import { cn, isMac } from '@/lib/utils';
 import { isElectron } from '@/lib/electron';
 import { MACOS_ELECTRON_TOP_PADDING_CLASS } from '../constants';
 import { formatShortcut, useAppStore } from '@/store/app-store';
-import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
+import { getHttpApiClient } from '@/lib/http-api-client';
 import type { NavSection } from '../types';
 import type { Project } from '@/lib/electron';
 import type { SidebarStyle } from '@automaker/types';
@@ -133,7 +133,10 @@ export function SidebarNavigation({
           <div className="flex items-center gap-2.5 px-3 py-2">
             {hasCustomIcon ? (
               <img
-                src={getAuthenticatedImageUrl(currentProject.customIconPath!, currentProject.path)}
+                src={getHttpApiClient().fs.getImageUrl(
+                  currentProject.customIconPath!,
+                  currentProject.path
+                )}
                 alt={currentProject.name}
                 className="w-5 h-5 rounded object-cover"
               />

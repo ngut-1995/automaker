@@ -18,7 +18,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { useAppStore, defaultBackgroundSettings } from '@/store/app-store';
 import { getHttpApiClient } from '@/lib/http-api-client';
-import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
 import { useBoardBackgroundSettings } from '@/hooks/use-board-background-settings';
 import { toast } from 'sonner';
 import {
@@ -90,7 +89,7 @@ export function BoardBackgroundModal({ open, onOpenChange }: BoardBackgroundModa
     if (currentProject && backgroundSettings.imagePath) {
       // Add cache-busting query parameter to force browser to reload image
       const cacheBuster = imageVersion ?? Date.now().toString();
-      const imagePath = getAuthenticatedImageUrl(
+      const imagePath = getHttpApiClient().fs.getImageUrl(
         backgroundSettings.imagePath,
         currentProject.path,
         cacheBuster

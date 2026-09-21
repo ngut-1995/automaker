@@ -13,22 +13,12 @@ import { PathInput } from '@/components/ui/path-input';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { getDefaultWorkspaceDirectory, saveLastProjectDirectory } from '@/lib/workspace-config';
 import { useOSDetection } from '@/hooks';
-import { apiPost } from '@/lib/api-fetch';
+import { getHttpApiClient } from '@/lib/http-api-client';
 import { useAppStore } from '@/store/app-store';
 
 interface DirectoryEntry {
   name: string;
   path: string;
-}
-
-interface BrowseResult {
-  success: boolean;
-  currentPath: string;
-  parentPath: string | null;
-  directories: DirectoryEntry[];
-  drives?: string[];
-  error?: string;
-  warning?: string;
 }
 
 interface FileBrowserDialogProps {
@@ -77,12 +67,12 @@ export function FileBrowserDialog({
     setWarning('');
 
     try {
-      const result = await apiPost<BrowseResult>('/api/fs/browse', { dirPath });
+      const result = await getHttpApiClient().fs.browse(dirPath);
 
       if (result.success) {
-        setCurrentPath(result.currentPath);
-        setParentPath(result.parentPath);
-        setDirectories(result.directories);
+        setCurrentPath(result.currentPath ?? '');
+        setParentPath(result.parentPath ?? null);
+        setDirectories(result.directories ?? []);
         setDrives(result.drives || []);
         setWarning(result.warning || '');
       } else {

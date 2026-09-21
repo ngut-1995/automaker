@@ -7,12 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { MultiProjectOverview } from '@automaker/types';
 import { createLogger } from '@automaker/utils/logger';
-import {
-  getApiKey,
-  getSessionToken,
-  waitForApiKeyInit,
-  getServerUrlSync,
-} from '@/lib/http-api-client';
+import { getHttpApiClient } from '@/lib/http-api-client';
 
 const logger = createLogger('useMultiProjectStatus');
 
@@ -24,55 +19,16 @@ interface UseMultiProjectStatusResult {
 }
 
 /**
- * Custom fetch function for projects overview
- * Uses the same pattern as HttpApiClient for proper authentication
+ * Fetch the projects overview through the contract-backed client.
  */
 async function fetchProjectsOverview(): Promise<MultiProjectOverview> {
-  // Ensure API key is initialized before making request (handles Electron/web mode timing)
-  await waitForApiKeyInit();
-
-  const serverUrl = getServerUrlSync();
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // Electron mode: use API key
-  const apiKey = getApiKey();
-  if (apiKey) {
-    headers['X-API-Key'] = apiKey;
-  } else {
-    // Web mode: use session token if available
-    const sessionToken = getSessionToken();
-    if (sessionToken) {
-      headers['X-Session-Token'] = sessionToken;
-    }
-  }
-
-  const response = await fetch(`${serverUrl}/api/projects/overview`, {
-    method: 'GET',
-    headers,
-    credentials: 'include', // Include cookies for session auth
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  const data = await getHttpApiClient().projects.getOverview();
 
   if (!data.success) {
     throw new Error(data.error || 'Failed to fetch project overview');
   }
 
-  return {
-    projects: data.projects,
-    aggregate: data.aggregate,
-    recentActivity: data.recentActivity,
-    generatedAt: data.generatedAt,
-  };
+  return data;
 }
 
 /**

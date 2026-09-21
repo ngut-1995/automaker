@@ -20,7 +20,6 @@ import {
   initApiKey,
   verifySession,
   checkSandboxEnvironment,
-  getServerUrlSync,
   getHttpApiClient,
   handleServerOffline,
 } from '@/lib/http-api-client';
@@ -50,7 +49,6 @@ const SERVER_READY_MAX_ATTEMPTS = 8;
 const SERVER_READY_BACKOFF_BASE_MS = 250;
 const SERVER_READY_MAX_DELAY_MS = 1500;
 const SERVER_READY_TIMEOUT_MS = 2000;
-const NO_STORE_CACHE_MODE: RequestCache = 'no-store';
 const AUTO_OPEN_HISTORY_INDEX = 0;
 const SINGLE_PROJECT_COUNT = 1;
 const DEFAULT_LAST_OPENED_TIME_MS = 0;
@@ -111,19 +109,10 @@ function applyStoredTheme(): void {
 applyStoredTheme();
 
 async function waitForServerReady(): Promise<boolean> {
-  const serverUrl = getServerUrlSync();
-
   for (let attempt = 1; attempt <= SERVER_READY_MAX_ATTEMPTS; attempt++) {
     try {
-      const response = await fetch(`${serverUrl}/api/health`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(SERVER_READY_TIMEOUT_MS),
-        cache: NO_STORE_CACHE_MODE,
-      });
-
-      if (response.ok) {
-        return true;
-      }
+      await getHttpApiClient().health.check(AbortSignal.timeout(SERVER_READY_TIMEOUT_MS));
+      return true;
     } catch (error) {
       logger.warn(`Server readiness check failed (attempt ${attempt})`, error);
     }
@@ -912,12 +901,9 @@ function RootLayoutContent() {
           return;
         }
 
-        // Web mode: check backend availability without instantiating the full HTTP client
-        const response = await fetch(`${getServerUrlSync()}/api/health`, {
-          method: 'GET',
-          signal: AbortSignal.timeout(2000),
-        });
-        setIpcConnected(response.ok);
+        // Web mode: check backend availability via the health operation
+        await getHttpApiClient().health.check(AbortSignal.timeout(2000));
+        setIpcConnected(true);
       } catch (error) {
         logger.error('IPC connection failed:', error);
         setIpcConnected(false);

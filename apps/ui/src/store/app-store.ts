@@ -18,7 +18,6 @@ import type {
   PhaseModelKey,
   PhaseModelEntry,
   PipelineStep,
-  ModelDefinition,
   ServerLogLevel,
   ParsedTask,
   PlanSpec,
@@ -2889,19 +2888,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
     try {
       const httpApi = getHttpApiClient();
-      const data = await httpApi.get<{
-        success: boolean;
-        models?: Array<{
-          id: string;
-          label: string;
-          description: string;
-          hasThinking: boolean;
-          supportsVision: boolean;
-          tier: 'premium' | 'standard' | 'basic';
-          isDefault: boolean;
-        }>;
-        error?: string;
-      }>('/api/codex/models');
+      const data = await httpApi.codex.getModels();
 
       if (data.success && data.models) {
         set({
@@ -2959,17 +2946,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
     try {
       const httpApi = getHttpApiClient();
-      const data = await httpApi.get<{
-        success: boolean;
-        models?: ModelDefinition[];
-        providers?: Array<{
-          id: string;
-          name: string;
-          authenticated: boolean;
-          authMethod?: string;
-        }>;
-        error?: string;
-      }>('/api/setup/opencode/models');
+      const data = await httpApi.setup.getOpencodeModels();
 
       if (data.success && data.models) {
         // Filter out Bedrock models
@@ -2996,7 +2973,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
           dynamicOpencodeModels: filteredModels,
           enabledDynamicModelIds: updatedEnabledIds,
           knownDynamicModelIds: updatedKnownIds,
-          cachedOpencodeProviders: data.providers ?? [],
+          cachedOpencodeProviders: [],
           opencodeModelsLoading: false,
           opencodeModelsLastFetched: now,
           opencodeModelsError: null,

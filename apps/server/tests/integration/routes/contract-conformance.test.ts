@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { Router } from 'express';
-import { OPERATIONS, operationNamesForMount } from '@automaker/types';
+import { OPERATIONS, operationNamesForMount, operationMounts } from '@automaker/types';
 import {
   createFeaturesRoutes,
   createFeaturesHandlers,
@@ -44,7 +44,12 @@ import { createFsHandlers, FS_MOUNT } from '@/routes/fs/index.js';
 import { createTerminalHandlers, TERMINAL_MOUNT } from '@/routes/terminal/index.js';
 import { createWorkspaceHandlers, WORKSPACE_MOUNT } from '@/routes/workspace/index.js';
 import { createMCPHandlers, MCP_MOUNT } from '@/routes/mcp/index.js';
-import { createHealthHandlers, HEALTH_MOUNT } from '@/routes/health/index.js';
+import {
+  createHealthHandlers,
+  createHealthRoutes,
+  createHealthDetailedRoutes,
+  HEALTH_MOUNT,
+} from '@/routes/health/index.js';
 import { createAuthHandlers, AUTH_MOUNT } from '@/routes/auth/index.js';
 import { createSessionsHandlers, SESSIONS_MOUNT } from '@/routes/sessions/index.js';
 import { createAgentHandlers, AGENT_MOUNT } from '@/routes/agent/index.js';
@@ -208,6 +213,18 @@ describe('contract conformance', () => {
 
   it('health mount', () => {
     expectContractMount(HEALTH_MOUNT, createHealthHandlers());
+
+    // The mount is split across two routers to keep `/detailed` authenticated:
+    // the pre-auth router serves check + environment, the post-auth router
+    // serves detailed, and together they cover every entry exactly once.
+    const publicRoutes = registeredRoutes(createHealthRoutes());
+    const detailedRoutes = registeredRoutes(createHealthDetailedRoutes());
+    expect(publicRoutes.length).toBe(2);
+    expect(detailedRoutes.length).toBe(1);
+    expect(detailedRoutes[0].path).toBe('/detailed');
+    expect(publicRoutes.length + detailedRoutes.length).toBe(
+      operationNamesForMount(HEALTH_MOUNT).length
+    );
   });
 
   it('auth mount', () => {
@@ -256,5 +273,61 @@ describe('contract conformance', () => {
 
   it('setup mount', () => {
     expectContractMount(SETUP_MOUNT, createSetupHandlers());
+  });
+
+  /**
+   * Whole-surface check: every mount the contract declares has a handler map
+   * that covers all of its entries, and registering that mount yields exactly
+   * one route per entry. No mount may be left unaccounted for.
+   */
+  it('every contract mount has handlers and registers every entry', () => {
+    const handlerFactories: Record<string, () => OperationHandlers> = {
+      [FEATURES_MOUNT]: () => createFeaturesHandlers({} as never),
+      [AUTO_MODE_MOUNT]: () => createAutoModeHandlers({} as never),
+      [RUNNING_AGENTS_MOUNT]: () => createRunningAgentsHandlers({} as never),
+      [WORKTREE_MOUNT]: () => createWorktreeHandlers({} as never),
+      [SETTINGS_MOUNT]: () => createSettingsHandlers({} as never),
+      [PROJECTS_MOUNT]: () =>
+        createProjectsHandlers({} as never, {} as never, {} as never, {} as never),
+      [CONTEXT_MOUNT]: () => createContextHandlers(),
+      [SPEC_REGENERATION_MOUNT]: () => createSpecRegenerationHandlers({} as never),
+      [BACKLOG_PLAN_MOUNT]: () => createBacklogPlanHandlers({} as never),
+      [IDEATION_MOUNT]: () => createIdeationHandlers({} as never, {} as never, {} as never),
+      [GITHUB_MOUNT]: () => createGitHubHandlers({} as never),
+      [GIT_MOUNT]: () => createGitHandlers(),
+      [TEMPLATES_MOUNT]: () => createTemplatesHandlers(),
+      [MODELS_MOUNT]: () => createModelsHandlers(),
+      [FS_MOUNT]: () => createFsHandlers(),
+      [TERMINAL_MOUNT]: () => createTerminalHandlers(),
+      [WORKSPACE_MOUNT]: () => createWorkspaceHandlers(),
+      [MCP_MOUNT]: () => createMCPHandlers({} as never),
+      [HEALTH_MOUNT]: () => createHealthHandlers(),
+      [AUTH_MOUNT]: () => createAuthHandlers(),
+      [SESSIONS_MOUNT]: () => createSessionsHandlers({} as never),
+      [AGENT_MOUNT]: () => createAgentHandlers({} as never),
+      [NOTIFICATIONS_MOUNT]: () => createNotificationsHandlers({} as never),
+      [EVENT_HISTORY_MOUNT]: () => createEventHistoryHandlers({} as never, {} as never),
+      [PIPELINE_MOUNT]: () => createPipelineHandlers({} as never),
+      [ENHANCE_PROMPT_MOUNT]: () => createEnhancePromptHandlers(),
+      [CLAUDE_MOUNT]: () => createClaudeHandlers({} as never),
+      [CODEX_MOUNT]: () => createCodexHandlers({} as never, {} as never),
+      [ZAI_MOUNT]: () => createZaiHandlers({} as never, {} as never),
+      [GEMINI_MOUNT]: () => createGeminiHandlers({} as never),
+      [SETUP_MOUNT]: () => createSetupHandlers(),
+    };
+
+    const mounts = operationMounts();
+    expect(new Set(Object.keys(handlerFactories)), 'unaccounted contract mounts').toEqual(
+      new Set(mounts)
+    );
+
+    for (const mount of mounts) {
+      const handlers = handlerFactories[mount]();
+      expect(missingContractHandlers(mount, handlers), `missing handlers on ${mount}`).toEqual([]);
+
+      const names = operationNamesForMount(mount);
+      const routes = registeredRoutes(registerContractOperations(Router(), mount, handlers));
+      expect(routes.length, `registered routes on ${mount}`).toBe(names.length);
+    }
   });
 });

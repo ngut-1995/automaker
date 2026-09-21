@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useAppStore, defaultBackgroundSettings } from '@/store/app-store';
-import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
+import { getHttpApiClient } from '@/lib/http-api-client';
 
 interface UseBoardBackgroundProps {
   currentProject: { path: string; id: string } | null;
@@ -23,7 +23,7 @@ export function useBoardBackground({ currentProject }: UseBoardBackgroundProps) 
       return {};
     }
 
-    const imageUrl = getAuthenticatedImageUrl(
+    const imageUrl = getHttpApiClient().fs.getImageUrl(
       backgroundSettings.imagePath,
       currentProject.path,
       backgroundSettings.imageVersion

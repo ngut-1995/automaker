@@ -30,7 +30,6 @@ import {
 import * as LucideIcons from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { Input } from '@/components/ui/input';
-import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -804,7 +803,7 @@ export function DashboardView() {
                             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center group-hover:bg-yellow-500/20 transition-all duration-300 shrink-0 overflow-hidden">
                               {project.customIconPath ? (
                                 <img
-                                  src={getAuthenticatedImageUrl(
+                                  src={getHttpApiClient().fs.getImageUrl(
                                     project.customIconPath,
                                     project.path
                                   )}
@@ -895,7 +894,7 @@ export function DashboardView() {
                             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-muted/80 border border-border flex items-center justify-center group-hover:bg-brand-500/10 group-hover:border-brand-500/30 transition-all duration-300 shrink-0 overflow-hidden">
                               {project.customIconPath ? (
                                 <img
-                                  src={getAuthenticatedImageUrl(
+                                  src={getHttpApiClient().fs.getImageUrl(
                                     project.customIconPath,
                                     project.path
                                   )}

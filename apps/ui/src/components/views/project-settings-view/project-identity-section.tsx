@@ -6,7 +6,6 @@ import { Palette, Upload, X, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import { IconPicker } from '@/components/layout/project-switcher/components/icon-picker';
-import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
 import { getHttpApiClient } from '@/lib/http-api-client';
 import { toast } from 'sonner';
 import type { Project } from '@/lib/electron';
@@ -170,7 +169,7 @@ export function ProjectIdentitySection({ project }: ProjectIdentitySectionProps)
               {customIconPath ? (
                 <div className="relative">
                   <img
-                    src={getAuthenticatedImageUrl(customIconPath, project.path)}
+                    src={getHttpApiClient().fs.getImageUrl(customIconPath, project.path)}
                     alt="Custom project icon"
                     className="w-12 h-12 rounded-lg object-cover border border-border"
                   />

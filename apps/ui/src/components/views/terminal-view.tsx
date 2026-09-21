@@ -72,8 +72,7 @@ import {
   defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { apiFetch, apiGet, apiPost, apiDeleteRaw } from '@/lib/api-fetch';
-import { getApiKey } from '@/lib/http-api-client';
+import { ApiError, getApiKey, getHttpApiClient } from '@/lib/http-api-client';
 
 const logger = createLogger('Terminal');
 
@@ -85,6 +84,36 @@ interface TerminalStatus {
     isWSL: boolean;
     defaultShell: string;
     arch: string;
+  };
+}
+
+/**
+ * Translate a failed terminal-session creation into a toast. A 429 carries the
+ * server's session-limit details on the ApiError body.
+ */
+function describeCreateTerminalError(error: unknown): { title: string; description: string } {
+  const apiError = error instanceof ApiError ? error : null;
+  const body = (apiError?.body ?? {}) as {
+    details?: string;
+    maxSessions?: number;
+    error?: string;
+  };
+  const isLimit =
+    apiError?.status === 429 ||
+    body.error?.includes('Maximum') ||
+    (error instanceof Error && error.message.includes('Maximum'));
+
+  if (isLimit) {
+    return {
+      title: 'Terminal session limit reached',
+      description:
+        body.details || `Please close unused terminals. Limit: ${body.maxSessions ?? 'unknown'}`,
+    };
+  }
+
+  return {
+    title: 'Failed to create terminal',
+    description: error instanceof Error ? error.message : 'Could not connect to server',
   };
 }
 
@@ -355,18 +384,16 @@ export function TerminalView({
     const sessionIds = collectAllSessionIds();
     if (sessionIds.length === 0) return;
 
-    const headers: Record<string, string> = {};
-    if (terminalState.authToken) {
-      headers['X-Terminal-Token'] = terminalState.authToken;
-    }
-
     logger.info(`Killing ${sessionIds.length} sessions on server`);
+
+    const client = getHttpApiClient();
+    const token = terminalState.authToken ?? undefined;
 
     // Kill all sessions in parallel
     await Promise.allSettled(
       sessionIds.map(async (sessionId) => {
         try {
-          await apiDeleteRaw(`/api/terminal/sessions/${sessionId}`, { headers });
+          await client.terminal.deleteSession(sessionId, token);
         } catch (err) {
           logger.error(`Failed to kill session ${sessionId}:`, err);
         }
@@ -493,9 +520,7 @@ export function TerminalView({
     try {
       setLoading(true);
       setError(null);
-      const data = await apiGet<{ success: boolean; data?: TerminalStatus; error?: string }>(
-        '/api/terminal/status'
-      );
+      const data = await getHttpApiClient().terminal.status();
       if (data.success && data.data) {
         setStatus(data.data);
         if (!data.data.passwordRequired) {
@@ -516,14 +541,9 @@ export function TerminalView({
   const fetchServerSettings = useCallback(async () => {
     if (!terminalState.isUnlocked) return;
     try {
-      const headers: Record<string, string> = {};
-      if (terminalState.authToken) {
-        headers['X-Terminal-Token'] = terminalState.authToken;
-      }
-      const data = await apiGet<{
-        success: boolean;
-        data?: { currentSessions: number; maxSessions: number };
-      }>('/api/terminal/settings', { headers });
+      const data = await getHttpApiClient().terminal.getSettings(
+        terminalState.authToken ?? undefined
+      );
       if (data.success && data.data) {
         setServerSessionInfo({ current: data.data.currentSessions, max: data.data.maxSessions });
       }
@@ -606,37 +626,32 @@ export function TerminalView({
     // Create the terminal with the specified cwd
     const createTerminalWithCwd = async () => {
       try {
-        const headers: Record<string, string> = {};
-        if (terminalState.authToken) {
-          headers['X-Terminal-Token'] = terminalState.authToken;
-        }
+        const data = await getHttpApiClient().terminal.createSession(
+          { cwd: initialCwd, cols: 80, rows: 24 },
+          terminalState.authToken ?? undefined
+        );
 
-        const response = await apiFetch('/api/terminal/sessions', 'POST', {
-          headers,
-          body: { cwd: initialCwd, cols: 80, rows: 24 },
-        });
-        const data = await response.json();
-
-        if (data.success) {
+        if (data.success && data.data) {
+          const session = data.data;
           // Create in new tab or split based on mode
           if (initialMode === 'tab') {
             // Create in a new tab (tab name uses default "Terminal N" naming)
             const newTabId = addTerminalTab();
             const { addTerminalToTab } = useAppStore.getState();
             // Pass branch name for display in terminal panel header
-            addTerminalToTab(data.data.id, newTabId, 'horizontal', initialBranch);
+            addTerminalToTab(session.id, newTabId, 'horizontal', initialBranch);
           } else {
             // Default: add to current tab (split if there's already a terminal)
             // Pass branch name for display in terminal panel header
-            addTerminalToLayout(data.data.id, undefined, undefined, initialBranch);
+            addTerminalToLayout(session.id, undefined, undefined, initialBranch);
           }
 
           // Mark this session as new for running initial command
           if (initialCommand || defaultRunScript) {
-            setNewSessionIds((prev) => new Set(prev).add(data.data.id));
+            setNewSessionIds((prev) => new Set(prev).add(session.id));
             // Store per-session command override if an explicit command was provided
             if (initialCommand) {
-              setSessionCommandOverrides((prev) => new Map(prev).set(data.data.id, initialCommand));
+              setSessionCommandOverrides((prev) => new Map(prev).set(session.id, initialCommand));
             }
           }
 
@@ -758,20 +773,15 @@ export function TerminalView({
       let reconnectedSessions = 0;
 
       try {
-        const headers: Record<string, string> = {};
         // Get fresh auth token from store
         const authToken = useAppStore.getState().terminalState.authToken;
-        if (authToken) {
-          headers['X-Terminal-Token'] = authToken;
-        }
+        const client = getHttpApiClient();
 
         // Helper to check if a session still exists on server
         const checkSessionExists = async (sessionId: string): Promise<boolean> => {
           try {
-            const data = await apiGet<{ success: boolean }>(`/api/terminal/sessions/${sessionId}`, {
-              headers,
-            });
-            return data.success === true;
+            const data = await client.terminal.listSessions(authToken ?? undefined);
+            return data.success === true && (data.data ?? []).some((s) => s.id === sessionId);
           } catch {
             return false;
           }
@@ -780,10 +790,9 @@ export function TerminalView({
         // Helper to create a new terminal session
         const createSession = async (): Promise<string | null> => {
           try {
-            const data = await apiPost<{ success: boolean; data?: { id: string } }>(
-              '/api/terminal/sessions',
+            const data = await client.terminal.createSession(
               { cwd: currentPath, cols: 80, rows: 24 },
-              { headers }
+              authToken ?? undefined
             );
             return data.success && data.data ? data.data.id : null;
           } catch (err) {
@@ -962,13 +971,11 @@ export function TerminalView({
     setAuthError(null);
 
     try {
-      const data = await apiPost<{ success: boolean; data?: { token: string }; error?: string }>(
-        '/api/terminal/auth',
-        { password }
-      );
+      const data = await getHttpApiClient().terminal.auth(password);
+      const token = data.data?.token;
 
-      if (data.success && data.data) {
-        setTerminalUnlocked(true, data.data.token);
+      if (data.success && token) {
+        setTerminalUnlocked(true, token);
         setPassword('');
       } else {
         setAuthError(data.error || 'Authentication failed');
@@ -1031,45 +1038,30 @@ export function TerminalView({
     }
 
     try {
-      const headers: Record<string, string> = {};
-      if (terminalState.authToken) {
-        headers['X-Terminal-Token'] = terminalState.authToken;
-      }
+      const data = await getHttpApiClient().terminal.createSession(
+        { cwd: customCwd || currentProject?.path || undefined, cols: 80, rows: 24 },
+        terminalState.authToken ?? undefined
+      );
 
-      const response = await apiFetch('/api/terminal/sessions', 'POST', {
-        headers,
-        body: { cwd: customCwd || currentProject?.path || undefined, cols: 80, rows: 24 },
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        addTerminalToLayout(data.data.id, direction, targetSessionId, branchName);
+      if (data.success && data.data) {
+        const session = data.data;
+        addTerminalToLayout(session.id, direction, targetSessionId, branchName);
         // Mark this session as new for running initial command
         if (defaultRunScript) {
-          setNewSessionIds((prev) => new Set(prev).add(data.data.id));
+          setNewSessionIds((prev) => new Set(prev).add(session.id));
         }
         // Refresh session count
         fetchServerSettings();
       } else {
-        // Handle session limit error with a helpful toast
-        if (response.status === 429 || data.error?.includes('Maximum')) {
-          toast.error('Terminal session limit reached', {
-            description:
-              data.details ||
-              `Please close unused terminals. Limit: ${data.maxSessions || 'unknown'}`,
-          });
-        } else {
-          logger.error('Failed to create session:', data.error);
-          toast.error('Failed to create terminal', {
-            description: data.error || 'Unknown error',
-          });
-        }
+        logger.error('Failed to create session:', data.error);
+        toast.error('Failed to create terminal', {
+          description: data.error || 'Unknown error',
+        });
       }
     } catch (err) {
       logger.error('Create session error:', err);
-      toast.error('Failed to create terminal', {
-        description: 'Could not connect to server',
-      });
+      const { title, description } = describeCreateTerminalError(err);
+      toast.error(title, { description });
     } finally {
       isCreatingRef.current = false;
     }
@@ -1095,27 +1087,22 @@ export function TerminalView({
 
     const tabId = addTerminalTab();
     try {
-      const headers: Record<string, string> = {};
-      if (terminalState.authToken) {
-        headers['X-Terminal-Token'] = terminalState.authToken;
-      }
+      const data = await getHttpApiClient().terminal.createSession(
+        { cwd: worktreeCwd || currentProject?.path || undefined, cols: 80, rows: 24 },
+        terminalState.authToken ?? undefined
+      );
 
-      const response = await apiFetch('/api/terminal/sessions', 'POST', {
-        headers,
-        body: { cwd: worktreeCwd || currentProject?.path || undefined, cols: 80, rows: 24 },
-      });
-      const data = await response.json();
-
-      if (data.success) {
+      if (data.success && data.data) {
+        const session = data.data;
         // Add to the newly created tab (passing branchName so the panel header shows the branch badge)
         const { addTerminalToTab } = useAppStore.getState();
-        addTerminalToTab(data.data.id, tabId, undefined, worktreeBranch);
+        addTerminalToTab(session.id, tabId, undefined, worktreeBranch);
         // Mark this session as new for running initial command
         if (command || defaultRunScript) {
-          setNewSessionIds((prev) => new Set(prev).add(data.data.id));
+          setNewSessionIds((prev) => new Set(prev).add(session.id));
           // Store per-session command override if an explicit command was provided
           if (command) {
-            setSessionCommandOverrides((prev) => new Map(prev).set(data.data.id, command));
+            setSessionCommandOverrides((prev) => new Map(prev).set(session.id, command));
           }
         }
         // Refresh session count
@@ -1125,27 +1112,17 @@ export function TerminalView({
         const { removeTerminalTab } = useAppStore.getState();
         removeTerminalTab(tabId);
 
-        // Handle session limit error with a helpful toast
-        if (response.status === 429 || data.error?.includes('Maximum')) {
-          toast.error('Terminal session limit reached', {
-            description:
-              data.details ||
-              `Please close unused terminals. Limit: ${data.maxSessions || 'unknown'}`,
-          });
-        } else {
-          toast.error('Failed to create terminal', {
-            description: data.error || 'Unknown error',
-          });
-        }
+        toast.error('Failed to create terminal', {
+          description: data.error || 'Unknown error',
+        });
       }
     } catch (err) {
       logger.error('Create session error:', err);
       // Remove the empty tab on error
       const { removeTerminalTab } = useAppStore.getState();
       removeTerminalTab(tabId);
-      toast.error('Failed to create terminal', {
-        description: 'Could not connect to server',
-      });
+      const { title, description } = describeCreateTerminalError(err);
+      toast.error(title, { description });
     } finally {
       isCreatingRef.current = false;
     }
@@ -1154,52 +1131,35 @@ export function TerminalView({
   // Kill a terminal session
   const killTerminal = async (sessionId: string) => {
     try {
-      const headers: Record<string, string> = {};
-      if (terminalState.authToken) {
-        headers['X-Terminal-Token'] = terminalState.authToken;
-      }
-
-      const response = await apiDeleteRaw(`/api/terminal/sessions/${sessionId}`, { headers });
-
-      // Always remove from UI - even if server says 404 (session may have already exited)
-      removeTerminalFromLayout(sessionId);
-
-      // Clean up stale entries for killed sessions
-      setSessionCommandOverrides((prev) => {
-        const next = new Map(prev);
-        next.delete(sessionId);
-        return next;
-      });
-      setNewSessionIds((prev) => {
-        const next = new Set(prev);
-        next.delete(sessionId);
-        return next;
-      });
-
-      if (!response.ok && response.status !== 404) {
-        // Log non-404 errors but still proceed with UI cleanup
-        const data = await response.json().catch(() => ({}));
-        logger.error('Server failed to kill session:', data.error || response.statusText);
-      }
-
-      // Refresh session count
-      fetchServerSettings();
+      await getHttpApiClient().terminal.deleteSession(
+        sessionId,
+        terminalState.authToken ?? undefined
+      );
     } catch (err) {
-      logger.error('Kill session error:', err);
-      // Still remove from UI on network error - better UX than leaving broken terminal
-      removeTerminalFromLayout(sessionId);
-      // Clean up stale entries for killed sessions (same cleanup as try block)
-      setSessionCommandOverrides((prev) => {
-        const next = new Map(prev);
-        next.delete(sessionId);
-        return next;
-      });
-      setNewSessionIds((prev) => {
-        const next = new Set(prev);
-        next.delete(sessionId);
-        return next;
-      });
+      // A 404 just means the session already exited; log anything else.
+      if (!(err instanceof ApiError && err.status === 404)) {
+        logger.error('Server failed to kill session:', err instanceof Error ? err.message : err);
+      }
     }
+
+    // Always remove from UI - even if server says 404 (session may have already exited)
+    // or the request failed; better UX than leaving a broken terminal.
+    removeTerminalFromLayout(sessionId);
+
+    // Clean up stale entries for killed sessions
+    setSessionCommandOverrides((prev) => {
+      const next = new Map(prev);
+      next.delete(sessionId);
+      return next;
+    });
+    setNewSessionIds((prev) => {
+      const next = new Set(prev);
+      next.delete(sessionId);
+      return next;
+    });
+
+    // Refresh session count
+    fetchServerSettings();
   };
 
   // Kill all terminals in a tab and then remove the tab
@@ -1218,15 +1178,13 @@ export function TerminalView({
     const sessionIds = collectSessionIds(tab.layout);
 
     // Kill all sessions on the server
-    const headers: Record<string, string> = {};
-    if (terminalState.authToken) {
-      headers['X-Terminal-Token'] = terminalState.authToken;
-    }
+    const client = getHttpApiClient();
+    const token = terminalState.authToken ?? undefined;
 
     await Promise.all(
       sessionIds.map(async (sessionId) => {
         try {
-          await apiDeleteRaw(`/api/terminal/sessions/${sessionId}`, { headers });
+          await client.terminal.deleteSession(sessionId, token);
         } catch (err) {
           logger.error(`Failed to kill session ${sessionId}:`, err);
         }

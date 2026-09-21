@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Folder, LucideIcon } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { cn, sanitizeForTestId } from '@/lib/utils';
-import { getAuthenticatedImageUrl } from '@/lib/api-fetch';
+import { getHttpApiClient } from '@/lib/http-api-client';
 import type { Project } from '@/lib/electron';
 
 interface ProjectSwitcherItemProps {
@@ -71,7 +71,7 @@ export function ProjectSwitcherItem({
     >
       {hasCustomIcon ? (
         <img
-          src={getAuthenticatedImageUrl(project.customIconPath!, project.path)}
+          src={getHttpApiClient().fs.getImageUrl(project.customIconPath!, project.path)}
           alt={project.name}
           className={cn(
             'w-8 h-8 rounded-lg object-cover transition-all duration-200',

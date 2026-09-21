@@ -243,7 +243,7 @@ import type {
 } from '@/types/electron';
 
 // Import HTTP API client (ES module)
-import { getHttpApiClient, getServerUrlSync } from './http-api-client';
+import { getHttpApiClient } from './http-api-client';
 
 // Running Agent type
 export interface RunningAgent {
@@ -1143,12 +1143,8 @@ export const checkServerAvailable = async (): Promise<boolean> => {
 
   serverCheckPromise = (async () => {
     try {
-      const serverUrl = import.meta.env.VITE_SERVER_URL || getServerUrlSync();
-      const response = await fetch(`${serverUrl}/api/health`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(2000),
-      });
-      serverAvailable = response.ok;
+      await getHttpApiClient().health.check(AbortSignal.timeout(2000));
+      serverAvailable = true;
     } catch {
       serverAvailable = false;
     }
@@ -1419,34 +1415,14 @@ interface SetupAPI {
   }>;
   getOpencodeModels?: (refresh?: boolean) => Promise<{
     success: boolean;
-    models?: Array<{
-      id: string;
-      name: string;
-      modelString: string;
-      provider: string;
-      description: string;
-      supportsTools: boolean;
-      supportsVision: boolean;
-      tier: string;
-      default?: boolean;
-    }>;
+    models?: ModelDefinition[];
     count?: number;
     cached?: boolean;
     error?: string;
   }>;
   refreshOpencodeModels?: () => Promise<{
     success: boolean;
-    models?: Array<{
-      id: string;
-      name: string;
-      modelString: string;
-      provider: string;
-      description: string;
-      supportsTools: boolean;
-      supportsVision: boolean;
-      tier: string;
-      default?: boolean;
-    }>;
+    models?: ModelDefinition[];
     count?: number;
     error?: string;
   }>;
