@@ -8,7 +8,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import { createLogger } from '@automaker/utils';
 import { getClaudeAuthIndicators } from '@automaker/platform';
 import { getApiKey } from '../common.js';
-import { toClaudeWireModel } from '../../../providers/claude-wire-model.js';
+import { toClaudeWireModel, unwrapClaudeWireModel } from '../../../providers/claude-wire-model.js';
 import {
   createSecureAuthEnv,
   AuthSessionManager,
@@ -166,7 +166,7 @@ export function createVerifyClaudeAuthHandler() {
           prompt: "Reply with only the word 'ok'",
           options: {
             // Direct SDK call: the wire format is a tier alias, not a canonical ID
-            model: toClaudeWireModel('claude-sonnet'),
+            model: unwrapClaudeWireModel(toClaudeWireModel('claude-sonnet')),
             maxTurns: 1,
             allowedTools: [],
             abortController,

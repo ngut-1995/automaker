@@ -19,7 +19,7 @@ import {
   type ClaudeCompatibleProvider,
   type Credentials,
 } from '@automaker/types';
-import { toClaudeWireModel } from './claude-wire-model.js';
+import { toClaudeWireModel, unwrapClaudeWireModel } from './claude-wire-model.js';
 import type {
   ExecuteOptions,
   ProviderMessage,
@@ -225,7 +225,7 @@ export class ClaudeProvider extends BaseProvider {
     // The tier alias is produced here and nowhere else: `model` stays canonical
     // for every other consumer.
     const sdkOptions: Options = {
-      model: toClaudeWireModel(model),
+      model: unwrapClaudeWireModel(toClaudeWireModel(model)),
       systemPrompt,
       maxTurns,
       cwd,

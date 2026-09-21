@@ -468,7 +468,7 @@ describe('claude-provider.ts', () => {
     it.each(CLAUDE_TIERS)('produces the bare alias %s only inside the wire value', (tier) => {
       // The containment property: the alias comes into existence here and the canonical
       // ID is what every other consumer keeps seeing.
-      expect(wire.toClaudeWireModel(`claude-${tier}`)).toBe(tier);
+      expect(wire.unwrapClaudeWireModel(wire.toClaudeWireModel(`claude-${tier}`))).toBe(tier);
     });
   });
 
