@@ -1073,9 +1073,7 @@ export class AutoModeServiceFacade {
    * doing nothing.
    */
   async analyzeProject(): Promise<void> {
-    throw new Error(
-      'analyzeProject not fully implemented in facade - use AutoModeService.analyzeProject instead'
-    );
+    throw new Error('analyzeProject is not implemented on the facade');
   }
 
   /**

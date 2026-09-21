@@ -90,7 +90,7 @@ describe('GlobalAutoModeService', () => {
   });
 
   describe('markAllRunningFeaturesInterrupted', () => {
-    it('marks running features in every project interrupted, not just one', async () => {
+    it('marks running features in every project interrupted (the graceful-shutdown path)', async () => {
       const loader = new FeatureLoader();
       const service = new GlobalAutoModeService(events, null, loader);
       await seedFeature(projectA, makeFeature(FEATURE_A, 'in_progress'));
@@ -100,24 +100,7 @@ describe('GlobalAutoModeService', () => {
       concurrencyManager.acquire({ featureId: FEATURE_A, projectPath: projectA, isAutoMode: true });
       concurrencyManager.acquire({ featureId: FEATURE_B, projectPath: projectB, isAutoMode: true });
 
-      await service.markAllRunningFeaturesInterrupted('test shutdown');
-
-      expect(await readStatus(projectA, FEATURE_A)).toBe('interrupted');
-      expect(await readStatus(projectB, FEATURE_B)).toBe('interrupted');
-    });
-
-    it('marks features across projects through the shutdown path', async () => {
-      const loader = new FeatureLoader();
-      const globalService = new GlobalAutoModeService(events, null, loader);
-
-      await seedFeature(projectA, makeFeature(FEATURE_A, 'in_progress'));
-      await seedFeature(projectB, makeFeature(FEATURE_B, 'in_progress'));
-      const { concurrencyManager } = globalService.getSharedServices();
-
-      concurrencyManager.acquire({ featureId: FEATURE_A, projectPath: projectA, isAutoMode: true });
-      concurrencyManager.acquire({ featureId: FEATURE_B, projectPath: projectB, isAutoMode: true });
-
-      await globalService.markAllRunningFeaturesInterrupted('SIGTERM signal received');
+      await service.markAllRunningFeaturesInterrupted('SIGTERM signal received');
 
       expect(await readStatus(projectA, FEATURE_A)).toBe('interrupted');
       expect(await readStatus(projectB, FEATURE_B)).toBe('interrupted');
