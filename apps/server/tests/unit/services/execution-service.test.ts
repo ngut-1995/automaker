@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import path from 'path';
 import type { Feature } from '@automaker/types';
 
@@ -143,8 +143,8 @@ describe('execution-service.ts', () => {
   let mockTrackFailureFn: TrackFailureFn;
   let mockSignalPauseFn: SignalPauseFn;
   let mockRecordSuccessFn: RecordSuccessFn;
-  let mockSaveExecutionStateFn: vi.Mock;
-  let mockLoadContextFilesFn: vi.Mock;
+  let mockSaveExecutionStateFn: Mock;
+  let mockLoadContextFilesFn: Mock;
 
   let service: ExecutionService;
 
@@ -440,8 +440,8 @@ describe('execution-service.ts', () => {
       );
 
       // Verify order: status update happens before event
-      const statusCallIndex = mockTransitionFeatureFn.mock.invocationCallOrder[0];
-      const eventCallIndex = mockEventBus.emitAutoModeEvent.mock.invocationCallOrder[0];
+      const statusCallIndex = vi.mocked(mockTransitionFeatureFn).mock.invocationCallOrder[0];
+      const eventCallIndex = vi.mocked(mockEventBus.emitAutoModeEvent).mock.invocationCallOrder[0];
       expect(statusCallIndex).toBeLessThan(eventCallIndex);
     });
 
@@ -449,7 +449,7 @@ describe('execution-service.ts', () => {
       await service.executeFeature('/test/project', 'feature-1');
 
       expect(mockRunAgentFn).toHaveBeenCalled();
-      const callArgs = mockRunAgentFn.mock.calls[0];
+      const callArgs = vi.mocked(mockRunAgentFn).mock.calls[0];
       expect(callArgs[0]).toMatch(/test.*project/); // workDir contains project
       expect(callArgs[1]).toBe('feature-1');
       expect(callArgs[2]).toContain('Feature Task');
@@ -469,9 +469,9 @@ describe('execution-service.ts', () => {
       await service.executeFeature('/test/project', 'feature-1');
 
       expect(mockRunAgentFn).toHaveBeenCalled();
-      const callArgs = mockRunAgentFn.mock.calls[0];
+      const callArgs = vi.mocked(mockRunAgentFn).mock.calls[0];
       const options = callArgs[7];
-      expect(options.providerId).toBe('zai-provider-1');
+      expect(options?.providerId).toBe('zai-provider-1');
     });
 
     it('executes pipeline after agent completes', async () => {
@@ -601,7 +601,12 @@ describe('execution-service.ts', () => {
     it('builds continuation prompt for approved plan', async () => {
       const featureWithApprovedPlan: Feature = {
         ...testFeature,
-        planSpec: { status: 'approved', content: 'The approved plan content' },
+        planSpec: {
+          status: 'approved',
+          content: 'The approved plan content',
+          version: 1,
+          reviewedByUser: true,
+        },
       };
       mockLoadFeatureFn = vi.fn().mockResolvedValue(featureWithApprovedPlan);
 
@@ -630,7 +635,7 @@ describe('execution-service.ts', () => {
 
       // Agent should be called with continuation prompt
       expect(mockRunAgentFn).toHaveBeenCalled();
-      const callArgs = mockRunAgentFn.mock.calls[0];
+      const callArgs = vi.mocked(mockRunAgentFn).mock.calls[0];
       expect(callArgs[1]).toBe('feature-1');
       expect(callArgs[2]).toContain('The approved plan content');
     });
@@ -638,7 +643,7 @@ describe('execution-service.ts', () => {
     it('recursively calls executeFeature with continuation', async () => {
       const featureWithApprovedPlan: Feature = {
         ...testFeature,
-        planSpec: { status: 'approved', content: 'Plan' },
+        planSpec: { status: 'approved', content: 'Plan', version: 1, reviewedByUser: true },
       };
       mockLoadFeatureFn = vi.fn().mockResolvedValue(featureWithApprovedPlan);
 
@@ -677,7 +682,7 @@ describe('execution-service.ts', () => {
       // Feature has context AND approved plan, but continuation prompt is provided
       const featureWithApprovedPlan: Feature = {
         ...testFeature,
-        planSpec: { status: 'approved', content: 'Plan' },
+        planSpec: { status: 'approved', content: 'Plan', version: 1, reviewedByUser: true },
       };
       mockLoadFeatureFn = vi.fn().mockResolvedValue(featureWithApprovedPlan);
       mockContextExistsFn = vi.fn().mockResolvedValue(true);
@@ -751,9 +756,11 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'completed', description: 'Second task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'completed', description: 'Second task' },
           ],
           tasksCompleted: 2,
         },
@@ -774,10 +781,12 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'pending', description: 'Second task' },
-            { id: 'T003', title: 'Task 3', status: 'pending', description: 'Third task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'pending', description: 'Second task' },
+            { id: 'T003', status: 'pending', description: 'Third task' },
           ],
           tasksCompleted: 1,
         },
@@ -790,10 +799,12 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'completed', description: 'Second task' },
-            { id: 'T003', title: 'Task 3', status: 'completed', description: 'Third task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'completed', description: 'Second task' },
+            { id: 'T003', status: 'completed', description: 'Third task' },
           ],
           tasksCompleted: 3,
         },
@@ -819,7 +830,7 @@ describe('execution-service.ts', () => {
       expect(mockRunAgentFn).toHaveBeenCalledTimes(2);
 
       // The retry call should contain continuation prompt about incomplete tasks
-      const retryCallArgs = mockRunAgentFn.mock.calls[1];
+      const retryCallArgs = vi.mocked(mockRunAgentFn).mock.calls[1];
       expect(retryCallArgs[2]).toContain('Continue Implementation - Incomplete Tasks');
       expect(retryCallArgs[2]).toContain('T002');
       expect(retryCallArgs[2]).toContain('T003');
@@ -840,9 +851,11 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'pending', description: 'Second task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'pending', description: 'Second task' },
           ],
           tasksCompleted: 1,
         },
@@ -872,9 +885,11 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'pending', description: 'Second task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'pending', description: 'Second task' },
           ],
           tasksCompleted: 1,
         },
@@ -911,9 +926,11 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'in_progress', description: 'Second task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'in_progress', description: 'Second task' },
           ],
           tasksCompleted: 1,
           currentTaskId: 'T002',
@@ -925,9 +942,11 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'completed', description: 'Second task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'completed', description: 'Second task' },
           ],
           tasksCompleted: 2,
         },
@@ -950,7 +969,7 @@ describe('execution-service.ts', () => {
       expect(mockRunAgentFn).toHaveBeenCalledTimes(2);
 
       // The retry prompt should mention the in_progress task
-      const retryCallArgs = mockRunAgentFn.mock.calls[1];
+      const retryCallArgs = vi.mocked(mockRunAgentFn).mock.calls[1];
       expect(retryCallArgs[2]).toContain('T002');
       expect(retryCallArgs[2]).toContain('in_progress');
     });
@@ -963,9 +982,11 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'pending', description: 'Second task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'pending', description: 'Second task' },
           ],
           tasksCompleted: 1,
         },
@@ -976,9 +997,11 @@ describe('execution-service.ts', () => {
         planSpec: {
           status: 'approved',
           content: 'Plan',
+          version: 1,
+          reviewedByUser: true,
           tasks: [
-            { id: 'T001', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'T002', title: 'Task 2', status: 'completed', description: 'Second task' },
+            { id: 'T001', status: 'completed', description: 'First task' },
+            { id: 'T002', status: 'completed', description: 'Second task' },
           ],
           tasksCompleted: 2,
         },
@@ -998,10 +1021,10 @@ describe('execution-service.ts', () => {
       });
 
       // The retry agent call should use planningMode: 'skip' and requirePlanApproval: false
-      const retryCallArgs = mockRunAgentFn.mock.calls[1];
+      const retryCallArgs = vi.mocked(mockRunAgentFn).mock.calls[1];
       const retryOptions = retryCallArgs[7]; // options object
-      expect(retryOptions.planningMode).toBe('skip');
-      expect(retryOptions.requirePlanApproval).toBe(false);
+      expect(retryOptions?.planningMode).toBe('skip');
+      expect(retryOptions?.requirePlanApproval).toBe(false);
     });
   });
 

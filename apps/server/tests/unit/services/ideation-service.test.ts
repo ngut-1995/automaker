@@ -14,6 +14,7 @@ import type {
   StartSessionOptions,
 } from '@automaker/types';
 import { ProviderFactory } from '@/providers/provider-factory.js';
+import type { CreateSdkOptionsConfig } from '@/lib/sdk-options.js';
 
 // Create shared mock instances for assertions using vi.hoisted
 const mockLogger = vi.hoisted(() => ({
@@ -24,7 +25,7 @@ const mockLogger = vi.hoisted(() => ({
 }));
 
 const mockCreateChatOptions = vi.hoisted(() =>
-  vi.fn(() => ({
+  vi.fn((_config: CreateSdkOptionsConfig) => ({
     model: 'claude-sonnet-1-19991231',
     systemPrompt: 'test prompt',
   }))
@@ -78,7 +79,7 @@ describe('IdeationService', () => {
     } as unknown as FeatureLoader;
 
     // Mock platform functions
-    vi.mocked(platform.ensureIdeationDir).mockResolvedValue(undefined);
+    vi.mocked(platform.ensureIdeationDir).mockResolvedValue('/test/project/.automaker/ideation');
     vi.mocked(platform.getIdeaDir).mockReturnValue(
       '/test/project/.automaker/ideation/ideas/idea-123'
     );
@@ -100,6 +101,7 @@ describe('IdeationService', () => {
     vi.mocked(utils.loadContextFiles).mockResolvedValue({
       formattedPrompt: 'Test context',
       files: [],
+      memoryFiles: [],
     });
     vi.mocked(utils.isAbortError).mockReturnValue(false);
 
@@ -139,13 +141,13 @@ describe('IdeationService', () => {
         vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
 
         const options: StartSessionOptions = {
-          promptCategory: 'features',
+          promptCategory: 'feature',
           promptId: 'new-features',
         };
 
         const session = await service.startSession(testProjectPath, options);
 
-        expect(session.promptCategory).toBe('features');
+        expect(session.promptCategory).toBe('feature');
         expect(session.promptId).toBe('new-features');
       });
 
@@ -267,7 +269,7 @@ describe('IdeationService', () => {
         const input: CreateIdeaInput = {
           title: 'Test Idea',
           description: 'This is a test idea',
-          category: 'features',
+          category: 'feature',
         };
 
         const idea = await service.createIdea(testProjectPath, input);
@@ -276,7 +278,7 @@ describe('IdeationService', () => {
         expect(idea.id).toMatch(/^idea-/);
         expect(idea.title).toBe('Test Idea');
         expect(idea.description).toBe('This is a test idea');
-        expect(idea.category).toBe('features');
+        expect(idea.category).toBe('feature');
         expect(idea.status).toBe('raw');
         expect(idea.impact).toBe('medium');
         expect(idea.effort).toBe('medium');
@@ -291,7 +293,7 @@ describe('IdeationService', () => {
         const input: CreateIdeaInput = {
           title: 'Full Idea',
           description: 'Complete idea',
-          category: 'features',
+          category: 'feature',
           status: 'refined',
           impact: 'high',
           effort: 'low',
@@ -333,7 +335,7 @@ describe('IdeationService', () => {
           id: 'idea-1',
           title: 'Idea 1',
           description: 'First idea',
-          category: 'features',
+          category: 'feature',
           status: 'raw',
           impact: 'medium',
           effort: 'medium',
@@ -345,7 +347,7 @@ describe('IdeationService', () => {
           id: 'idea-2',
           title: 'Idea 2',
           description: 'Second idea',
-          category: 'bugs',
+          category: 'technical',
           status: 'refined',
           impact: 'high',
           effort: 'low',
@@ -375,7 +377,7 @@ describe('IdeationService', () => {
           id: 'idea-1',
           title: 'Valid Idea',
           description: 'Valid',
-          category: 'features',
+          category: 'feature',
           status: 'raw',
           impact: 'medium',
           effort: 'medium',
@@ -400,7 +402,7 @@ describe('IdeationService', () => {
           id: 'idea-123',
           title: 'Test Idea',
           description: 'Test',
-          category: 'features',
+          category: 'feature',
           status: 'raw',
           impact: 'medium',
           effort: 'medium',
@@ -431,7 +433,7 @@ describe('IdeationService', () => {
           id: 'idea-123',
           title: 'Original Title',
           description: 'Original',
-          category: 'features',
+          category: 'feature',
           status: 'raw',
           impact: 'medium',
           effort: 'medium',
@@ -492,7 +494,7 @@ describe('IdeationService', () => {
           id: 'idea-123',
           title: 'Test',
           description: 'Test',
-          category: 'features',
+          category: 'feature',
           status: 'raw',
           impact: 'medium',
           effort: 'medium',
@@ -547,7 +549,7 @@ describe('IdeationService', () => {
           id: 'idea-123',
           title: 'Test',
           description: 'Base description',
-          category: 'features',
+          category: 'feature',
           status: 'refined',
           impact: 'medium',
           effort: 'medium',
@@ -571,7 +573,7 @@ describe('IdeationService', () => {
           id: 'idea-123',
           title: 'Test',
           description: 'Base description',
-          category: 'features',
+          category: 'feature',
           status: 'refined',
           impact: 'medium',
           effort: 'medium',
@@ -772,7 +774,7 @@ describe('IdeationService', () => {
         const suggestions = await service.generateSuggestions(
           testProjectPath,
           firstPrompt.id,
-          'features',
+          'feature',
           5
         );
 
@@ -787,7 +789,7 @@ describe('IdeationService', () => {
 
       it('should throw error for non-existent prompt', async () => {
         await expect(
-          service.generateSuggestions(testProjectPath, 'non-existent', 'features', 5)
+          service.generateSuggestions(testProjectPath, 'non-existent', 'feature', 5)
         ).rejects.toThrow('Prompt non-existent not found');
       });
 

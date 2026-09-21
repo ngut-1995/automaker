@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NtfyService } from '../../../src/services/ntfy-service.js';
-import type { NtfyEndpointConfig } from '@automaker/types';
+import type { NtfyEndpointConfig, EventHookContext } from '@automaker/types';
 
 // Mock global fetch
-const originalFetch = global.fetch;
 
 describe('NtfyService', () => {
   let service: NtfyService;
@@ -12,11 +11,11 @@ describe('NtfyService', () => {
   beforeEach(() => {
     service = new NtfyService();
     mockFetch = vi.fn();
-    global.fetch = mockFetch;
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
-    global.fetch = originalFetch;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -38,7 +37,7 @@ describe('NtfyService', () => {
   /**
    * Create a basic context for testing
    */
-  function createContext() {
+  function createContext(): EventHookContext {
     return {
       featureId: 'feat-123',
       featureName: 'Test Feature',
@@ -444,7 +443,7 @@ describe('NtfyService', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
       const endpoint = createEndpoint();
-      const context = {
+      const context: EventHookContext = {
         ...createContext(),
         eventType: 'feature_error',
         error: 'Something went wrong',
@@ -503,7 +502,7 @@ describe('NtfyService', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
       const endpoint = createEndpoint();
-      const context = { ...createContext(), featureName: undefined };
+      const context: EventHookContext = { ...createContext(), featureName: undefined };
       await service.sendNotification(endpoint, {}, context);
 
       const options = mockFetch.mock.calls[0][1];
@@ -514,7 +513,7 @@ describe('NtfyService', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
       const endpoint = createEndpoint();
-      const context = { ...createContext(), eventType: 'feature_created' };
+      const context: EventHookContext = { ...createContext(), eventType: 'feature_created' };
       await service.sendNotification(endpoint, {}, context);
 
       const options = mockFetch.mock.calls[0][1];
@@ -525,7 +524,7 @@ describe('NtfyService', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
       const endpoint = createEndpoint();
-      const context = { ...createContext(), eventType: 'feature_error' };
+      const context: EventHookContext = { ...createContext(), eventType: 'feature_error' };
       await service.sendNotification(endpoint, {}, context);
 
       const options = mockFetch.mock.calls[0][1];
@@ -536,7 +535,7 @@ describe('NtfyService', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
       const endpoint = createEndpoint();
-      const context = {
+      const context: EventHookContext = {
         ...createContext(),
         eventType: 'auto_mode_complete',
         featureName: undefined,
@@ -551,7 +550,11 @@ describe('NtfyService', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
       const endpoint = createEndpoint();
-      const context = { ...createContext(), eventType: 'auto_mode_error', featureName: undefined };
+      const context: EventHookContext = {
+        ...createContext(),
+        eventType: 'auto_mode_error',
+        featureName: undefined,
+      };
       await service.sendNotification(endpoint, {}, context);
 
       const options = mockFetch.mock.calls[0][1];
@@ -577,7 +580,7 @@ describe('NtfyService', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
 
       const endpoint = createEndpoint();
-      const context = {
+      const context: EventHookContext = {
         ...createContext(),
         eventType: 'feature_error',
         error: 'Build failed',
