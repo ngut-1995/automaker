@@ -53,6 +53,11 @@ declare global {
     __checkApiMode?: () => void;
 
     /**
+     * Runtime marker indicating the Electron environment
+     */
+    isElectron?: boolean;
+
+    /**
      * Electron API exposed via preload script
      */
     electronAPI?: ElectronAPI & {
