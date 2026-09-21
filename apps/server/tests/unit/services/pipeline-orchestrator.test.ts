@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
 import type { Feature, FeatureStatus, PipelineStep, PipelineConfig } from '@automaker/types';
 import {
   PipelineOrchestrator,
@@ -10,6 +13,7 @@ import {
   type RunAgentFn,
 } from '../../../src/services/pipeline-orchestrator.js';
 import type { TypedEventBus } from '../../../src/services/typed-event-bus.js';
+import { FeatureRecord } from '../../../src/services/feature-record.js';
 import type { FeatureStateManager } from '../../../src/services/feature-state-manager.js';
 import type { AgentExecutor } from '../../../src/services/agent-executor.js';
 import type { WorktreeResolver } from '../../../src/services/worktree-resolver.js';
@@ -67,13 +71,18 @@ vi.mock('../../../src/lib/sdk-options.js', () => ({
 }));
 
 // Mock platform
-vi.mock('@automaker/platform', () => ({
-  getFeatureDir: vi
-    .fn()
-    .mockImplementation(
-      (projectPath: string, featureId: string) => `${projectPath}/.automaker/features/${featureId}`
-    ),
-}));
+vi.mock('@automaker/platform', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@automaker/platform')>();
+  return {
+    ...actual,
+    getFeatureDir: vi
+      .fn()
+      .mockImplementation(
+        (projectPath: string, featureId: string) =>
+          `${projectPath}/.automaker/features/${featureId}`
+      ),
+  };
+});
 
 // Mock model-resolver
 vi.mock('@automaker/model-resolver', () => ({
@@ -1144,16 +1153,26 @@ describe('PipelineOrchestrator', () => {
   });
 
   describe('record transitions', () => {
-    beforeEach(() => {
-      vi.mocked(performMerge).mockResolvedValue({ success: true });
-    });
+    let projectPath: string;
+    let record: FeatureRecord;
 
-    const createMergeContext = (status: FeatureStatus): PipelineContext => ({
-      projectPath: '/test/project',
+    const featureJsonPath = (featureId: string): string =>
+      path.join(projectPath, '.automaker', 'features', featureId, 'feature.json');
+
+    const writeFeature = async (feature: Feature): Promise<void> => {
+      await fs.mkdir(path.dirname(featureJsonPath(feature.id)), { recursive: true });
+      await fs.writeFile(featureJsonPath(feature.id), JSON.stringify(feature, null, 2), 'utf-8');
+    };
+
+    const readPersisted = async (featureId: string): Promise<Feature> =>
+      JSON.parse(await fs.readFile(featureJsonPath(featureId), 'utf-8')) as Feature;
+
+    const createContext = (status: FeatureStatus): PipelineContext => ({
+      projectPath,
       featureId: 'feature-1',
       feature: { ...testFeature, status },
       steps: testSteps,
-      workDir: '/test/project',
+      workDir: projectPath,
       worktreePath: '/test/worktree',
       branchName: 'feature/test-1',
       abortController: new AbortController(),
@@ -1162,87 +1181,56 @@ describe('PipelineOrchestrator', () => {
       maxTestAttempts: 5,
     });
 
-    const useStatefulRecord = (initial: FeatureStatus): { current: () => FeatureStatus } => {
-      let status = initial;
-      mockTransitionFeatureFn.mockImplementation(
-        async (_projectPath, _featureId, trigger, context) => {
-          if (trigger === 'enterStep') status = `pipeline_${context?.stepId}` as FeatureStatus;
-          else if (trigger === 'finish') status = context?.outcome ?? 'verified';
-          else if (trigger === 'mergeConflict') status = 'merge_conflict';
-          else if (trigger === 'start') status = 'in_progress';
-          else if (trigger === 'fail')
-            status = context?.pipelineCompleted ? 'waiting_approval' : 'backlog';
-          return { feature: { ...testFeature, status }, changed: true };
-        }
+    beforeEach(async () => {
+      projectPath = await fs.mkdtemp(path.join(os.tmpdir(), 'pipeline-record-'));
+      record = new FeatureRecord(mockEventBus);
+      mockTransitionFeatureFn.mockImplementation((pPath, featureId, trigger, context) =>
+        record.transition(pPath, featureId, trigger, context)
       );
-      return { current: () => status };
-    };
+      vi.mocked(performMerge).mockResolvedValue({ success: true });
+    });
+
+    afterEach(async () => {
+      await fs.rm(projectPath, { recursive: true, force: true });
+    });
 
     it('enters a step through the record and persists pipeline_<stepId>', async () => {
-      const record = useStatefulRecord('in_progress');
+      await writeFeature({ ...testFeature, id: 'feature-1', status: 'in_progress' });
 
-      await orchestrator.executePipeline(createMergeContext('in_progress'));
+      await orchestrator.executePipeline(createContext('in_progress'));
 
-      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'enterStep',
-        { stepId: 'step-1' }
-      );
-      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'enterStep',
-        { stepId: 'step-2' }
-      );
-      expect(record.current()).toBe('pipeline_step-2');
+      expect((await readPersisted('feature-1')).status).toBe('pipeline_step-2');
     });
 
     it('records a merge conflict through the record', async () => {
-      const record = useStatefulRecord('pipeline_step-2');
+      await writeFeature({ ...testFeature, id: 'feature-1', status: 'pipeline_step-2' });
       vi.mocked(performMerge).mockResolvedValue({
         success: false,
         hasConflicts: true,
         error: 'Merge conflict',
       });
 
-      await orchestrator.attemptMerge(createMergeContext('pipeline_step-2'));
+      await orchestrator.attemptMerge(createContext('pipeline_step-2'));
 
-      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'mergeConflict',
-        undefined
-      );
-      expect(record.current()).toBe('merge_conflict');
+      expect((await readPersisted('feature-1')).status).toBe('merge_conflict');
     });
 
-    it('resumes from a conflict by re-entering the step and completing through the record', async () => {
-      const record = useStatefulRecord('merge_conflict');
-      vi.mocked(secureFs.access).mockResolvedValue(undefined);
-      vi.mocked(performMerge).mockResolvedValue({ success: true });
+    it('resumes from a conflict: start lands on in_progress and the pipeline completes', async () => {
+      await writeFeature({ ...testFeature, id: 'feature-1', status: 'merge_conflict' });
+
+      const started = await record.transition(projectPath, 'feature-1', 'start');
+      expect(started.feature.status).toBe('in_progress');
+      expect((await readPersisted('feature-1')).status).toBe('in_progress');
 
       await orchestrator.resumeFromStep(
-        '/test/project',
-        { ...testFeature, status: 'merge_conflict' },
+        projectPath,
+        { ...testFeature, status: 'in_progress' },
         true,
         0,
         testConfig
       );
 
-      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'enterStep',
-        { stepId: 'step-1' }
-      );
-      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'enterStep',
-        { stepId: 'step-2' }
-      );
-      expect(record.current()).toBe('verified');
+      expect((await readPersisted('feature-1')).status).toBe('verified');
     });
   });
 });

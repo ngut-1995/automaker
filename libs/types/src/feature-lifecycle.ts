@@ -66,6 +66,7 @@ function isStartable(status: FeatureStatus): boolean {
     status === 'running' ||
     status === 'failed' ||
     status === 'in_progress' ||
+    status === 'merge_conflict' ||
     isPipelineStatus(status)
   );
 }
@@ -90,7 +91,7 @@ export function resolveTransition(
     case 'start':
       if (!isStartable(current as FeatureStatus)) {
         return reject(
-          `'start' is only legal from backlog, ready, interrupted, or a pipeline step (was '${current}')`
+          `'start' is only legal from backlog, ready, interrupted, merge_conflict, or a pipeline step (was '${current}')`
         );
       }
       return accept('in_progress');
