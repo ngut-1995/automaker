@@ -2,13 +2,13 @@
  * Pipeline Types - Type definitions for PipelineOrchestrator
  */
 
-import type {
-  Feature,
-  FeatureTrigger,
-  TransitionContext,
-  PipelineStep,
-  PipelineConfig,
-} from '@automaker/types';
+import type { Feature, PipelineStep, PipelineConfig } from '@automaker/types';
+
+/**
+ * Function to apply a lifecycle trigger to a feature through the Feature record.
+ * Declared once in feature-record.ts and re-exported here for callers.
+ */
+export type { TransitionFeatureFn } from './feature-record.js';
 
 export interface PipelineContext {
   projectPath: string;
@@ -46,13 +46,6 @@ export interface MergeResult {
   needsAgentResolution?: boolean;
   error?: string;
 }
-
-export type TransitionFeatureFn = (
-  projectPath: string,
-  featureId: string,
-  trigger: FeatureTrigger,
-  context?: TransitionContext
-) => Promise<{ feature: Feature; changed: boolean }>;
 
 export type BuildFeaturePromptFn = (
   feature: Feature,

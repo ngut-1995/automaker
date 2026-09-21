@@ -4,6 +4,7 @@ import {
   isRunnableFeatureStatus,
   isInProgressFeatureStatus,
   isDoneFeatureStatus,
+  isFinishedFeatureStatus,
 } from '../../src/feature-lifecycle.js';
 import type { FeatureTrigger, TransitionContext } from '../../src/feature-lifecycle.js';
 import type { FeatureStatus } from '../../src/feature.js';
@@ -287,6 +288,25 @@ describe('status predicates', () => {
     it('treats null and undefined as not done', () => {
       expect(isDoneFeatureStatus(null)).toBe(false);
       expect(isDoneFeatureStatus(undefined)).toBe(false);
+    });
+  });
+
+  describe('isFinishedFeatureStatus', () => {
+    const finished = new Set<FeatureStatus>(['waiting_approval', 'verified', 'completed']);
+
+    it('classifies every status in the vocabulary', () => {
+      for (const status of ALL_STATUSES) {
+        expect(isFinishedFeatureStatus(status)).toBe(finished.has(status));
+      }
+    });
+
+    it('treats a pipeline step as unfinished', () => {
+      expect(isFinishedFeatureStatus('pipeline_review')).toBe(false);
+    });
+
+    it('treats null and undefined as unfinished', () => {
+      expect(isFinishedFeatureStatus(null)).toBe(false);
+      expect(isFinishedFeatureStatus(undefined)).toBe(false);
     });
   });
 });

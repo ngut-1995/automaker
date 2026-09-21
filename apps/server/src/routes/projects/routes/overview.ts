@@ -27,6 +27,7 @@ import type {
   Feature,
   ProjectRef,
 } from '@automaker/types';
+import { isDoneFeatureStatus, isInProgressFeatureStatus, isPipelineStatus } from '@automaker/types';
 import { getErrorMessage, logError } from '../common.js';
 
 /**
@@ -42,27 +43,20 @@ function computeFeatureCounts(features: Feature[]): FeatureStatusCounts {
   };
 
   for (const feature of features) {
-    switch (feature.status as string) {
-      case 'backlog':
-      case 'ready':
-        counts.pending++;
-        break;
-      case 'in_progress':
-        counts.running++;
-        break;
-      case 'waiting_approval':
-        // waiting_approval means agent finished, needs human review - count as pending
-        counts.pending++;
-        break;
-      case 'completed':
-        counts.completed++;
-        break;
-      case 'verified':
-        counts.verified++;
-        break;
-      default:
-        // Unknown status, treat as pending
-        counts.pending++;
+    const status = feature.status;
+    if (isPipelineStatus(status)) {
+      // A pipeline step is still pending review/execution, not live agent work.
+      counts.pending++;
+    } else if (isInProgressFeatureStatus(status)) {
+      counts.running++;
+    } else if (status === 'verified') {
+      counts.verified++;
+    } else if (isDoneFeatureStatus(status)) {
+      counts.completed++;
+    } else {
+      // backlog, ready, waiting_approval (awaiting human review), interrupted,
+      // merge_conflict and unknown statuses all count as pending.
+      counts.pending++;
     }
   }
 

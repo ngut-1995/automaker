@@ -4,8 +4,10 @@
 
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
-import type { Feature } from '@automaker/types';
+import type { Feature, FeatureStatus } from '@automaker/types';
+import type { FeatureTransitioner } from '../../../services/feature-record.js';
 import { getErrorMessage, logError } from '../common.js';
+import { resolveStatusIntent, type StatusIntent } from './status-intent.js';
 
 interface BulkUpdateRequest {
   projectPath: string;
@@ -19,7 +21,10 @@ interface BulkUpdateResult {
   error?: string;
 }
 
-export function createBulkUpdateHandler(featureLoader: FeatureLoader) {
+export function createBulkUpdateHandler(
+  featureLoader: FeatureLoader,
+  featureRecord?: FeatureTransitioner
+) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureIds, updates } = req.body as BulkUpdateRequest;
@@ -40,6 +45,31 @@ export function createBulkUpdateHandler(featureLoader: FeatureLoader) {
         return;
       }
 
+      const record = featureRecord;
+      const newStatus = updates.status;
+      const fieldUpdates = { ...updates };
+      delete fieldUpdates.status;
+      const hasFieldUpdates = Object.keys(fieldUpdates).length > 0;
+
+      let intent: StatusIntent | null = null;
+      if (newStatus !== undefined) {
+        intent = resolveStatusIntent(newStatus as FeatureStatus);
+        if (!intent) {
+          res.status(400).json({
+            success: false,
+            error: `Unsupported status '${String(newStatus)}': it is not a lifecycle status or a pipeline step.`,
+          });
+          return;
+        }
+        if (!record) {
+          res.status(500).json({
+            success: false,
+            error: 'Feature record not available; cannot change status',
+          });
+          return;
+        }
+      }
+
       const results: BulkUpdateResult[] = [];
       const updatedFeatures: Feature[] = [];
 
@@ -50,7 +80,24 @@ export function createBulkUpdateHandler(featureLoader: FeatureLoader) {
         const batchResults = await Promise.all(
           batch.map(async (featureId) => {
             try {
-              const updated = await featureLoader.update(projectPath, featureId, updates);
+              let updated: Feature;
+              if (intent) {
+                if (!record) {
+                  return {
+                    featureId,
+                    success: false as const,
+                    error: 'Feature record not available',
+                  };
+                }
+                if (hasFieldUpdates) {
+                  await featureLoader.update(projectPath, featureId, fieldUpdates);
+                }
+                updated = (
+                  await record.transition(projectPath, featureId, intent.trigger, intent.context)
+                ).feature;
+              } else {
+                updated = await featureLoader.update(projectPath, featureId, fieldUpdates);
+              }
               return { featureId, success: true as const, feature: updated };
             } catch (error) {
               return {

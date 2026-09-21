@@ -3,22 +3,16 @@
  */
 
 import type { Request, Response } from 'express';
+import type { Feature, FeatureStatus } from '@automaker/types';
+import { isDoneFeatureStatus } from '@automaker/types';
 import { FeatureLoader } from '../../../services/feature-loader.js';
-import type { Feature, FeatureStatus, FeatureTrigger, TransitionContext } from '@automaker/types';
 import type { EventEmitter } from '../../../lib/events.js';
-import type { FeatureTransitioner } from '../../../services/feature-record.js';
+import {
+  IllegalTransitionError,
+  type FeatureTransitioner,
+} from '../../../services/feature-record.js';
 import { getErrorMessage, logError } from '../common.js';
-
-// Statuses whose transition owns notification/spec-sync side effects
-const TRANSITION_SIDE_EFFECTS: Partial<
-  Record<FeatureStatus, { trigger: FeatureTrigger; context: TransitionContext }>
-> = {
-  waiting_approval: { trigger: 'finish', context: { outcome: 'waiting_approval' } },
-  verified: { trigger: 'finish', context: { outcome: 'verified' } },
-  completed: { trigger: 'finish', context: { outcome: 'completed' } },
-};
-
-const COMPLETION_EVENT_STATUSES: FeatureStatus[] = ['verified', 'completed'];
+import { resolveStatusIntent } from './status-intent.js';
 
 export function createUpdateHandler(
   featureLoader: FeatureLoader,
@@ -51,66 +45,82 @@ export function createUpdateHandler(
         return;
       }
 
-      // Get the current feature to detect status changes
       const currentFeature = await featureLoader.get(projectPath, featureId);
       if (!currentFeature) {
         res.status(404).json({ success: false, error: `Feature ${featureId} not found` });
         return;
       }
-      const previousStatus = currentFeature.status as FeatureStatus;
-      const newStatus = updates.status as FeatureStatus | undefined;
-      const transition = newStatus ? TRANSITION_SIDE_EFFECTS[newStatus] : undefined;
-      const statusChanged = newStatus !== undefined && newStatus !== previousStatus;
 
-      let updated: Feature;
+      const newStatus = updates.status;
+      const fieldUpdates = { ...updates };
+      delete fieldUpdates.status;
 
-      if (transition && statusChanged && featureRecord) {
-        // The record owns the status write and its notification/spec-sync side effects.
-        const fieldUpdates = { ...updates };
-        delete fieldUpdates.status;
-        if (Object.keys(fieldUpdates).length > 0) {
-          await featureLoader.update(
-            projectPath,
-            featureId,
-            fieldUpdates,
-            descriptionHistorySource,
-            enhancementMode,
-            preEnhancementDescription
-          );
-        }
-        updated = (
-          await featureRecord.transition(
-            projectPath,
-            featureId,
-            transition.trigger,
-            transition.context
-          )
-        ).feature;
-
-        if (COMPLETION_EVENT_STATUSES.includes(newStatus)) {
-          events?.emit('feature:completed', {
-            featureId,
-            featureName: updated.title,
-            projectPath,
-            passes: true,
-            message:
-              newStatus === 'verified' ? 'Feature verified manually' : 'Feature completed manually',
-            executionMode: 'manual',
-          });
-        }
-      } else {
-        updated = await featureLoader.update(
+      if (newStatus === undefined) {
+        const updated = await featureLoader.update(
           projectPath,
           featureId,
-          updates,
+          fieldUpdates,
+          descriptionHistorySource,
+          enhancementMode,
+          preEnhancementDescription
+        );
+        res.json({ success: true, feature: updated });
+        return;
+      }
+
+      const intent = resolveStatusIntent(newStatus as FeatureStatus);
+      if (!intent) {
+        res.status(400).json({
+          success: false,
+          error: `Unsupported status '${String(newStatus)}': it is not a lifecycle status or a pipeline step.`,
+        });
+        return;
+      }
+
+      if (!featureRecord) {
+        res.status(500).json({
+          success: false,
+          error: 'Feature record not available; cannot change status',
+        });
+        return;
+      }
+
+      if (Object.keys(fieldUpdates).length > 0) {
+        await featureLoader.update(
+          projectPath,
+          featureId,
+          fieldUpdates,
           descriptionHistorySource,
           enhancementMode,
           preEnhancementDescription
         );
       }
 
-      res.json({ success: true, feature: updated });
+      const result = await featureRecord.transition(
+        projectPath,
+        featureId,
+        intent.trigger,
+        intent.context
+      );
+
+      if (result.changed && isDoneFeatureStatus(newStatus)) {
+        events?.emit('feature:completed', {
+          featureId,
+          featureName: result.feature.title,
+          projectPath,
+          passes: true,
+          message:
+            newStatus === 'verified' ? 'Feature verified manually' : 'Feature completed manually',
+          executionMode: 'manual',
+        });
+      }
+
+      res.json({ success: true, feature: result.feature });
     } catch (error) {
+      if (error instanceof IllegalTransitionError) {
+        res.status(409).json({ success: false, error: getErrorMessage(error) });
+        return;
+      }
       logError(error, 'Update feature failed');
       res.status(500).json({ success: false, error: getErrorMessage(error) });
     }

@@ -16,6 +16,7 @@ import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FeatureLoader } from '@/services/feature-loader.js';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
 
@@ -182,6 +183,63 @@ export function findDirectFeatureJsonWrites(source: string, relPath: string): st
   return offenders;
 }
 
+/** The full argument list of a call whose `(` is at `openParenIndex`. */
+function extractCallArgs(source: string, openParenIndex: number): string | null {
+  if (source[openParenIndex] !== '(') return null;
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = openParenIndex; i < source.length; i++) {
+    const char = source[i];
+    if (quote) {
+      if (char === '\\') {
+        i++;
+        continue;
+      }
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      continue;
+    }
+    if (char === '(') depth++;
+    else if (char === ')') {
+      depth--;
+      if (depth === 0) return source.slice(openParenIndex + 1, i);
+    }
+  }
+  return null;
+}
+
+/**
+ * A `loader.update(...)` call whose payload carries a `status` field. This is
+ * the shape the assignment scan missed: the status travels as data, not as a
+ * `feature.status =` assignment. The FeatureLoader runtime guard rejects it at
+ * call time; this scan catches the literal shape in source before it runs.
+ *
+ * `create` is deliberately not scanned: creation legitimately carries an
+ * initial status and is not a lifecycle transition. Payloads passed as opaque
+ * variables (e.g. `fieldUpdates`) cannot be proven statically and are covered
+ * by the runtime guard instead.
+ */
+export function findLoaderUpdateStatusWrites(source: string, relPath: string): string[] {
+  if (isWriterPrimitive(relPath)) return [];
+
+  const offenders: string[] = [];
+  const call = /\b(?:this\.)?([A-Za-z_$][\w$]*)\s*\.\s*update\s*\(/g;
+  let match: RegExpExecArray | null;
+  while ((match = call.exec(source)) !== null) {
+    if (!/loader$/i.test(match[1])) continue;
+    const openParenIndex = match.index + match[0].length - 1;
+    const args = extractCallArgs(source, openParenIndex);
+    if (!args) continue;
+    if (/\bstatus\s*:/.test(args) || /(?:^|[{,])\s*status\s*[,}]/.test(args)) {
+      offenders.push(`${relPath}:${lineOf(source, match.index)}: ${args.trim().slice(0, 60)}`);
+    }
+  }
+  return offenders;
+}
+
 function scan(relPath: string, scanner: (source: string, relPath: string) => string[]): string[] {
   let source: string;
   try {
@@ -217,6 +275,14 @@ describe('Feature single writer', () => {
     expect(
       offenders,
       `Direct feature.json writes outside the record/loader:\n${offenders.join('\n')}`
+    ).toEqual([]);
+  });
+
+  it('passes no Feature status through loader.update payloads outside the record', () => {
+    const offenders = SOURCE_FILES.flatMap((file) => scan(file, findLoaderUpdateStatusWrites));
+    expect(
+      offenders,
+      `Feature status written through loader.update payloads outside the record:\n${offenders.join('\n')}`
     ).toEqual([]);
   });
 
@@ -299,5 +365,50 @@ describe('Feature single writer guard fixtures', () => {
     const source = `await atomicWriteJson(this.getFeatureJsonPath(projectPath, featureId), feature);`;
     expect(findDirectFeatureJsonWrites(source, RECORD_PATH)).toEqual([]);
     expect(findDirectFeatureJsonWrites(source, LOADER_PATH)).toEqual([]);
+  });
+
+  it('flags a loader.update payload carrying a status field', () => {
+    const source = `await featureLoader.update(projectPath, featureId, { status: 'completed' });`;
+    expect(findLoaderUpdateStatusWrites(source, 'apps/server/src/other.ts')).toHaveLength(1);
+  });
+
+  it('flags shorthand status in a loader.update payload', () => {
+    expect(
+      findLoaderUpdateStatusWrites(
+        `await loader.update(p, id, { status });`,
+        'apps/server/src/other.ts'
+      )
+    ).toHaveLength(1);
+  });
+
+  it('ignores a loader.update payload without a status field', () => {
+    expect(
+      findLoaderUpdateStatusWrites(
+        `await featureLoader.update(p, id, { title: 'x', updatedAt: now });`,
+        'apps/server/src/other.ts'
+      )
+    ).toEqual([]);
+  });
+
+  it('allows the record and loader to pass status to update', () => {
+    const source = `await featureLoader.update(p, id, { status: 'x' });`;
+    expect(findLoaderUpdateStatusWrites(source, RECORD_PATH)).toEqual([]);
+    expect(findLoaderUpdateStatusWrites(source, LOADER_PATH)).toEqual([]);
+  });
+});
+
+describe('FeatureLoader runtime status guard', () => {
+  it('throws when update is handed a status, naming the record', async () => {
+    const loader = new FeatureLoader();
+    await expect(
+      loader.update('/nonexistent-project', 'feature-guard', { status: 'backlog' })
+    ).rejects.toThrow(/FeatureRecord\.transition/);
+  });
+
+  it('proceeds past the guard for a status-free update', async () => {
+    const loader = new FeatureLoader();
+    await expect(
+      loader.update('/nonexistent-project', 'feature-guard', { title: 'x' })
+    ).rejects.toThrow(/not found/);
   });
 });

@@ -94,6 +94,14 @@ export function isDoneFeatureStatus(status: FeatureStatus | null | undefined): b
   return status === 'completed' || status === 'verified';
 }
 
+/**
+ * A status where no further agent work is expected before a human decision:
+ * the work landed (done) or the agent finished and awaits review.
+ */
+export function isFinishedFeatureStatus(status: FeatureStatus | null | undefined): boolean {
+  return isDoneFeatureStatus(status) || status === 'waiting_approval';
+}
+
 function isStartable(status: FeatureStatus): boolean {
   return isRunnableFeatureStatus(status) || status === 'in_progress' || status === 'merge_conflict';
 }

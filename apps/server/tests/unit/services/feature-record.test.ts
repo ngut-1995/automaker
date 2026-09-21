@@ -210,6 +210,30 @@ describe('FeatureRecord', () => {
     expect((await readPersisted(feature.id)).status).toBe(winner.status);
   });
 
+  it('serializes concurrent transitions across two record instances', async () => {
+    const feature = await record.create(projectPath, {
+      category: 'test',
+      description: 'Cross-instance concurrency guard',
+      status: 'in_progress',
+    });
+    const secondRecord = new FeatureRecord(new TypedEventBus(events), loader);
+
+    const results = await Promise.allSettled([
+      record.transition(projectPath, feature.id, 'interrupt'),
+      secondRecord.transition(projectPath, feature.id, 'finish', { outcome: 'verified' }),
+    ]);
+
+    const fulfilled = results.filter((result) => result.status === 'fulfilled');
+    const rejected = results.filter((result) => result.status === 'rejected');
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(IllegalTransitionError);
+
+    const winner = (fulfilled[0] as PromiseFulfilledResult<{ feature: Feature }>).value.feature;
+    expect((await readPersisted(feature.id)).status).toBe(winner.status);
+  });
+
   it('lists features in a project', async () => {
     const first = await record.create(projectPath, {
       id: 'feature-1000-aaa',
