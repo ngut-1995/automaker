@@ -387,6 +387,31 @@ describe('settings-helpers.ts', () => {
       expect(result.resolvedModel).toBe('claude-sonnet');
     });
 
+    it('should keep an out-of-contract mapsToClaudeModel value as-is', async () => {
+      const mockModel = {
+        id: 'custom-model-1',
+        name: 'Custom Model',
+        // Out-of-contract on purpose: a value a hand-edited or older
+        // settings.json can hold. The type forbids it; runtime must not drop it.
+        mapsToClaudeModel: 'not-a-tier',
+      };
+      const mockProvider = {
+        id: 'provider-1',
+        name: 'Provider 1',
+        enabled: true,
+        models: [mockModel],
+      };
+      const mockSettingsService = {
+        getGlobalSettings: vi.fn().mockResolvedValue({
+          claudeCompatibleProviders: [mockProvider],
+        }),
+        getCredentials: vi.fn().mockResolvedValue({}),
+      } as unknown as SettingsService;
+
+      const result = await getProviderByModelId('custom-model-1', mockSettingsService);
+      expect(result.resolvedModel).toBe('not-a-tier');
+    });
+
     it('should ignore disabled providers', async () => {
       const mockModel = { id: 'custom-model-1', name: 'Custom Model' };
       const mockProvider = {
@@ -501,6 +526,33 @@ describe('settings-helpers.ts', () => {
       // resolveModelString('sonnet') should return a valid Claude model ID
       expect(result.resolvedModel).toBeDefined();
       expect(result.resolvedModel).toContain('claude');
+    });
+
+    it('should keep an out-of-contract mapsToClaudeModel value as-is', async () => {
+      const mockProvider = {
+        id: 'provider-1',
+        name: 'Provider 1',
+        enabled: true,
+        models: [
+          {
+            id: 'custom-model-1',
+            name: 'Custom Model',
+            // Out-of-contract on purpose: a value a hand-edited or older
+            // settings.json can hold. The type forbids it; runtime must not drop it.
+            mapsToClaudeModel: 'not-a-tier',
+          },
+        ],
+      };
+      const mockSettingsService = {
+        getGlobalSettings: vi.fn().mockResolvedValue({
+          claudeCompatibleProviders: [mockProvider],
+        }),
+        getCredentials: vi.fn().mockResolvedValue({}),
+      } as unknown as SettingsService;
+
+      const result = await resolveProviderContext(mockSettingsService, 'custom-model-1');
+
+      expect(result.resolvedModel).toBe('not-a-tier');
     });
 
     it('should handle empty providers list', async () => {
