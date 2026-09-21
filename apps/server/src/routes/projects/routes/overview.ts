@@ -43,12 +43,10 @@ function computeFeatureCounts(features: Feature[]): FeatureStatusCounts {
 
   for (const feature of features) {
     switch (feature.status as string) {
-      case 'pending':
+      case 'backlog':
       case 'ready':
         counts.pending++;
         break;
-      case 'running':
-      case 'generating_spec':
       case 'in_progress':
         counts.running++;
         break;
@@ -58,9 +56,6 @@ function computeFeatureCounts(features: Feature[]): FeatureStatusCounts {
         break;
       case 'completed':
         counts.completed++;
-        break;
-      case 'failed':
-        counts.failed++;
         break;
       case 'verified':
         counts.verified++;

@@ -119,10 +119,7 @@ export type FeatureStatus =
   | 'verified'
   | 'completed'
   | 'merge_conflict'
-  | `pipeline_${string}`
-  | 'pending'
-  | 'running'
-  | 'failed';
+  | `pipeline_${string}`;
 
 /**
  * Export format for a feature, used when exporting features to share or backup

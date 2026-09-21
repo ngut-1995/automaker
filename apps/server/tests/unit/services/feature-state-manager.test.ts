@@ -75,7 +75,7 @@ describe('FeatureStateManager', () => {
     name: 'Test Feature',
     title: 'Test Feature Title',
     description: 'A test feature',
-    status: 'pending',
+    status: 'backlog',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };
@@ -676,7 +676,7 @@ describe('FeatureStateManager', () => {
         const feature: Feature = {
           ...mockFeature,
           id: 'f-generating',
-          status: 'pending',
+          status: 'backlog',
           planSpec: { status: 'generating', version: 1, reviewedByUser: false },
         };
         await seedFeature(feature);
@@ -685,7 +685,7 @@ describe('FeatureStateManager', () => {
         await manager.resetStuckFeatures(dataDir);
 
         const persisted = await readPersisted(feature.id);
-        expect(persisted.status).toBe('pending');
+        expect(persisted.status).toBe('backlog');
         expect(persisted.planSpec?.status).toBe('pending');
       });
     });

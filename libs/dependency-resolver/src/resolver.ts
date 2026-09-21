@@ -175,7 +175,7 @@ function detectCycles(features: Feature[], featureMap: Map<string, Feature>): st
 }
 
 export interface DependencySatisfactionOptions {
-  /** If true, only require dependencies to not be 'running' (ignore verification requirement) */
+  /** If true, only require dependencies to not be 'in_progress' (ignore verification requirement) */
   skipVerification?: boolean;
 }
 
@@ -204,7 +204,7 @@ export function areDependenciesSatisfied(
 
     if (skipVerification) {
       // When skipping verification, only block if dependency is currently running
-      return dep.status !== 'running';
+      return dep.status !== 'in_progress';
     }
     // Default: require 'completed' or 'verified'
     return dep.status === 'completed' || dep.status === 'verified';

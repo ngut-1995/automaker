@@ -241,7 +241,7 @@ describe('PipelineOrchestrator - status and providerId coexistence', () => {
   describe('executeTestStep - options object', () => {
     it('should pass both status and providerId in test fix agent options', async () => {
       const feature = createFeature({
-        status: 'running',
+        status: 'in_progress',
         providerId: 'custom-provider',
       });
       const context = createContext(feature);
@@ -265,7 +265,7 @@ describe('PipelineOrchestrator - status and providerId coexistence', () => {
 
       expect(mockRunAgentFn).toHaveBeenCalledTimes(1);
       const options = mockRunAgentFn.mock.calls[0][7];
-      expect(options).toHaveProperty('status', 'running');
+      expect(options).toHaveProperty('status', 'in_progress');
       expect(options).toHaveProperty('providerId', 'custom-provider');
     }, 15000);
 
