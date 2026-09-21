@@ -187,7 +187,7 @@ describe('Agent Output Summary E2E Flow', () => {
       syncFeatureToAppSpec: vi.fn(),
     } as unknown as FeatureLoader;
 
-    manager = new FeatureStateManager(mockEvents, mockFeatureLoader);
+    manager = new FeatureStateManager(mockEvents, mockFeatureLoader, { transition: vi.fn() });
 
     (getFeatureDir as Mock).mockReturnValue('/project/.automaker/features/e2e-feature-1');
   });

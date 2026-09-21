@@ -9,8 +9,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { RecoveryService, DEFAULT_EXECUTION_STATE } from '@/services/recovery-service.js';
+import { FeatureRecord } from '@/services/feature-record.js';
+import { FeatureLoader } from '@/services/feature-loader.js';
+import { TypedEventBus } from '@/services/typed-event-bus.js';
 import type { Feature } from '@automaker/types';
 
 /**
@@ -20,25 +25,34 @@ import type { Feature } from '@automaker/types';
 const normalizePath = (p: string): string => path.normalize(p);
 
 // Mock dependencies
-vi.mock('@automaker/utils', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  }),
-  readJsonWithRecovery: vi.fn().mockResolvedValue({ data: null, wasRecovered: false }),
-  logRecoveryWarning: vi.fn(),
-  DEFAULT_BACKUP_COUNT: 5,
-}));
+vi.mock('@automaker/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@automaker/utils')>();
+  return {
+    ...actual,
+    createLogger: () => ({
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    }),
+    readJsonWithRecovery: vi.fn().mockResolvedValue({ data: null, wasRecovered: false }),
+    logRecoveryWarning: vi.fn(),
+    DEFAULT_BACKUP_COUNT: 5,
+  };
+});
 
-vi.mock('@automaker/platform', () => ({
-  getFeatureDir: (projectPath: string, featureId: string) =>
-    `${projectPath}/.automaker/features/${featureId}`,
-  getFeaturesDir: (projectPath: string) => `${projectPath}/.automaker/features`,
-  getExecutionStatePath: (projectPath: string) => `${projectPath}/.automaker/execution-state.json`,
-  ensureAutomakerDir: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock('@automaker/platform', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@automaker/platform')>();
+  return {
+    ...actual,
+    getFeatureDir: (projectPath: string, featureId: string) =>
+      `${projectPath}/.automaker/features/${featureId}`,
+    getFeaturesDir: (projectPath: string) => `${projectPath}/.automaker/features`,
+    getExecutionStatePath: (projectPath: string) =>
+      `${projectPath}/.automaker/execution-state.json`,
+    ensureAutomakerDir: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 vi.mock('@/lib/secure-fs.js', () => ({
   access: vi.fn().mockRejectedValue(new Error('ENOENT')),
@@ -63,6 +77,7 @@ describe('recovery-service.ts', () => {
 
   // Mock dependencies
   const mockEventBus = {
+    emit: vi.fn(),
     emitAutoModeEvent: vi.fn(),
     on: vi.fn(),
     off: vi.fn(),
@@ -93,6 +108,7 @@ describe('recovery-service.ts', () => {
   let mockIsFeatureRunning: ReturnType<typeof vi.fn>;
   let mockAcquireRunningFeature: ReturnType<typeof vi.fn>;
   let mockReleaseRunningFeature: ReturnType<typeof vi.fn>;
+  let mockFeatureRecord: { transition: ReturnType<typeof vi.fn> };
 
   let service: RecoveryService;
 
@@ -128,6 +144,9 @@ describe('recovery-service.ts', () => {
       abortController: new AbortController(),
     }));
     mockReleaseRunningFeature = vi.fn();
+    mockFeatureRecord = {
+      transition: vi.fn().mockResolvedValue({ feature: {} as Feature, changed: true }),
+    };
 
     service = new RecoveryService(
       mockEventBus as any,
@@ -139,7 +158,8 @@ describe('recovery-service.ts', () => {
       mockResumePipeline,
       mockIsFeatureRunning,
       mockAcquireRunningFeature,
-      mockReleaseRunningFeature
+      mockReleaseRunningFeature,
+      mockFeatureRecord
     );
   });
 
@@ -455,6 +475,88 @@ describe('recovery-service.ts', () => {
         isAutoMode: false,
         allowReuse: true,
       });
+    });
+
+    it('applies the record resume transition for an interrupted feature', async () => {
+      mockLoadFeature.mockResolvedValue({ ...mockFeature, status: 'interrupted' });
+      vi.mocked(secureFs.access).mockRejectedValue(new Error('ENOENT'));
+
+      await service.resumeFeature('/test/project', 'feature-1');
+
+      expect(mockFeatureRecord.transition).toHaveBeenCalledWith(
+        '/test/project',
+        'feature-1',
+        'resume'
+      );
+    });
+
+    it('does not apply the resume transition for a non-interrupted feature', async () => {
+      vi.mocked(secureFs.access).mockRejectedValue(new Error('ENOENT'));
+
+      await service.resumeFeature('/test/project', 'feature-1');
+
+      expect(mockFeatureRecord.transition).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resume transition (real temp data dir)', () => {
+    let projectPath: string;
+
+    beforeEach(async () => {
+      const actualUtils =
+        await vi.importActual<typeof import('@automaker/utils')>('@automaker/utils');
+      vi.mocked(utils.readJsonWithRecovery).mockImplementation(
+        actualUtils.readJsonWithRecovery as unknown as (...args: unknown[]) => Promise<unknown>
+      );
+
+      projectPath = await fs.mkdtemp(path.join(os.tmpdir(), 'recovery-resume-'));
+      const record = new FeatureRecord(new TypedEventBus(mockEventBus as any), new FeatureLoader());
+      service = new RecoveryService(
+        mockEventBus as any,
+        mockConcurrencyManager as any,
+        mockSettingsService,
+        mockExecuteFeature,
+        mockLoadFeature,
+        mockDetectPipelineStatus,
+        mockResumePipeline,
+        mockIsFeatureRunning,
+        mockAcquireRunningFeature,
+        mockReleaseRunningFeature,
+        record
+      );
+    });
+
+    afterEach(async () => {
+      await fs.rm(projectPath, { recursive: true, force: true });
+    });
+
+    it('transitions an interrupted feature to in_progress on disk', async () => {
+      const featureDir = path.join(projectPath, '.automaker', 'features', 'feature-1');
+      const featureJsonPath = path.join(featureDir, 'feature.json');
+      await fs.mkdir(featureDir, { recursive: true });
+      await fs.writeFile(
+        featureJsonPath,
+        JSON.stringify({
+          id: 'feature-1',
+          title: 'Interrupted Feature',
+          description: 'A feature',
+          status: 'interrupted',
+        }),
+        'utf-8'
+      );
+
+      mockLoadFeature.mockResolvedValue({
+        id: 'feature-1',
+        title: 'Interrupted Feature',
+        description: 'A feature',
+        status: 'interrupted',
+      });
+      vi.mocked(secureFs.access).mockRejectedValue(new Error('ENOENT'));
+
+      await service.resumeFeature(projectPath, 'feature-1');
+
+      const persisted = JSON.parse(await fs.readFile(featureJsonPath, 'utf-8')) as Feature;
+      expect(persisted.status).toBe('in_progress');
     });
   });
 
