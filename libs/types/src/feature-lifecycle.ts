@@ -53,19 +53,37 @@ function reject(reason: string): TransitionResolution {
   return { ok: false, reason };
 }
 
-function isActive(status: FeatureStatus): boolean {
-  return status === 'in_progress' || isPipelineStatus(status);
-}
-
-function isStartable(status: FeatureStatus): boolean {
+/**
+ * A status the auto-mode loop may pick up: waiting in the backlog, approved and
+ * ready, interrupted, or currently sitting in a pipeline step.
+ */
+export function isRunnableFeatureStatus(status: FeatureStatus | null | undefined): boolean {
   return (
     status === 'backlog' ||
     status === 'ready' ||
     status === 'interrupted' ||
-    status === 'in_progress' ||
-    status === 'merge_conflict' ||
     isPipelineStatus(status)
   );
+}
+
+/**
+ * A status where a Feature is actively executing agent work.
+ */
+export function isInProgressFeatureStatus(status: FeatureStatus | null | undefined): boolean {
+  return status === 'in_progress' || isPipelineStatus(status);
+}
+
+/**
+ * A status that counts as done for dependency satisfaction: the work landed and
+ * was verified. Deliberately excludes 'waiting_approval', which still awaits a
+ * human decision and never unblocks a dependent Feature.
+ */
+export function isDoneFeatureStatus(status: FeatureStatus | null | undefined): boolean {
+  return status === 'completed' || status === 'verified';
+}
+
+function isStartable(status: FeatureStatus): boolean {
+  return isRunnableFeatureStatus(status) || status === 'in_progress' || status === 'merge_conflict';
 }
 
 /**
@@ -94,7 +112,7 @@ export function resolveTransition(
       return accept('in_progress');
 
     case 'finish': {
-      if (!isActive(current as FeatureStatus) && current !== 'waiting_approval') {
+      if (!isInProgressFeatureStatus(current) && current !== 'waiting_approval') {
         return reject(
           `'finish' is only legal from in_progress, a pipeline step, or waiting_approval (was '${current}')`
         );
@@ -103,7 +121,7 @@ export function resolveTransition(
     }
 
     case 'fail': {
-      if (!isActive(current as FeatureStatus)) {
+      if (!isInProgressFeatureStatus(current)) {
         return reject(
           `'fail' is only legal from in_progress or a pipeline step (was '${current}')`
         );
@@ -112,7 +130,7 @@ export function resolveTransition(
     }
 
     case 'interrupt': {
-      if (!isActive(current as FeatureStatus)) {
+      if (!isInProgressFeatureStatus(current)) {
         return reject(
           `'interrupt' is only legal from in_progress or a pipeline step (was '${current}')`
         );
@@ -128,7 +146,7 @@ export function resolveTransition(
     }
 
     case 'enterStep': {
-      if (!isActive(current as FeatureStatus)) {
+      if (!isInProgressFeatureStatus(current)) {
         return reject(
           `'enterStep' is only legal from in_progress or a pipeline step (was '${current}')`
         );
@@ -140,7 +158,7 @@ export function resolveTransition(
     }
 
     case 'mergeConflict': {
-      if (!isActive(current as FeatureStatus)) {
+      if (!isInProgressFeatureStatus(current)) {
         return reject(
           `'mergeConflict' is only legal from in_progress or a pipeline step (was '${current}')`
         );

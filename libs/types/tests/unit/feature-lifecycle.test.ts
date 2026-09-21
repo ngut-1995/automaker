@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { resolveTransition } from '../../src/feature-lifecycle.js';
+import {
+  resolveTransition,
+  isRunnableFeatureStatus,
+  isInProgressFeatureStatus,
+  isDoneFeatureStatus,
+} from '../../src/feature-lifecycle.js';
 import type { FeatureTrigger, TransitionContext } from '../../src/feature-lifecycle.js';
 import type { FeatureStatus } from '../../src/feature.js';
 
@@ -186,6 +191,83 @@ describe('resolveTransition', () => {
       const result = resolve(undefined, 'start');
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason).toContain('no current status');
+    });
+  });
+});
+
+describe('status predicates', () => {
+  const ALL_STATUSES: FeatureStatus[] = [
+    'backlog',
+    'ready',
+    'in_progress',
+    'interrupted',
+    'waiting_approval',
+    'verified',
+    'completed',
+    'merge_conflict',
+    'pipeline_code_review',
+  ];
+
+  describe('isRunnableFeatureStatus', () => {
+    const runnable = new Set<FeatureStatus>([
+      'backlog',
+      'ready',
+      'interrupted',
+      'pipeline_code_review',
+    ]);
+
+    it('classifies every status in the vocabulary', () => {
+      for (const status of ALL_STATUSES) {
+        expect(isRunnableFeatureStatus(status)).toBe(runnable.has(status));
+      }
+    });
+
+    it('classifies any pipeline step as runnable', () => {
+      expect(isRunnableFeatureStatus('pipeline_deploy')).toBe(true);
+      expect(isRunnableFeatureStatus('pipeline_step_abc_123')).toBe(true);
+    });
+
+    it('treats null and undefined as not runnable', () => {
+      expect(isRunnableFeatureStatus(null)).toBe(false);
+      expect(isRunnableFeatureStatus(undefined)).toBe(false);
+    });
+  });
+
+  describe('isInProgressFeatureStatus', () => {
+    const inProgress = new Set<FeatureStatus>(['in_progress', 'pipeline_code_review']);
+
+    it('classifies every status in the vocabulary', () => {
+      for (const status of ALL_STATUSES) {
+        expect(isInProgressFeatureStatus(status)).toBe(inProgress.has(status));
+      }
+    });
+
+    it('classifies any pipeline step as in progress', () => {
+      expect(isInProgressFeatureStatus('pipeline_lint')).toBe(true);
+    });
+
+    it('treats null and undefined as not in progress', () => {
+      expect(isInProgressFeatureStatus(null)).toBe(false);
+      expect(isInProgressFeatureStatus(undefined)).toBe(false);
+    });
+  });
+
+  describe('isDoneFeatureStatus', () => {
+    const done = new Set<FeatureStatus>(['verified', 'completed']);
+
+    it('classifies every status in the vocabulary', () => {
+      for (const status of ALL_STATUSES) {
+        expect(isDoneFeatureStatus(status)).toBe(done.has(status));
+      }
+    });
+
+    it('does not treat waiting_approval as done', () => {
+      expect(isDoneFeatureStatus('waiting_approval')).toBe(false);
+    });
+
+    it('treats null and undefined as not done', () => {
+      expect(isDoneFeatureStatus(null)).toBe(false);
+      expect(isDoneFeatureStatus(undefined)).toBe(false);
     });
   });
 });

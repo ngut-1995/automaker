@@ -77,7 +77,12 @@ export type {
   TransitionContext,
   TransitionResolution,
 } from './feature-lifecycle.js';
-export { resolveTransition } from './feature-lifecycle.js';
+export {
+  resolveTransition,
+  isRunnableFeatureStatus,
+  isInProgressFeatureStatus,
+  isDoneFeatureStatus,
+} from './feature-lifecycle.js';
 
 // Session types
 export type {

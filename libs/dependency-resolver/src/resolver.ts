@@ -6,6 +6,7 @@
  */
 
 import type { Feature } from '@automaker/types';
+import { isDoneFeatureStatus } from '@automaker/types';
 
 export interface DependencyResolutionResult {
   orderedFeatures: Feature[]; // Features in dependency-aware order
@@ -56,7 +57,7 @@ export function resolveDependencies(features: Feature[]): DependencyResolutionRe
 
         // Check if dependency is incomplete (blocking)
         const depFeature = featureMap.get(depId)!;
-        if (depFeature.status !== 'completed' && depFeature.status !== 'verified') {
+        if (!isDoneFeatureStatus(depFeature.status)) {
           if (!blockedFeatures.has(feature.id)) {
             blockedFeatures.set(feature.id, []);
           }
@@ -206,8 +207,8 @@ export function areDependenciesSatisfied(
       // When skipping verification, only block if dependency is currently running
       return dep.status !== 'in_progress';
     }
-    // Default: require 'completed' or 'verified'
-    return dep.status === 'completed' || dep.status === 'verified';
+    // Default: require the dependency to be done (completed or verified)
+    return isDoneFeatureStatus(dep.status);
   });
 }
 
@@ -225,7 +226,7 @@ export function getBlockingDependencies(feature: Feature, allFeatures: Feature[]
 
   return feature.dependencies.filter((depId: string) => {
     const dep = allFeatures.find((f) => f.id === depId);
-    return dep && dep.status !== 'completed' && dep.status !== 'verified';
+    return dep && !isDoneFeatureStatus(dep.status);
   });
 }
 
@@ -264,7 +265,7 @@ export function getBlockingDependenciesFromMap(
   const blockingDependencies: string[] = [];
   for (const depId of dependencies) {
     const dep = featureMap.get(depId);
-    if (dep && dep.status !== 'completed' && dep.status !== 'verified') {
+    if (dep && !isDoneFeatureStatus(dep.status)) {
       blockingDependencies.push(depId);
     }
   }

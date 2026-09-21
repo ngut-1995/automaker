@@ -4,7 +4,7 @@
 
 import path from 'path';
 import type { Feature, FeatureStatusWithPipeline } from '@automaker/types';
-import { DEFAULT_MAX_CONCURRENCY } from '@automaker/types';
+import { DEFAULT_MAX_CONCURRENCY, isInProgressFeatureStatus } from '@automaker/types';
 import {
   createLogger,
   readJsonWithRecovery,
@@ -283,9 +283,7 @@ export class RecoveryService {
           // 3. Features that were previously running (from execution state) and are now
           //    in ready/backlog due to reconciliation resetting their status
           const isActiveState =
-            feature.status === 'in_progress' ||
-            feature.status === 'interrupted' ||
-            (feature.status && feature.status.startsWith('pipeline_'));
+            isInProgressFeatureStatus(feature.status) || feature.status === 'interrupted';
           const wasReconciledFromRunning =
             previouslyRunningIds.has(feature.id) &&
             (feature.status === 'ready' || feature.status === 'backlog');

@@ -1,5 +1,6 @@
 import type { Feature } from '@/store/app-store';
 import type { PipelineConfig, FeatureStatusWithPipeline } from '@automaker/types';
+import { isPipelineStatus, isRunnableFeatureStatus } from '@automaker/types';
 
 export type ColumnId = Feature['status'];
 
@@ -147,20 +148,10 @@ export function getPipelineInsertIndex(): number {
  * but its status hasn't updated yet (race condition during WebSocket/cache sync).
  * See use-board-column-features.ts for the column assignment logic.
  */
-export function isBacklogLikeStatus(status: string): boolean {
+export function isBacklogLikeStatus(status: FeatureStatusWithPipeline | null | undefined): boolean {
   return (
-    status === 'backlog' ||
-    status === 'ready' ||
-    status === 'interrupted' ||
-    status === 'merge_conflict'
+    (isRunnableFeatureStatus(status) && !isPipelineStatus(status)) || status === 'merge_conflict'
   );
-}
-
-/**
- * Check if a status is a pipeline status
- */
-export function isPipelineStatus(status: string): boolean {
-  return status.startsWith('pipeline_');
 }
 
 /**
