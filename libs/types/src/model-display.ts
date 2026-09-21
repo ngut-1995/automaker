@@ -7,9 +7,7 @@
 
 import type { ModelAlias, ThinkingLevel, ModelProvider } from './settings.js';
 import type { ReasoningEffort } from './provider.js';
-import type { CursorModelId } from './cursor-models.js';
 import { CURSOR_MODEL_MAP, LEGACY_CURSOR_MODEL_MAP } from './cursor-models.js';
-import type { AgentModel, CodexModelId } from './model.js';
 import { CODEX_MODEL_MAP } from './model.js';
 import {
   CLAUDE_TIERS,
@@ -17,7 +15,7 @@ import {
   CLAUDE_TIER_ROW_BY_TIER,
   type ClaudeTier,
 } from './claude-tiers.js';
-import { GEMINI_MODEL_MAP, type GeminiModelId } from './gemini-models.js';
+import { GEMINI_MODEL_MAP } from './gemini-models.js';
 import { COPILOT_MODEL_MAP } from './copilot-models.js';
 import {
   OPENCODE_MODELS,
@@ -26,11 +24,22 @@ import {
 } from './opencode-models.js';
 
 /**
- * ModelOption - Display metadata for a model option in the UI
+ * ModelOption - one row in a model picker, for every provider.
+ *
+ * Declared here and nowhere else: the UI imports this type rather than
+ * restating it, so a row that type-checks in the shared package type-checks in
+ * the picker too.
  */
 export interface ModelOption {
-  /** Model identifier (supports Claude, Cursor, Gemini models) */
-  id: ModelAlias | CursorModelId | GeminiModelId;
+  /**
+   * Canonical model ID, in whichever provider's spelling
+   * (`claude-sonnet`, `cursor-auto`, `codex-gpt-5.3-codex`, `gemini-2.5-flash`).
+   *
+   * Deliberately `string` rather than a union of the known ID types: OpenCode
+   * models are discovered at runtime and arrive as arbitrary `provider/model`
+   * strings, so no closed union can cover every row a picker renders.
+   */
+  id: string;
   /** Display name shown to user */
   label: string;
   /** Descriptive text explaining model capabilities */
@@ -39,6 +48,10 @@ export interface ModelOption {
   badge?: string;
   /** AI provider */
   provider: ModelProvider;
+  /** Whether the model takes a thinking level */
+  hasThinking?: boolean;
+  /** Whether the model takes a reasoning effort */
+  hasReasoning?: boolean;
 }
 
 /**
@@ -76,7 +89,7 @@ export const CLAUDE_MODELS: ModelOption[] = CLAUDE_TIERS.map((tier) => {
  * Codex model options with full metadata for UI display
  * Official models from https://developers.openai.com/codex/models/
  */
-export const CODEX_MODELS: (ModelOption & { hasReasoning?: boolean })[] = [
+export const CODEX_MODELS: ModelOption[] = [
   {
     id: CODEX_MODEL_MAP.gpt53Codex,
     label: 'GPT-5.3-Codex',
@@ -172,23 +185,25 @@ export const CODEX_MODELS: (ModelOption & { hasReasoning?: boolean })[] = [
  * Based on https://github.com/google-gemini/gemini-cli
  * Model IDs match the keys in GEMINI_MODEL_MAP (e.g., 'gemini-2.5-flash')
  */
-export const GEMINI_MODELS: (ModelOption & { hasThinking?: boolean })[] = Object.entries(
-  GEMINI_MODEL_MAP
-).map(([id, config]) => ({
-  id: id as GeminiModelId,
-  label: config.label,
-  description: config.description,
-  badge: config.supportsThinking ? 'Thinking' : 'Speed',
-  provider: 'gemini' as const,
-  hasThinking: config.supportsThinking,
-}));
+export const GEMINI_MODELS: ModelOption[] = Object.entries(GEMINI_MODEL_MAP).map(
+  ([id, config]) => ({
+    id,
+    label: config.label,
+    description: config.description,
+    badge: config.supportsThinking ? 'Thinking' : 'Speed',
+    provider: 'gemini' as const,
+    hasThinking: config.supportsThinking,
+  })
+);
 
 /**
- * Thinking level options with display labels
+ * Thinking level options with display labels.
  *
- * Ordered from least to most intensive reasoning.
+ * Ordered from least to most intensive reasoning. The one place the levels are
+ * enumerated: `THINKING_LEVELS` below is derived from this list, so the two can
+ * never fall out of order with each other.
  */
-export const THINKING_LEVELS: ThinkingLevelOption[] = [
+export const THINKING_LEVEL_OPTIONS: ThinkingLevelOption[] = [
   { id: 'none', label: 'None' },
   { id: 'low', label: 'Low' },
   { id: 'medium', label: 'Medium' },
@@ -196,6 +211,12 @@ export const THINKING_LEVELS: ThinkingLevelOption[] = [
   { id: 'ultrathink', label: 'Ultrathink' },
   { id: 'adaptive', label: 'Adaptive' },
 ];
+
+/**
+ * The thinking levels themselves, in the same order, for callers that render
+ * their own row per level and look the label up in `THINKING_LEVEL_LABELS`.
+ */
+export const THINKING_LEVELS: ThinkingLevel[] = THINKING_LEVEL_OPTIONS.map((option) => option.id);
 
 /**
  * Map of thinking levels to short display labels
@@ -224,10 +245,12 @@ export interface ReasoningEffortOption {
 }
 
 /**
- * Reasoning effort options for Codex/OpenAI models
- * All models support reasoning effort levels
+ * Reasoning effort options for Codex/OpenAI models.
+ *
+ * All models support reasoning effort levels. The one place the levels are
+ * enumerated: `REASONING_EFFORT_LEVELS` below is derived from this list.
  */
-export const REASONING_EFFORT_LEVELS: ReasoningEffortOption[] = [
+export const REASONING_EFFORT_OPTIONS: ReasoningEffortOption[] = [
   { id: 'none', label: 'None', description: 'No reasoning tokens (GPT-5.1 models only)' },
   { id: 'minimal', label: 'Minimal', description: 'Very quick reasoning' },
   { id: 'low', label: 'Low', description: 'Quick responses for simpler queries' },
@@ -235,6 +258,15 @@ export const REASONING_EFFORT_LEVELS: ReasoningEffortOption[] = [
   { id: 'high', label: 'High', description: 'Maximizes reasoning depth for critical tasks' },
   { id: 'xhigh', label: 'XHigh', description: 'Highest level for gpt-5.1-codex-max and newer' },
 ];
+
+/**
+ * The reasoning effort levels themselves, in the same order, for callers that
+ * render their own row per level and look the label up in
+ * `REASONING_EFFORT_LABELS`.
+ */
+export const REASONING_EFFORT_LEVELS: ReasoningEffort[] = REASONING_EFFORT_OPTIONS.map(
+  (option) => option.id
+);
 
 /**
  * Map of reasoning effort levels to short display labels

@@ -9,7 +9,7 @@ import type { PhaseModelKey, PhaseModelEntry, ThinkingLevel } from '@automaker/t
 import {
   DEFAULT_PHASE_MODELS,
   DEFAULT_GLOBAL_SETTINGS,
-  REASONING_EFFORT_LEVELS,
+  REASONING_EFFORT_OPTIONS,
 } from '@automaker/types';
 
 interface PhaseConfig {
@@ -239,7 +239,7 @@ function DefaultThinkingLevelSection() {
             </div>
           </div>
           <div className="flex items-center gap-1 flex-wrap justify-start sm:justify-end">
-            {REASONING_EFFORT_LEVELS.map((option) => (
+            {REASONING_EFFORT_OPTIONS.map((option) => (
               <button
                 key={option.id}
                 onClick={() => setDefaultReasoningEffort(option.id)}

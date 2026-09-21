@@ -1,4 +1,4 @@
-import type { ModelProvider, ThinkingLevel, ReasoningEffort } from '@automaker/types';
+import type { ModelOption, ModelProvider } from '@automaker/types';
 import {
   CLAUDE_TIERS,
   CLAUDE_TIER_ROW_BY_TIER,
@@ -18,14 +18,11 @@ import {
   CopilotIcon,
 } from '@/components/ui/provider-icon';
 
-export type ModelOption = {
-  id: string; // All model IDs use canonical prefixed format (e.g., "claude-sonnet", "cursor-auto")
-  label: string;
-  description: string;
-  badge?: string;
-  provider: ModelProvider;
-  hasThinking?: boolean;
-};
+/**
+ * `ModelOption` is declared once, in `@automaker/types`. Re-exported here so the
+ * pickers that already import it alongside the lists below keep working.
+ */
+export type { ModelOption };
 
 /**
  * Claude models with canonical prefixed IDs.
@@ -159,45 +156,17 @@ export const ALL_MODELS: ModelOption[] = [
   ...COPILOT_MODELS,
 ];
 
-export const THINKING_LEVELS: ThinkingLevel[] = [
-  'none',
-  'low',
-  'medium',
-  'high',
-  'ultrathink',
-  'adaptive',
-];
-
-export const THINKING_LEVEL_LABELS: Record<ThinkingLevel, string> = {
-  none: 'None',
-  low: 'Low',
-  medium: 'Med',
-  high: 'High',
-  ultrathink: 'Ultra',
-  adaptive: 'Adaptive',
-};
-
 /**
- * Reasoning effort levels for Codex/OpenAI models
- * All models support reasoning effort levels
+ * Thinking levels and reasoning efforts, with their short labels, are declared
+ * once in `@automaker/types` and re-exported here for the selectors that reach
+ * for them alongside the model lists above.
  */
-export const REASONING_EFFORT_LEVELS: ReasoningEffort[] = [
-  'none',
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
-];
-
-export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
-  none: 'None',
-  minimal: 'Min',
-  low: 'Low',
-  medium: 'Med',
-  high: 'High',
-  xhigh: 'XHigh',
-};
+export {
+  THINKING_LEVELS,
+  THINKING_LEVEL_LABELS,
+  REASONING_EFFORT_LEVELS,
+  REASONING_EFFORT_LABELS,
+} from '@automaker/types';
 
 // Profile icon mapping
 export const PROFILE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
