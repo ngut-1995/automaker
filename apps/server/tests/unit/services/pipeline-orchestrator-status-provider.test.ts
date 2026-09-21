@@ -14,7 +14,7 @@ import type { Feature, PipelineStep } from '@automaker/types';
 import {
   PipelineOrchestrator,
   type PipelineContext,
-  type UpdateFeatureStatusFn,
+  type TransitionFeatureFn,
   type BuildFeaturePromptFn,
   type ExecuteFeatureFn,
   type RunAgentFn,

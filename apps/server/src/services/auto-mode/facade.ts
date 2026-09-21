@@ -394,8 +394,8 @@ export class AutoModeServiceFacade {
       concurrencyManager,
       settingsService,
       // Callbacks
-      (pPath, featureId, status) =>
-        featureStateManager.updateFeatureStatus(pPath, featureId, status),
+      (pPath, featureId, trigger, transitionContext) =>
+        featureRecord.transition(pPath, featureId, trigger, transitionContext),
       loadContextFiles,
       buildFeaturePrompt,
       (pPath, featureId, useWorktrees, _isAutoMode, _model, opts) =>

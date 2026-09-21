@@ -13,15 +13,20 @@ function resolve(
 
 describe('resolveTransition', () => {
   describe('legal pairs', () => {
-    it('starts a feature from backlog, ready, interrupted and pipeline steps', () => {
+    it('starts a feature from backlog, ready, interrupted, merge_conflict and pipeline steps', () => {
       for (const from of [
         'backlog',
         'ready',
         'interrupted',
+        'merge_conflict',
         'pipeline_review',
       ] as FeatureStatus[]) {
         expect(resolve(from, 'start')).toEqual({ ok: true, status: 'in_progress' });
       }
+    });
+
+    it('restarts a merge-conflict feature', () => {
+      expect(resolve('merge_conflict', 'start')).toEqual({ ok: true, status: 'in_progress' });
     });
 
     it('treats start from in_progress as an idempotent no-op target', () => {
