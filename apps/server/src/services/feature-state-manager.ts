@@ -36,6 +36,7 @@ import type { AutoModeEventType } from '@automaker/types';
 import { getNotificationService } from './notification-service.js';
 import { FeatureLoader } from './feature-loader.js';
 import { pipelineService } from './pipeline-service.js';
+import { finalizeInProgressTasks } from './feature-plan-tasks.js';
 
 const logger = createLogger('FeatureStateManager');
 
@@ -175,7 +176,7 @@ export class FeatureStateManager {
 
       // Finalize in-progress tasks when reaching terminal states (waiting_approval or verified)
       if (status === 'waiting_approval' || status === 'verified') {
-        this.finalizeInProgressTasks(feature, featureId, status);
+        finalizeInProgressTasks(feature, featureId, status);
       }
 
       // PERSIST BEFORE EMIT (Pitfall 2)
@@ -822,50 +823,6 @@ export class FeatureStateManager {
     const feature = await this.loadFeature(projectPath, featureId);
     if (!feature) return null;
     return this.getFeatureDisplayName(feature, featureId);
-  }
-
-  /**
-   * Finalize in-progress tasks when a feature reaches a terminal state.
-   * Marks in_progress tasks as completed but leaves pending tasks untouched.
-   *
-   * @param feature - The feature whose tasks should be finalized
-   * @param featureId - The feature ID for logging
-   * @param targetStatus - The status the feature is transitioning to
-   */
-  private finalizeInProgressTasks(feature: Feature, featureId: string, targetStatus: string): void {
-    if (!feature.planSpec?.tasks) {
-      return;
-    }
-
-    let tasksFinalized = 0;
-    let tasksPending = 0;
-
-    for (const task of feature.planSpec.tasks) {
-      if (task.status === 'in_progress') {
-        task.status = 'completed';
-        tasksFinalized++;
-      } else if (task.status === 'pending') {
-        tasksPending++;
-      }
-    }
-
-    // Update tasksCompleted count to reflect actual completed tasks
-    feature.planSpec.tasksCompleted = feature.planSpec.tasks.filter(
-      (t) => t.status === 'completed'
-    ).length;
-    feature.planSpec.currentTaskId = undefined;
-
-    if (tasksFinalized > 0) {
-      logger.info(
-        `[updateFeatureStatus] Finalized ${tasksFinalized} in_progress tasks for feature ${featureId} moving to ${targetStatus}`
-      );
-    }
-
-    if (tasksPending > 0) {
-      logger.warn(
-        `[updateFeatureStatus] Feature ${featureId} moving to ${targetStatus} with ${tasksPending} pending (never started) tasks out of ${feature.planSpec.tasks.length} total`
-      );
-    }
   }
 
   /**

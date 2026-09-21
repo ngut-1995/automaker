@@ -37,6 +37,7 @@ import { TypedEventBus } from '../typed-event-bus.js';
 import { ConcurrencyManager } from '../concurrency-manager.js';
 import { WorktreeResolver } from '../worktree-resolver.js';
 import { FeatureStateManager } from '../feature-state-manager.js';
+import { FeatureRecord } from '../feature-record.js';
 import { PlanApprovalService } from '../plan-approval-service.js';
 import { AutoLoopCoordinator, type AutoModeConfig } from '../auto-loop-coordinator.js';
 import { ExecutionService } from '../execution-service.js';
@@ -176,6 +177,7 @@ export class AutoModeServiceFacade {
       sharedServices?.concurrencyManager ??
       new ConcurrencyManager((p) => worktreeResolver.getCurrentBranch(p));
     const featureStateManager = new FeatureStateManager(events, featureLoader);
+    const featureRecord = new FeatureRecord(eventBus, featureLoader);
     const planApprovalService = new PlanApprovalService(
       eventBus,
       featureStateManager,
@@ -460,8 +462,8 @@ export class AutoModeServiceFacade {
       settingsService,
       createRunAgentFn(),
       (context) => pipelineOrchestrator.executePipeline(context),
-      (pPath, featureId, status) =>
-        featureStateManager.updateFeatureStatus(pPath, featureId, status),
+      (pPath, featureId, trigger, transitionContext) =>
+        featureRecord.transition(pPath, featureId, trigger, transitionContext),
       (pPath, featureId) => featureStateManager.loadFeature(pPath, featureId),
       async (feature) => {
         // getPlanningPromptPrefixFn - select appropriate planning prompt based on feature's planningMode

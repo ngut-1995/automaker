@@ -71,6 +71,14 @@ export type {
   PlanSpec,
 } from './feature.js';
 
+// Feature lifecycle vocabulary and transition table
+export type {
+  FeatureTrigger,
+  TransitionContext,
+  TransitionResolution,
+} from './feature-lifecycle.js';
+export { resolveTransition } from './feature-lifecycle.js';
+
 // Session types
 export type {
   AgentSession,

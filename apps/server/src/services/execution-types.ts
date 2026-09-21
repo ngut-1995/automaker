@@ -7,7 +7,8 @@
 
 import type {
   Feature,
-  FeatureStatus,
+  FeatureTrigger,
+  TransitionContext,
   PlanningMode,
   ThinkingLevel,
   ReasoningEffort,
@@ -51,13 +52,14 @@ export type RunAgentFn = (
 export type ExecutePipelineFn = (context: PipelineContext) => Promise<void>;
 
 /**
- * Function to update feature status
+ * Function to apply a lifecycle trigger to a feature through the Feature record
  */
-export type UpdateFeatureStatusFn = (
+export type TransitionFeatureFn = (
   projectPath: string,
   featureId: string,
-  status: FeatureStatus
-) => Promise<void>;
+  trigger: FeatureTrigger,
+  context?: TransitionContext
+) => Promise<{ feature: Feature; changed: boolean }>;
 
 /**
  * Function to load a feature by ID

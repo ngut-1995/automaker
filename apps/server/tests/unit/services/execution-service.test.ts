@@ -10,7 +10,7 @@ import {
   ExecutionService,
   type RunAgentFn,
   type ExecutePipelineFn,
-  type UpdateFeatureStatusFn,
+  type TransitionFeatureFn,
   type LoadFeatureFn,
   type GetPlanningPromptPrefixFn,
   type SaveFeatureSummaryFn,
@@ -133,7 +133,7 @@ describe('execution-service.ts', () => {
   // Callback mocks
   let mockRunAgentFn: RunAgentFn;
   let mockExecutePipelineFn: ExecutePipelineFn;
-  let mockUpdateFeatureStatusFn: UpdateFeatureStatusFn;
+  let mockTransitionFeatureFn: TransitionFeatureFn;
   let mockLoadFeatureFn: LoadFeatureFn;
   let mockGetPlanningPromptPrefixFn: GetPlanningPromptPrefixFn;
   let mockSaveFeatureSummaryFn: SaveFeatureSummaryFn;
@@ -194,7 +194,7 @@ describe('execution-service.ts', () => {
 
     mockRunAgentFn = vi.fn().mockResolvedValue(undefined);
     mockExecutePipelineFn = vi.fn().mockResolvedValue(undefined);
-    mockUpdateFeatureStatusFn = vi.fn().mockResolvedValue(undefined);
+    mockTransitionFeatureFn = vi.fn().mockResolvedValue({ feature: testFeature, changed: true });
     mockLoadFeatureFn = vi.fn().mockResolvedValue(testFeature);
     mockGetPlanningPromptPrefixFn = vi.fn().mockResolvedValue('');
     mockSaveFeatureSummaryFn = vi.fn().mockResolvedValue(undefined);
@@ -255,7 +255,7 @@ describe('execution-service.ts', () => {
       mockSettingsService,
       mockRunAgentFn,
       mockExecutePipelineFn,
-      mockUpdateFeatureStatusFn,
+      mockTransitionFeatureFn,
       mockLoadFeatureFn,
       mockGetPlanningPromptPrefixFn,
       mockSaveFeatureSummaryFn,
@@ -287,7 +287,7 @@ describe('execution-service.ts', () => {
         null,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -383,7 +383,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -420,10 +420,11 @@ describe('execution-service.ts', () => {
     it('updates status to in_progress before starting', async () => {
       await service.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
         '/test/project',
         'feature-1',
-        'in_progress'
+        'start',
+        undefined
       );
     });
 
@@ -439,7 +440,7 @@ describe('execution-service.ts', () => {
       );
 
       // Verify order: status update happens before event
-      const statusCallIndex = mockUpdateFeatureStatusFn.mock.invocationCallOrder[0];
+      const statusCallIndex = mockTransitionFeatureFn.mock.invocationCallOrder[0];
       const eventCallIndex = mockEventBus.emitAutoModeEvent.mock.invocationCallOrder[0];
       expect(statusCallIndex).toBeLessThan(eventCallIndex);
     });
@@ -497,11 +498,9 @@ describe('execution-service.ts', () => {
     it('updates status to verified on completion', async () => {
       await service.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
     });
 
     it('updates status to waiting_approval when skipTests is true', async () => {
@@ -513,7 +512,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -529,11 +528,9 @@ describe('execution-service.ts', () => {
 
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('records success on completion', async () => {
@@ -557,7 +554,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -615,7 +612,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -652,7 +649,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -692,7 +689,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -723,7 +720,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -864,11 +861,9 @@ describe('execution-service.ts', () => {
       expect(mockRunAgentFn).toHaveBeenCalledTimes(4);
 
       // Should still set final status even with incomplete tasks
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
     });
 
     it('stops retrying when abort signal is triggered', async () => {
@@ -1021,7 +1016,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1056,7 +1051,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1072,11 +1067,9 @@ describe('execution-service.ts', () => {
 
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'backlog'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'fail', {
+        pipelineCompleted: false,
+      });
     });
 
     it('tracks failure and checks pause', async () => {
@@ -1089,7 +1082,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1124,7 +1117,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1159,7 +1152,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1204,7 +1197,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1243,7 +1236,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1300,10 +1293,11 @@ describe('execution-service.ts', () => {
 
       // Should update to 'interrupted' immediately so the UI reflects the stop
       // without waiting for the CLI subprocess to fully terminate
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
         '/test/project',
         'feature-1',
-        'interrupted'
+        'interrupt',
+        undefined
       );
     });
 
@@ -1311,7 +1305,7 @@ describe('execution-service.ts', () => {
       const runningFeature = createRunningFeature('feature-1');
       const abortSpy = vi.spyOn(runningFeature.abortController, 'abort');
       vi.mocked(mockConcurrencyManager.getRunningFeature).mockReturnValue(runningFeature);
-      vi.mocked(mockUpdateFeatureStatusFn).mockRejectedValueOnce(new Error('disk error'));
+      vi.mocked(mockTransitionFeatureFn).mockRejectedValueOnce(new Error('disk error'));
 
       const result = await service.stopFeature('feature-1');
 
@@ -1394,7 +1388,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1474,7 +1468,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1586,7 +1580,7 @@ describe('execution-service.ts', () => {
         mockSettingsService,
         mockRunAgentFn,
         mockExecutePipelineFn,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadFeatureFn,
         mockGetPlanningPromptPrefixFn,
         mockSaveFeatureSummaryFn,
@@ -1607,11 +1601,9 @@ describe('execution-service.ts', () => {
 
       await service.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
     });
 
     it('sets waiting_approval when agent output is empty', async () => {
@@ -1620,11 +1612,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('sets waiting_approval when agent output has no tool usage markers', async () => {
@@ -1635,11 +1625,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('sets waiting_approval when agent output has tool markers but is too short', async () => {
@@ -1652,11 +1640,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('sets waiting_approval when agent output file is missing (ENOENT)', async () => {
@@ -1665,11 +1651,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('sets waiting_approval when agent output is only whitespace', async () => {
@@ -1678,11 +1662,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('sets verified when output is exactly at the 200 char threshold with tool usage', async () => {
@@ -1697,11 +1679,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
     });
 
     it('sets waiting_approval when output is 199 chars with tool usage (below threshold)', async () => {
@@ -1715,11 +1695,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('skipTests always takes priority over output validation', async () => {
@@ -1733,11 +1711,9 @@ describe('execution-service.ts', () => {
       await svc.executeFeature('/test/project', 'feature-1');
 
       // skipTests=true always means waiting_approval regardless of output quality
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('skipTests with empty output still results in waiting_approval', async () => {
@@ -1748,11 +1724,9 @@ describe('execution-service.ts', () => {
 
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('still records success even when output validation fails', async () => {
@@ -1805,11 +1779,9 @@ describe('execution-service.ts', () => {
       await svc.executeFeature('/test/project', 'feature-1');
 
       // No tool usage = waiting_approval
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('handles realistic Claude SDK output with multiple tool uses', async () => {
@@ -1828,11 +1800,9 @@ describe('execution-service.ts', () => {
       await svc.executeFeature('/test/project', 'feature-1');
 
       // Real work = verified
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
     });
 
     it('reads agent output from the correct path with utf-8 encoding', async () => {
@@ -1892,11 +1862,9 @@ describe('execution-service.ts', () => {
       await svc.executeFeature('/test/project', 'feature-1');
 
       // Status should be verified (has tools + long enough)
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
       // extractSummary should receive the exact same output
       expect(extractSummary).toHaveBeenCalledWith(specificOutput);
       // recordLearnings should also receive the same output
@@ -1931,11 +1899,9 @@ describe('execution-service.ts', () => {
       await svc.executeFeature('/test/project', 'feature-1');
 
       // Should still detect tool markers and sufficient length
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
     });
 
     it('treats output with only newlines and spaces around tool marker as insufficient', async () => {
@@ -1948,11 +1914,9 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('detects tool marker substring correctly (partial match like "🔧 Tools:" does not count)', async () => {
@@ -1966,11 +1930,9 @@ describe('execution-service.ts', () => {
       await svc.executeFeature('/test/project', 'feature-1');
 
       // "🔧 Tools:" is not the same as "🔧 Tool:" - should be waiting_approval
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'waiting_approval'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'waiting_approval',
+      });
     });
 
     it('pipeline merge_conflict status short-circuits before output validation', async () => {
@@ -1992,11 +1954,11 @@ describe('execution-service.ts', () => {
       const svc = createServiceWithMocks();
       await svc.executeFeature('/test/project', 'feature-1');
 
-      // Should NOT have called updateFeatureStatusFn with 'verified' or 'waiting_approval'
+      // Should NOT have called the transition fn with 'finish'
       // because pipeline merge_conflict short-circuits the method
       const statusCalls = vi
-        .mocked(mockUpdateFeatureStatusFn)
-        .mock.calls.filter((call) => call[2] === 'verified' || call[2] === 'waiting_approval');
+        .mocked(mockTransitionFeatureFn)
+        .mock.calls.filter((call) => call[2] === 'finish');
       // The only non-in_progress status call should be absent since merge_conflict returns early
       expect(statusCalls.length).toBe(0);
     });
@@ -2026,13 +1988,13 @@ describe('execution-service.ts', () => {
 
       // Should set to waiting_approval, NOT backlog, since pipeline completed
       const backlogCalls = vi
-        .mocked(mockUpdateFeatureStatusFn)
-        .mock.calls.filter((call) => call[2] === 'backlog');
+        .mocked(mockTransitionFeatureFn)
+        .mock.calls.filter((call) => call[2] === 'fail' && call[3]?.pipelineCompleted !== true);
       expect(backlogCalls.length).toBe(0);
 
       const waitingCalls = vi
-        .mocked(mockUpdateFeatureStatusFn)
-        .mock.calls.filter((call) => call[2] === 'waiting_approval');
+        .mocked(mockTransitionFeatureFn)
+        .mock.calls.filter((call) => call[2] === 'fail' && call[3]?.pipelineCompleted === true);
       expect(waitingCalls.length).toBeGreaterThan(0);
     });
 
@@ -2051,8 +2013,8 @@ describe('execution-service.ts', () => {
 
       // Should still set to backlog since pipeline did NOT complete
       const backlogCalls = vi
-        .mocked(mockUpdateFeatureStatusFn)
-        .mock.calls.filter((call) => call[2] === 'backlog');
+        .mocked(mockTransitionFeatureFn)
+        .mock.calls.filter((call) => call[2] === 'fail' && call[3]?.pipelineCompleted !== true);
       expect(backlogCalls.length).toBe(1);
     });
   });
