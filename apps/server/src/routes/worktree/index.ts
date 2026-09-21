@@ -1,11 +1,20 @@
 /**
  * Worktree routes - HTTP API for git worktree operations
+ *
+ * The lifecycle operations are registered from the shared operation contract;
+ * this file maps each to its handler and keeps the git/PR operations that have
+ * not been migrated yet hand-registered.
  */
 
 import { Router } from 'express';
 import type { EventEmitter } from '../../lib/events.js';
 import { validatePathParams } from '../../middleware/validate-paths.js';
 import { requireValidWorktree, requireValidProject, requireGitRepoOnly } from './middleware.js';
+import {
+  registerContractOperations,
+  type OperationHandlers,
+  type OperationMiddleware,
+} from '../contract.js';
 import { createInfoHandler } from './routes/info.js';
 import { createStatusHandler } from './routes/status.js';
 import { createListHandler } from './routes/list.js';
@@ -73,34 +82,69 @@ import { createUpdatePRNumberHandler } from './routes/update-pr-number.js';
 import type { SettingsService } from '../../services/settings-service.js';
 import type { FeatureLoader } from '../../services/feature-loader.js';
 
+export const WORKTREE_MOUNT = '/api/worktree';
+
+/**
+ * Create worktree lifecycle operation handlers.
+ */
+export function createWorktreeHandlers(
+  events: EventEmitter,
+  settingsService?: SettingsService,
+  featureLoader?: FeatureLoader
+): OperationHandlers {
+  return {
+    'worktree.info': createInfoHandler(),
+    'worktree.status': createStatusHandler(),
+    'worktree.list': createListHandler(),
+    'worktree.diffs': createDiffsHandler(),
+    'worktree.fileDiff': createFileDiffHandler(),
+    'worktree.merge': createMergeHandler(events),
+    'worktree.create': createCreateHandler(events, settingsService),
+    'worktree.delete': createDeleteHandler(events, featureLoader),
+    'worktree.openInEditor': createOpenInEditorHandler(),
+    'worktree.openInTerminal': createOpenInTerminalHandler(),
+    'worktree.getDefaultEditor': createGetDefaultEditorHandler(),
+    'worktree.getAvailableEditors': createGetAvailableEditorsHandler(),
+    'worktree.refreshEditors': createRefreshEditorsHandler(),
+    'worktree.getAvailableTerminals': createGetAvailableTerminalsHandler(),
+    'worktree.getDefaultTerminal': createGetDefaultTerminalHandler(),
+    'worktree.refreshTerminals': createRefreshTerminalsHandler(),
+    'worktree.openInExternalTerminal': createOpenInExternalTerminalHandler(),
+    'worktree.initGit': createInitGitHandler(),
+    'worktree.migrate': createMigrateHandler(),
+    'worktree.startDev': createStartDevHandler(settingsService),
+    'worktree.stopDev': createStopDevHandler(),
+    'worktree.listDevServers': createListDevServersHandler(),
+    'worktree.getDevServerLogs': createGetDevServerLogsHandler(),
+    'worktree.startTests': createStartTestsHandler(settingsService),
+    'worktree.stopTests': createStopTestsHandler(),
+    'worktree.getTestLogs': createGetTestLogsHandler(),
+    'worktree.getInitScript': createGetInitScriptHandler(),
+    'worktree.setInitScript': createPutInitScriptHandler(),
+    'worktree.deleteInitScript': createDeleteInitScriptHandler(),
+    'worktree.runInitScript': createRunInitScriptHandler(events),
+  };
+}
+
+/** Extra per-operation middleware, beyond the contract's path-param checks. */
+export function createWorktreeMiddleware(): OperationMiddleware {
+  return {
+    'worktree.merge': [requireValidProject],
+  };
+}
+
 export function createWorktreeRoutes(
   events: EventEmitter,
   settingsService?: SettingsService,
   featureLoader?: FeatureLoader
 ): Router {
-  const router = Router();
+  const router = registerContractOperations(
+    Router(),
+    WORKTREE_MOUNT,
+    createWorktreeHandlers(events, settingsService, featureLoader),
+    createWorktreeMiddleware()
+  );
 
-  router.post('/info', validatePathParams('projectPath'), createInfoHandler());
-  router.post('/status', validatePathParams('projectPath'), createStatusHandler());
-  router.post('/list', createListHandler());
-  router.post('/diffs', validatePathParams('projectPath'), createDiffsHandler());
-  router.post('/file-diff', validatePathParams('projectPath', 'filePath'), createFileDiffHandler());
-  router.post(
-    '/merge',
-    validatePathParams('projectPath'),
-    requireValidProject,
-    createMergeHandler(events)
-  );
-  router.post(
-    '/create',
-    validatePathParams('projectPath'),
-    createCreateHandler(events, settingsService)
-  );
-  router.post(
-    '/delete',
-    validatePathParams('projectPath', 'worktreePath'),
-    createDeleteHandler(events, featureLoader)
-  );
   router.post('/create-pr', createCreatePRHandler());
   router.post('/pr-info', createPRInfoHandler());
   router.post(
@@ -168,59 +212,6 @@ export function createWorktreeRoutes(
     validatePathParams('worktreePath'),
     requireValidWorktree,
     createSwitchBranchHandler(events)
-  );
-  router.post('/open-in-editor', validatePathParams('worktreePath'), createOpenInEditorHandler());
-  router.post(
-    '/open-in-terminal',
-    validatePathParams('worktreePath'),
-    createOpenInTerminalHandler()
-  );
-  router.get('/default-editor', createGetDefaultEditorHandler());
-  router.get('/available-editors', createGetAvailableEditorsHandler());
-  router.post('/refresh-editors', createRefreshEditorsHandler());
-
-  // External terminal routes
-  router.get('/available-terminals', createGetAvailableTerminalsHandler());
-  router.get('/default-terminal', createGetDefaultTerminalHandler());
-  router.post('/refresh-terminals', createRefreshTerminalsHandler());
-  router.post(
-    '/open-in-external-terminal',
-    validatePathParams('worktreePath'),
-    createOpenInExternalTerminalHandler()
-  );
-
-  router.post('/init-git', validatePathParams('projectPath'), createInitGitHandler());
-  router.post('/migrate', createMigrateHandler());
-  router.post(
-    '/start-dev',
-    validatePathParams('projectPath', 'worktreePath'),
-    createStartDevHandler(settingsService)
-  );
-  router.post('/stop-dev', createStopDevHandler());
-  router.post('/list-dev-servers', createListDevServersHandler());
-  router.get(
-    '/dev-server-logs',
-    validatePathParams('worktreePath'),
-    createGetDevServerLogsHandler()
-  );
-
-  // Test runner routes
-  router.post(
-    '/start-tests',
-    validatePathParams('worktreePath', 'projectPath?'),
-    createStartTestsHandler(settingsService)
-  );
-  router.post('/stop-tests', createStopTestsHandler());
-  router.get('/test-logs', validatePathParams('worktreePath?'), createGetTestLogsHandler());
-
-  // Init script routes
-  router.get('/init-script', createGetInitScriptHandler());
-  router.put('/init-script', validatePathParams('projectPath'), createPutInitScriptHandler());
-  router.delete('/init-script', validatePathParams('projectPath'), createDeleteInitScriptHandler());
-  router.post(
-    '/run-init-script',
-    validatePathParams('projectPath', 'worktreePath'),
-    createRunInitScriptHandler(events)
   );
 
   // Discard changes route

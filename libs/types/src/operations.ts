@@ -16,6 +16,7 @@
 
 import type { EventType } from './event.js';
 import type { Feature } from './feature.js';
+import type { MergeStateInfo } from './worktree.js';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -425,6 +426,442 @@ export interface RunningAgentsGetAllResponse {
   error?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Worktree mount (/api/worktree) — lifecycle operations
+// ---------------------------------------------------------------------------
+
+/** Mirrors the UI's slim `WorktreeInfo` (the contract cannot import from the UI). */
+export interface WorktreeInfoSummary {
+  worktreePath: string;
+  branchName: string;
+  head?: string;
+  baseBranch?: string;
+}
+
+/**
+ * One entry of `worktree.list`. Carries both the slim shape the `list` method
+ * declares and the richer shape `listAll` declares, since both share the route.
+ */
+export interface WorktreeListEntry extends WorktreeInfoSummary {
+  path: string;
+  branch: string;
+  isMain: boolean;
+  isCurrent: boolean;
+  hasWorktree: boolean;
+  hasChanges?: boolean;
+  changedFilesCount?: number;
+  pr?: {
+    number: number;
+    url: string;
+    title: string;
+    state: string;
+    createdAt: string;
+  };
+}
+
+export interface WorktreeInfoRequest {
+  projectPath: string;
+  featureId: string;
+}
+export interface WorktreeInfoResponse {
+  success: boolean;
+  worktreePath?: string;
+  branchName?: string;
+  head?: string;
+  error?: string;
+}
+
+export interface WorktreeStatusRequest {
+  projectPath: string;
+  featureId: string;
+}
+export interface WorktreeStatusResponse {
+  success: boolean;
+  modifiedFiles?: number;
+  files?: string[];
+  diffStat?: string;
+  recentCommits?: string[];
+  error?: string;
+}
+
+export interface WorktreeListRequest {
+  projectPath: string;
+  includeDetails?: boolean;
+  forceRefreshGitHub?: boolean;
+}
+export interface WorktreeListResponse {
+  success: boolean;
+  worktrees?: WorktreeListEntry[];
+  removedWorktrees?: Array<{ path: string; branch: string }>;
+  error?: string;
+}
+
+export interface WorktreeFileStatus {
+  status: string;
+  path: string;
+  statusText: string;
+  indexStatus?: string;
+  workTreeStatus?: string;
+  isMergeAffected?: boolean;
+  mergeType?: string;
+}
+
+export interface WorktreeDiffsRequest {
+  projectPath: string;
+  featureId: string;
+  useWorktrees?: boolean;
+}
+export interface WorktreeDiffsResponse {
+  success: boolean;
+  diff?: string;
+  files?: WorktreeFileStatus[];
+  hasChanges?: boolean;
+  error?: string;
+  mergeState?: MergeStateInfo;
+}
+
+export interface WorktreeFileDiffRequest {
+  projectPath: string;
+  featureId: string;
+  filePath: string;
+}
+export interface WorktreeFileDiffResponse {
+  success: boolean;
+  diff?: string;
+  filePath?: string;
+  error?: string;
+}
+
+export interface WorktreeMergeRequest {
+  projectPath: string;
+  branchName: string;
+  worktreePath: string;
+  targetBranch?: string;
+  options?: object;
+}
+export interface WorktreeMergeResponse {
+  success: boolean;
+  mergedBranch?: string;
+  targetBranch?: string;
+  deleted?: {
+    worktreeDeleted: boolean;
+    branchDeleted: boolean;
+  };
+  error?: string;
+  hasConflicts?: boolean;
+  conflictFiles?: string[];
+}
+
+export interface WorktreeCreateRequest {
+  projectPath: string;
+  branchName: string;
+  baseBranch?: string;
+}
+export interface WorktreeCreateResponse {
+  success: boolean;
+  worktree?: {
+    path: string;
+    branch: string;
+    isNew: boolean;
+    baseCommitHash?: string;
+    syncResult?: {
+      synced: boolean;
+      remote?: string;
+      message?: string;
+      diverged?: boolean;
+    };
+  };
+  error?: string;
+}
+
+export interface WorktreeDeleteRequest {
+  projectPath: string;
+  worktreePath: string;
+  deleteBranch?: boolean;
+}
+export interface WorktreeDeleteResponse {
+  success: boolean;
+  deleted?: {
+    worktreePath: string;
+    branch: string | null;
+  };
+  error?: string;
+}
+
+export interface WorktreeOpenInEditorRequest {
+  worktreePath: string;
+  editorCommand?: string;
+}
+export interface WorktreeOpenInEditorResponse {
+  success: boolean;
+  result?: {
+    message: string;
+    editorName?: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeOpenInTerminalRequest {
+  worktreePath: string;
+}
+export interface WorktreeOpenInTerminalResponse {
+  success: boolean;
+  result?: {
+    message: string;
+    terminalName: string;
+  };
+  error?: string;
+}
+
+export type WorktreeGetDefaultEditorRequest = Record<string, never>;
+export interface WorktreeGetDefaultEditorResponse {
+  success: boolean;
+  result?: {
+    editorName: string;
+    editorCommand: string;
+  };
+  error?: string;
+}
+
+export type WorktreeGetAvailableEditorsRequest = Record<string, never>;
+export interface WorktreeGetAvailableEditorsResponse {
+  success: boolean;
+  result?: {
+    editors: Array<{ name: string; command: string }>;
+  };
+  error?: string;
+}
+
+export type WorktreeRefreshEditorsRequest = Record<string, never>;
+export interface WorktreeRefreshEditorsResponse {
+  success: boolean;
+  result?: {
+    editors: Array<{ name: string; command: string }>;
+    message: string;
+  };
+  error?: string;
+}
+
+export type WorktreeGetAvailableTerminalsRequest = Record<string, never>;
+export interface WorktreeGetAvailableTerminalsResponse {
+  success: boolean;
+  result?: {
+    terminals: Array<{ id: string; name: string; command: string }>;
+  };
+  error?: string;
+}
+
+export type WorktreeGetDefaultTerminalRequest = Record<string, never>;
+export interface WorktreeGetDefaultTerminalResponse {
+  success: boolean;
+  result?: {
+    terminalId: string;
+    terminalName: string;
+    terminalCommand: string;
+  } | null;
+  error?: string;
+}
+
+export type WorktreeRefreshTerminalsRequest = Record<string, never>;
+export interface WorktreeRefreshTerminalsResponse {
+  success: boolean;
+  result?: {
+    terminals: Array<{ id: string; name: string; command: string }>;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeOpenInExternalTerminalRequest {
+  worktreePath: string;
+  terminalId?: string;
+}
+export interface WorktreeOpenInExternalTerminalResponse {
+  success: boolean;
+  result?: {
+    message: string;
+    terminalName: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeInitGitRequest {
+  projectPath: string;
+}
+export interface WorktreeInitGitResponse {
+  success: boolean;
+  result?: {
+    initialized: boolean;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeMigrateRequest {
+  projectPath: string;
+}
+export interface WorktreeMigrateResponse {
+  success: boolean;
+  migrated?: boolean;
+  message?: string;
+  path?: string;
+  error?: string;
+}
+
+export interface WorktreeStartDevRequest {
+  projectPath: string;
+  worktreePath: string;
+}
+export interface WorktreeStartDevResponse {
+  success: boolean;
+  result?: {
+    worktreePath: string;
+    port: number;
+    url: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeStopDevRequest {
+  worktreePath: string;
+}
+export interface WorktreeStopDevResponse {
+  success: boolean;
+  result?: {
+    worktreePath: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export type WorktreeListDevServersRequest = Record<string, never>;
+export interface WorktreeListDevServersResponse {
+  success: boolean;
+  result?: {
+    servers: Array<{
+      worktreePath: string;
+      port: number;
+      url: string;
+      urlDetected: boolean;
+    }>;
+  };
+  error?: string;
+}
+
+export interface WorktreeGetDevServerLogsRequest {
+  worktreePath: string;
+}
+export interface WorktreeGetDevServerLogsResponse {
+  success: boolean;
+  result?: {
+    worktreePath: string;
+    port: number;
+    url: string;
+    logs: string;
+    startedAt: string;
+  };
+  error?: string;
+}
+
+export type WorktreeTestRunStatus =
+  | 'pending'
+  | 'running'
+  | 'passed'
+  | 'failed'
+  | 'cancelled'
+  | 'error';
+
+export interface WorktreeStartTestsRequest {
+  worktreePath: string;
+  projectPath?: string;
+  testFile?: string;
+}
+export interface WorktreeStartTestsResponse {
+  success: boolean;
+  result?: {
+    sessionId: string;
+    worktreePath: string;
+    command: string;
+    status: WorktreeTestRunStatus;
+    testFile?: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeStopTestsRequest {
+  sessionId: string;
+}
+export interface WorktreeStopTestsResponse {
+  success: boolean;
+  result?: {
+    sessionId: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeGetTestLogsRequest {
+  worktreePath?: string;
+  sessionId?: string;
+}
+export interface WorktreeGetTestLogsResponse {
+  success: boolean;
+  result?: {
+    sessionId: string;
+    worktreePath: string;
+    command: string;
+    status: WorktreeTestRunStatus;
+    testFile?: string;
+    logs: string;
+    startedAt: string;
+    finishedAt: string | null;
+    exitCode: number | null;
+  };
+  error?: string;
+}
+
+export interface WorktreeGetInitScriptRequest {
+  projectPath: string;
+}
+export interface WorktreeGetInitScriptResponse {
+  success: boolean;
+  exists: boolean;
+  content: string;
+  path: string;
+  error?: string;
+}
+
+export interface WorktreeSetInitScriptRequest {
+  projectPath: string;
+  content: string;
+}
+export interface WorktreeSetInitScriptResponse {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface WorktreeDeleteInitScriptRequest {
+  projectPath: string;
+}
+export interface WorktreeDeleteInitScriptResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface WorktreeRunInitScriptRequest {
+  projectPath: string;
+  worktreePath: string;
+  branch: string;
+}
+export interface WorktreeRunInitScriptResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
 /**
  * The registry. Add one entry per operation, named `<namespace>.<method>` where
  * the namespace matches the client's API namespace.
@@ -682,6 +1119,234 @@ export const OPERATIONS = {
     path: '/',
     request: null as unknown as RunningAgentsGetAllRequest,
     response: null as unknown as RunningAgentsGetAllResponse,
+  },
+  'worktree.info': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/info',
+    request: null as unknown as WorktreeInfoRequest,
+    response: null as unknown as WorktreeInfoResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.status': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/status',
+    request: null as unknown as WorktreeStatusRequest,
+    response: null as unknown as WorktreeStatusResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.list': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/list',
+    request: null as unknown as WorktreeListRequest,
+    response: null as unknown as WorktreeListResponse,
+  },
+  'worktree.diffs': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/diffs',
+    request: null as unknown as WorktreeDiffsRequest,
+    response: null as unknown as WorktreeDiffsResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.fileDiff': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/file-diff',
+    request: null as unknown as WorktreeFileDiffRequest,
+    response: null as unknown as WorktreeFileDiffResponse,
+    pathParams: ['projectPath', 'filePath'],
+  },
+  'worktree.merge': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/merge',
+    request: null as unknown as WorktreeMergeRequest,
+    response: null as unknown as WorktreeMergeResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.create': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/create',
+    request: null as unknown as WorktreeCreateRequest,
+    response: null as unknown as WorktreeCreateResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.delete': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/delete',
+    request: null as unknown as WorktreeDeleteRequest,
+    response: null as unknown as WorktreeDeleteResponse,
+    pathParams: ['projectPath', 'worktreePath'],
+  },
+  'worktree.openInEditor': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/open-in-editor',
+    request: null as unknown as WorktreeOpenInEditorRequest,
+    response: null as unknown as WorktreeOpenInEditorResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.openInTerminal': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/open-in-terminal',
+    request: null as unknown as WorktreeOpenInTerminalRequest,
+    response: null as unknown as WorktreeOpenInTerminalResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.getDefaultEditor': {
+    method: 'GET',
+    mount: '/api/worktree',
+    path: '/default-editor',
+    request: null as unknown as WorktreeGetDefaultEditorRequest,
+    response: null as unknown as WorktreeGetDefaultEditorResponse,
+  },
+  'worktree.getAvailableEditors': {
+    method: 'GET',
+    mount: '/api/worktree',
+    path: '/available-editors',
+    request: null as unknown as WorktreeGetAvailableEditorsRequest,
+    response: null as unknown as WorktreeGetAvailableEditorsResponse,
+  },
+  'worktree.refreshEditors': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/refresh-editors',
+    request: null as unknown as WorktreeRefreshEditorsRequest,
+    response: null as unknown as WorktreeRefreshEditorsResponse,
+  },
+  'worktree.getAvailableTerminals': {
+    method: 'GET',
+    mount: '/api/worktree',
+    path: '/available-terminals',
+    request: null as unknown as WorktreeGetAvailableTerminalsRequest,
+    response: null as unknown as WorktreeGetAvailableTerminalsResponse,
+  },
+  'worktree.getDefaultTerminal': {
+    method: 'GET',
+    mount: '/api/worktree',
+    path: '/default-terminal',
+    request: null as unknown as WorktreeGetDefaultTerminalRequest,
+    response: null as unknown as WorktreeGetDefaultTerminalResponse,
+  },
+  'worktree.refreshTerminals': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/refresh-terminals',
+    request: null as unknown as WorktreeRefreshTerminalsRequest,
+    response: null as unknown as WorktreeRefreshTerminalsResponse,
+  },
+  'worktree.openInExternalTerminal': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/open-in-external-terminal',
+    request: null as unknown as WorktreeOpenInExternalTerminalRequest,
+    response: null as unknown as WorktreeOpenInExternalTerminalResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.initGit': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/init-git',
+    request: null as unknown as WorktreeInitGitRequest,
+    response: null as unknown as WorktreeInitGitResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.migrate': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/migrate',
+    request: null as unknown as WorktreeMigrateRequest,
+    response: null as unknown as WorktreeMigrateResponse,
+  },
+  'worktree.startDev': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/start-dev',
+    request: null as unknown as WorktreeStartDevRequest,
+    response: null as unknown as WorktreeStartDevResponse,
+    pathParams: ['projectPath', 'worktreePath'],
+  },
+  'worktree.stopDev': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/stop-dev',
+    request: null as unknown as WorktreeStopDevRequest,
+    response: null as unknown as WorktreeStopDevResponse,
+  },
+  'worktree.listDevServers': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/list-dev-servers',
+    request: null as unknown as WorktreeListDevServersRequest,
+    response: null as unknown as WorktreeListDevServersResponse,
+  },
+  'worktree.getDevServerLogs': {
+    method: 'GET',
+    mount: '/api/worktree',
+    path: '/dev-server-logs',
+    request: null as unknown as WorktreeGetDevServerLogsRequest,
+    response: null as unknown as WorktreeGetDevServerLogsResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.startTests': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/start-tests',
+    request: null as unknown as WorktreeStartTestsRequest,
+    response: null as unknown as WorktreeStartTestsResponse,
+    pathParams: ['worktreePath', 'projectPath?'],
+  },
+  'worktree.stopTests': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/stop-tests',
+    request: null as unknown as WorktreeStopTestsRequest,
+    response: null as unknown as WorktreeStopTestsResponse,
+  },
+  'worktree.getTestLogs': {
+    method: 'GET',
+    mount: '/api/worktree',
+    path: '/test-logs',
+    request: null as unknown as WorktreeGetTestLogsRequest,
+    response: null as unknown as WorktreeGetTestLogsResponse,
+    pathParams: ['worktreePath?'],
+  },
+  'worktree.getInitScript': {
+    method: 'GET',
+    mount: '/api/worktree',
+    path: '/init-script',
+    request: null as unknown as WorktreeGetInitScriptRequest,
+    response: null as unknown as WorktreeGetInitScriptResponse,
+  },
+  'worktree.setInitScript': {
+    method: 'PUT',
+    mount: '/api/worktree',
+    path: '/init-script',
+    request: null as unknown as WorktreeSetInitScriptRequest,
+    response: null as unknown as WorktreeSetInitScriptResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.deleteInitScript': {
+    method: 'DELETE',
+    mount: '/api/worktree',
+    path: '/init-script',
+    request: null as unknown as WorktreeDeleteInitScriptRequest,
+    response: null as unknown as WorktreeDeleteInitScriptResponse,
+    pathParams: ['projectPath'],
+  },
+  'worktree.runInitScript': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/run-init-script',
+    request: null as unknown as WorktreeRunInitScriptRequest,
+    response: null as unknown as WorktreeRunInitScriptResponse,
+    pathParams: ['projectPath', 'worktreePath'],
   },
 } as const satisfies Record<string, OperationDefinition<unknown, unknown>>;
 

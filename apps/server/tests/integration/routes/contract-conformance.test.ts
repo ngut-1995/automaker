@@ -26,6 +26,7 @@ import {
   createRunningAgentsHandlers,
   RUNNING_AGENTS_MOUNT,
 } from '@/routes/running-agents/index.js';
+import { createWorktreeHandlers, WORKTREE_MOUNT } from '@/routes/worktree/index.js';
 import { registerContractOperations, missingContractHandlers } from '@/routes/contract.js';
 import type { OperationHandlers } from '@/routes/contract.js';
 
@@ -104,5 +105,9 @@ describe('contract conformance', () => {
     expect(registeredRoutes(createRunningAgentsRoutes({} as never)).length).toBe(
       operationNamesForMount(RUNNING_AGENTS_MOUNT).length
     );
+  });
+
+  it('worktree lifecycle mount', () => {
+    expectContractMount(WORKTREE_MOUNT, createWorktreeHandlers({} as never));
   });
 });

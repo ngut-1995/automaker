@@ -1108,7 +1108,7 @@ export class HttpApiClient implements ElectronAPI {
     return response.json();
   }
 
-  async put<T>(endpoint: string, body?: unknown): Promise<T> {
+  async put<T>(endpoint: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     // Ensure API key is initialized before making request
     await waitForApiKeyInit();
     const response = await fetch(`${this.serverUrl}${endpoint}`, {
@@ -1116,6 +1116,7 @@ export class HttpApiClient implements ElectronAPI {
       headers: this.getHeaders(),
       credentials: 'include', // Include cookies for session auth
       body: body ? JSON.stringify(body) : undefined,
+      signal,
     });
 
     if (response.status === 401 || response.status === 403) {
@@ -1139,7 +1140,7 @@ export class HttpApiClient implements ElectronAPI {
     return response.json();
   }
 
-  private async httpDelete<T>(endpoint: string, body?: unknown): Promise<T> {
+  private async httpDelete<T>(endpoint: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     // Ensure API key is initialized before making request
     await waitForApiKeyInit();
     const response = await fetch(`${this.serverUrl}${endpoint}`, {
@@ -1147,6 +1148,7 @@ export class HttpApiClient implements ElectronAPI {
       headers: this.getHeaders(),
       credentials: 'include', // Include cookies for session auth
       body: body ? JSON.stringify(body) : undefined,
+      signal,
     });
 
     if (response.status === 401 || response.status === 403) {
@@ -1179,7 +1181,8 @@ export class HttpApiClient implements ElectronAPI {
    */
   private async request<N extends OperationName>(
     name: N,
-    input?: RequestOf<N>
+    input?: RequestOf<N>,
+    options?: { signal?: AbortSignal }
   ): Promise<ResponseOf<N>> {
     const path = operationPath(name);
     const definition: OperationDefinition<unknown, unknown> = OPERATIONS[name];
@@ -1187,11 +1190,11 @@ export class HttpApiClient implements ElectronAPI {
       case 'GET':
         return this.get<ResponseOf<N>>(appendQuery(path, input));
       case 'PUT':
-        return this.put<ResponseOf<N>>(path, input);
+        return this.put<ResponseOf<N>>(path, input, options?.signal);
       case 'DELETE':
-        return this.httpDelete<ResponseOf<N>>(path, input);
+        return this.httpDelete<ResponseOf<N>>(path, input, options?.signal);
       default:
-        return this.post<ResponseOf<N>>(path, input);
+        return this.post<ResponseOf<N>>(path, input, options?.signal);
     }
   }
 
@@ -2188,7 +2191,7 @@ export class HttpApiClient implements ElectronAPI {
       targetBranch?: string,
       options?: object
     ) =>
-      this.post('/api/worktree/merge', {
+      this.request('worktree.merge', {
         projectPath,
         branchName,
         worktreePath,
@@ -2196,20 +2199,20 @@ export class HttpApiClient implements ElectronAPI {
         options,
       }),
     getInfo: (projectPath: string, featureId: string) =>
-      this.post('/api/worktree/info', { projectPath, featureId }),
+      this.request('worktree.info', { projectPath, featureId }),
     getStatus: (projectPath: string, featureId: string) =>
-      this.post('/api/worktree/status', { projectPath, featureId }),
-    list: (projectPath: string) => this.post('/api/worktree/list', { projectPath }),
+      this.request('worktree.status', { projectPath, featureId }),
+    list: (projectPath: string) => this.request('worktree.list', { projectPath }),
     listAll: (projectPath: string, includeDetails?: boolean, forceRefreshGitHub?: boolean) =>
-      this.post('/api/worktree/list', { projectPath, includeDetails, forceRefreshGitHub }),
+      this.request('worktree.list', { projectPath, includeDetails, forceRefreshGitHub }),
     create: (projectPath: string, branchName: string, baseBranch?: string) =>
-      this.post('/api/worktree/create', {
+      this.request('worktree.create', {
         projectPath,
         branchName,
         baseBranch,
       }),
     delete: (projectPath: string, worktreePath: string, deleteBranch?: boolean) =>
-      this.post('/api/worktree/delete', {
+      this.request('worktree.delete', {
         projectPath,
         worktreePath,
         deleteBranch,
@@ -2253,9 +2256,9 @@ export class HttpApiClient implements ElectronAPI {
     updatePRNumber: (worktreePath: string, prNumber: number, projectPath?: string) =>
       this.post('/api/worktree/update-pr-number', { worktreePath, prNumber, projectPath }),
     getDiffs: (projectPath: string, featureId: string) =>
-      this.post('/api/worktree/diffs', { projectPath, featureId }),
+      this.request('worktree.diffs', { projectPath, featureId }),
     getFileDiff: (projectPath: string, featureId: string, filePath: string) =>
-      this.post('/api/worktree/file-diff', {
+      this.request('worktree.fileDiff', {
         projectPath,
         featureId,
         filePath,
@@ -2289,22 +2292,25 @@ export class HttpApiClient implements ElectronAPI {
     addRemote: (worktreePath: string, remoteName: string, remoteUrl: string) =>
       this.post('/api/worktree/add-remote', { worktreePath, remoteName, remoteUrl }),
     openInEditor: (worktreePath: string, editorCommand?: string) =>
-      this.post('/api/worktree/open-in-editor', { worktreePath, editorCommand }),
-    getDefaultEditor: () => this.get('/api/worktree/default-editor'),
-    getAvailableEditors: () => this.get('/api/worktree/available-editors'),
-    refreshEditors: () => this.post('/api/worktree/refresh-editors', {}),
-    getAvailableTerminals: () => this.get('/api/worktree/available-terminals'),
-    getDefaultTerminal: () => this.get('/api/worktree/default-terminal'),
-    refreshTerminals: () => this.post('/api/worktree/refresh-terminals', {}),
+      this.request('worktree.openInEditor', { worktreePath, editorCommand }),
+    openInTerminal: (worktreePath: string) =>
+      this.request('worktree.openInTerminal', { worktreePath }),
+    getDefaultEditor: () => this.request('worktree.getDefaultEditor'),
+    getAvailableEditors: () => this.request('worktree.getAvailableEditors'),
+    refreshEditors: () => this.request('worktree.refreshEditors', {}),
+    getAvailableTerminals: () => this.request('worktree.getAvailableTerminals'),
+    getDefaultTerminal: () => this.request('worktree.getDefaultTerminal'),
+    refreshTerminals: () => this.request('worktree.refreshTerminals', {}),
     openInExternalTerminal: (worktreePath: string, terminalId?: string) =>
-      this.post('/api/worktree/open-in-external-terminal', { worktreePath, terminalId }),
-    initGit: (projectPath: string) => this.post('/api/worktree/init-git', { projectPath }),
+      this.request('worktree.openInExternalTerminal', { worktreePath, terminalId }),
+    initGit: (projectPath: string) => this.request('worktree.initGit', { projectPath }),
+    migrate: (projectPath: string) => this.request('worktree.migrate', { projectPath }),
     startDevServer: (projectPath: string, worktreePath: string) =>
-      this.post('/api/worktree/start-dev', { projectPath, worktreePath }),
-    stopDevServer: (worktreePath: string) => this.post('/api/worktree/stop-dev', { worktreePath }),
-    listDevServers: () => this.post('/api/worktree/list-dev-servers', {}),
+      this.request('worktree.startDev', { projectPath, worktreePath }),
+    stopDevServer: (worktreePath: string) => this.request('worktree.stopDev', { worktreePath }),
+    listDevServers: () => this.request('worktree.listDevServers', {}),
     getDevServerLogs: (worktreePath: string): Promise<DevServerLogsResponse> =>
-      this.get(`/api/worktree/dev-server-logs?worktreePath=${encodeURIComponent(worktreePath)}`),
+      this.request('worktree.getDevServerLogs', { worktreePath }),
     onDevServerLogEvent: (callback: (event: DevServerLogEvent) => void) => {
       const unsub0 = this.subscribeToEvent('dev-server:starting', (payload) =>
         callback({ type: 'dev-server:starting', payload: payload as DevServerStartingEvent })
@@ -2332,14 +2338,13 @@ export class HttpApiClient implements ElectronAPI {
     getPRInfo: (worktreePath: string, branchName: string) =>
       this.post('/api/worktree/pr-info', { worktreePath, branchName }),
     // Init script methods
-    getInitScript: (projectPath: string) =>
-      this.get(`/api/worktree/init-script?projectPath=${encodeURIComponent(projectPath)}`),
+    getInitScript: (projectPath: string) => this.request('worktree.getInitScript', { projectPath }),
     setInitScript: (projectPath: string, content: string) =>
-      this.put('/api/worktree/init-script', { projectPath, content }),
+      this.request('worktree.setInitScript', { projectPath, content }),
     deleteInitScript: (projectPath: string) =>
-      this.httpDelete('/api/worktree/init-script', { projectPath }),
+      this.request('worktree.deleteInitScript', { projectPath }),
     runInitScript: (projectPath: string, worktreePath: string, branch: string) =>
-      this.post('/api/worktree/run-init-script', { projectPath, worktreePath, branch }),
+      this.request('worktree.runInitScript', { projectPath, worktreePath, branch }),
     discardChanges: (worktreePath: string, files?: string[]) =>
       this.post('/api/worktree/discard-changes', { worktreePath, files }),
     onInitScriptEvent: (
@@ -2366,8 +2371,8 @@ export class HttpApiClient implements ElectronAPI {
     },
     // Test runner methods
     startTests: (worktreePath: string, options?: { projectPath?: string; testFile?: string }) =>
-      this.post('/api/worktree/start-tests', { worktreePath, ...options }),
-    stopTests: (sessionId: string) => this.post('/api/worktree/stop-tests', { sessionId }),
+      this.request('worktree.startTests', { worktreePath, ...options }),
+    stopTests: (sessionId: string) => this.request('worktree.stopTests', { sessionId }),
     getCommitLog: (worktreePath: string, limit?: number) =>
       this.post('/api/worktree/commit-log', { worktreePath, limit }),
     stashPush: (worktreePath: string, message?: string, files?: string[]) =>
@@ -2387,12 +2392,8 @@ export class HttpApiClient implements ElectronAPI {
       this.post('/api/worktree/continue-operation', { worktreePath }),
     getBranchCommitLog: (worktreePath: string, branchName?: string, limit?: number) =>
       this.post('/api/worktree/branch-commit-log', { worktreePath, branchName, limit }),
-    getTestLogs: (worktreePath?: string, sessionId?: string): Promise<TestLogsResponse> => {
-      const params = new URLSearchParams();
-      if (worktreePath) params.append('worktreePath', worktreePath);
-      if (sessionId) params.append('sessionId', sessionId);
-      return this.get(`/api/worktree/test-logs?${params.toString()}`);
-    },
+    getTestLogs: (worktreePath?: string, sessionId?: string): Promise<TestLogsResponse> =>
+      this.request('worktree.getTestLogs', { worktreePath, sessionId }),
     onTestRunnerEvent: (callback: (event: TestRunnerEvent) => void) => {
       const unsub1 = this.subscribeToEvent('test-runner:started', (payload) =>
         callback({ type: 'test-runner:started', payload: payload as TestRunnerStartedEvent })

@@ -1013,6 +1013,16 @@ export interface WorktreeAPI {
     error?: string;
   }>;
 
+  // Open worktree in the system default terminal
+  openInTerminal: (worktreePath: string) => Promise<{
+    success: boolean;
+    result?: {
+      message: string;
+      terminalName: string;
+    };
+    error?: string;
+  }>;
+
   // Initialize git repository in a project
   initGit: (projectPath: string) => Promise<{
     success: boolean;
@@ -1020,6 +1030,15 @@ export interface WorktreeAPI {
       initialized: boolean;
       message: string;
     };
+    error?: string;
+  }>;
+
+  // Run the legacy project migration (a no-op kept for compatibility)
+  migrate: (projectPath: string) => Promise<{
+    success: boolean;
+    migrated?: boolean;
+    message?: string;
+    path?: string;
     error?: string;
   }>;
 
