@@ -37,6 +37,7 @@ import {
   type EnhancementMode,
 } from '../shared';
 import type { WorkMode } from '../shared';
+import { isBacklogLikeStatus } from '../constants';
 import { PhaseModelSelector } from '@/components/views/settings-view/model-defaults/phase-model-selector';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DependencyTreeDialog } from './dependency-tree-dialog';
@@ -207,8 +208,7 @@ export function EditFeatureDialog({
     if (!editingFeature) return;
 
     // Validate branch selection for custom mode
-    const isBranchSelectorEnabled =
-      editingFeature.status === 'backlog' || editingFeature.status === 'merge_conflict';
+    const isBranchSelectorEnabled = isBacklogLikeStatus(editingFeature.status);
     if (isBranchSelectorEnabled && workMode === 'custom' && !editingFeature.branchName?.trim()) {
       toast.error('Please select a branch name');
       return;
@@ -558,9 +558,7 @@ export function EditFeatureDialog({
                 branchSuggestions={branchSuggestions}
                 branchCardCounts={branchCardCounts}
                 currentBranch={currentBranch}
-                disabled={
-                  editingFeature.status !== 'backlog' && editingFeature.status !== 'merge_conflict'
-                }
+                disabled={!isBacklogLikeStatus(editingFeature.status)}
                 testIdPrefix="edit-feature-work-mode"
               />
             </div>
@@ -630,8 +628,7 @@ export function EditFeatureDialog({
               hotkeyActive={!!editingFeature}
               data-testid="confirm-edit-feature"
               disabled={
-                (editingFeature.status === 'backlog' ||
-                  editingFeature.status === 'merge_conflict') &&
+                isBacklogLikeStatus(editingFeature.status) &&
                 workMode === 'custom' &&
                 !editingFeature.branchName?.trim()
               }

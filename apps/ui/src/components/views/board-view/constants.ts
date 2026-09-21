@@ -61,7 +61,7 @@ export const EMPTY_STATE_CONFIGS: Record<string, EmptyStateConfig> = {
  * Get empty state config for a column, with fallback for pipeline columns
  */
 export function getEmptyStateConfig(columnId: string): EmptyStateConfig {
-  if (columnId.startsWith('pipeline_')) {
+  if (isPipelineStatus(columnId)) {
     return EMPTY_STATE_CONFIGS.pipeline_default;
   }
   return EMPTY_STATE_CONFIGS[columnId] || EMPTY_STATE_CONFIGS.default;

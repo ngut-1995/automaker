@@ -4,6 +4,7 @@ import { Feature, ThinkingLevel, ReasoningEffort, ParsedTask } from '@/store/app
 import { getProviderFromModel } from '@/lib/utils';
 import { parseAgentContext, formatModelName, DEFAULT_MODEL } from '@/lib/agent-context-parser';
 import { cn } from '@/lib/utils';
+import { isPipelineStatus } from '@automaker/types';
 import type { AutoModeEvent } from '@/types/electron';
 import { Brain, ListTodo, Sparkles, Expand, CheckCircle2, Circle, Wrench } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
@@ -617,7 +618,7 @@ export const AgentInfoPanel = memo(function AgentInfoPanel({
           {/* Summary for waiting_approval, verified, and pipeline steps */}
           {(feature.status === 'waiting_approval' ||
             feature.status === 'verified' ||
-            (typeof feature.status === 'string' && feature.status.startsWith('pipeline_'))) && (
+            isPipelineStatus(feature.status)) && (
             <div className="space-y-1.5">
               {effectiveSummary && (
                 <div className="space-y-1.5 pt-2 border-t border-border/30 overflow-hidden">

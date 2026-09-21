@@ -3,6 +3,7 @@ import { BaseEdge, getBezierPath, EdgeLabelRenderer } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Feature } from '@/store/app-store';
+import { isDoneFeatureStatus } from '@automaker/types';
 import { Trash2 } from 'lucide-react';
 import { GRAPH_RENDER_MODE_COMPACT, type GraphRenderMode } from '../constants';
 
@@ -17,7 +18,7 @@ export interface DependencyEdgeData {
 
 const getEdgeColor = (sourceStatus?: Feature['status'], targetStatus?: Feature['status']) => {
   // If source is completed/verified, the dependency is satisfied
-  if (sourceStatus === 'completed' || sourceStatus === 'verified') {
+  if (isDoneFeatureStatus(sourceStatus)) {
     return 'var(--status-success)';
   }
   // If target is in progress, show active color
@@ -71,8 +72,7 @@ export const DependencyEdge = memo(function DependencyEdge(props: EdgeProps) {
       ? getEdgeColor(edgeData.sourceStatus, edgeData.targetStatus)
       : 'var(--border)';
 
-  const isCompleted =
-    edgeData?.sourceStatus === 'completed' || edgeData?.sourceStatus === 'verified';
+  const isCompleted = isDoneFeatureStatus(edgeData?.sourceStatus);
   const isInProgress = edgeData?.targetStatus === 'in_progress';
 
   const handleDelete = (e: React.MouseEvent) => {

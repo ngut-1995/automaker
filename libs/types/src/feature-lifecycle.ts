@@ -7,7 +7,8 @@
  * belong to the Feature record in the server.
  */
 
-import type { FeatureStatus } from './feature.js';
+import type { FeatureStatus, StaticFeatureStatus } from './feature.js';
+import { STATIC_FEATURE_STATUSES } from './feature.js';
 import { isPipelineStatus } from './pipeline.js';
 
 /**
@@ -51,6 +52,17 @@ function accept(status: FeatureStatus): TransitionResolution {
 
 function reject(reason: string): TransitionResolution {
   return { ok: false, reason };
+}
+
+/**
+ * Whether an arbitrary value is a member of the FeatureStatus vocabulary:
+ * a concrete status or a well-formed pipeline status.
+ */
+export function isFeatureStatus(value: unknown): value is FeatureStatus {
+  return (
+    typeof value === 'string' &&
+    (STATIC_FEATURE_STATUSES.includes(value as StaticFeatureStatus) || isPipelineStatus(value))
+  );
 }
 
 /**

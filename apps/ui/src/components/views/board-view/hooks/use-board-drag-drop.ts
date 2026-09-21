@@ -3,8 +3,9 @@ import { createLogger } from '@automaker/utils/logger';
 import { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { Feature } from '@/store/app-store';
 import { useAppStore } from '@/store/app-store';
+import { isPipelineStatus } from '@automaker/types';
 import { toast } from 'sonner';
-import { COLUMNS, ColumnId } from '../constants';
+import { COLUMNS, ColumnId, isBacklogLikeStatus } from '../constants';
 
 const logger = createLogger('BoardDragDrop');
 
@@ -189,7 +190,7 @@ export function useBoardDragDrop({
       const column = COLUMNS.find((c) => c.id === effectiveOverId);
       if (column) {
         targetStatus = column.id;
-      } else if (effectiveOverId.startsWith('pipeline_')) {
+      } else if (isPipelineStatus(effectiveOverId)) {
         // Pipeline step column (not in static COLUMNS list)
         targetStatus = effectiveOverId as ColumnId;
       } else {
@@ -208,7 +209,7 @@ export function useBoardDragDrop({
       // Handle different drag scenarios
       // Note: persistFeatureUpdate handles optimistic RQ cache update internally,
       // so no separate moveFeature() call is needed.
-      if (draggedFeature.status === 'backlog' || draggedFeature.status === 'merge_conflict') {
+      if (isBacklogLikeStatus(draggedFeature.status)) {
         // From backlog
         if (targetStatus === 'in_progress') {
           // Use helper function to handle concurrency check and start implementation

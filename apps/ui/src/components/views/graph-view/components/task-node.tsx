@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { TaskNodeData } from '../hooks/use-graph-nodes';
 import { GRAPH_RENDER_MODE_COMPACT } from '../constants';
+import { isDoneFeatureStatus, isPipelineStatus } from '@automaker/types';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -91,7 +92,7 @@ export const TaskNode = memo(function TaskNode({ data, selected }: TaskNodeProps
   // Handle pipeline statuses by treating them like in_progress
   // Treat completed (archived) as verified for display
   const status = data.status || 'backlog';
-  const statusKey = status.startsWith('pipeline_')
+  const statusKey = isPipelineStatus(status)
     ? 'in_progress'
     : status === 'completed'
       ? 'verified'
@@ -215,9 +216,7 @@ export const TaskNode = memo(function TaskNode({ data, selected }: TaskNodeProps
             'w-3 h-3 !bg-border border-2 border-background',
             'transition-colors duration-200',
             'hover:!bg-brand-500',
-            data.status === 'completed' || data.status === 'verified'
-              ? '!bg-[var(--status-success)]'
-              : '',
+            isDoneFeatureStatus(data.status) ? '!bg-[var(--status-success)]' : '',
             isDimmed && 'opacity-30'
           )}
         />
@@ -494,9 +493,7 @@ export const TaskNode = memo(function TaskNode({ data, selected }: TaskNodeProps
           'w-3 h-3 !bg-border border-2 border-background',
           'transition-colors duration-200',
           'hover:!bg-brand-500',
-          data.status === 'completed' || data.status === 'verified'
-            ? '!bg-[var(--status-success)]'
-            : '',
+          isDoneFeatureStatus(data.status) ? '!bg-[var(--status-success)]' : '',
           isDimmed && 'opacity-30'
         )}
       />

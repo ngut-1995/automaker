@@ -122,6 +122,35 @@ export type FeatureStatus =
   | `pipeline_${string}`;
 
 /**
+ * A concrete (non-pipeline) FeatureStatus. Pipeline statuses are open-ended
+ * (`pipeline_${string}`) and are enumerated from configuration instead.
+ */
+export type StaticFeatureStatus = Exclude<FeatureStatus, `pipeline_${string}`>;
+
+/**
+ * Every concrete FeatureStatus, keyed so that adding a member to the union
+ * without listing it here is a compile error.
+ */
+const STATIC_FEATURE_STATUS_FLAGS: Record<StaticFeatureStatus, true> = {
+  backlog: true,
+  ready: true,
+  in_progress: true,
+  interrupted: true,
+  waiting_approval: true,
+  verified: true,
+  completed: true,
+  merge_conflict: true,
+};
+
+/**
+ * The concrete (non-pipeline) FeatureStatus members, enumerated at runtime.
+ * Pipeline statuses are validated separately by `isPipelineStatus`.
+ */
+export const STATIC_FEATURE_STATUSES = Object.keys(
+  STATIC_FEATURE_STATUS_FLAGS
+) as StaticFeatureStatus[];
+
+/**
  * Export format for a feature, used when exporting features to share or backup
  */
 export interface FeatureExport {

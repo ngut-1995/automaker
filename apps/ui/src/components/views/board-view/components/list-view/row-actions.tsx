@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Feature } from '@/store/app-store';
+import { isPipelineStatus } from '@automaker/types';
 import { isBacklogLikeStatus } from '../../constants';
 
 /**
@@ -152,10 +153,7 @@ function getPrimaryAction(
   }
 
   // Backlog-like statuses - implement/restart is primary
-  if (
-    (feature.status === 'backlog' || feature.status === 'merge_conflict') &&
-    handlers.onImplement
-  ) {
+  if (isBacklogLikeStatus(feature.status) && handlers.onImplement) {
     return {
       icon: feature.status === 'merge_conflict' ? RotateCcw : PlayCircle,
       label: feature.status === 'merge_conflict' ? 'Restart' : 'Make',
@@ -462,77 +460,75 @@ export const RowActions = memo(function RowActions({
           )}
 
           {/* Backlog actions */}
-          {!isCurrentAutoTask &&
-            !isRunningTask &&
-            (feature.status === 'backlog' || feature.status === 'merge_conflict') && (
-              <>
-                <MenuItem icon={Edit} label="Edit" onClick={withClose(handlers.onEdit)} />
-                {handlers.onViewOutput && (
-                  <MenuItem
-                    icon={FileText}
-                    label="View Logs"
-                    onClick={withClose(handlers.onViewOutput)}
-                  />
-                )}
-                {feature.planSpec?.content && handlers.onViewPlan && (
-                  <MenuItem icon={Eye} label="View Plan" onClick={withClose(handlers.onViewPlan)} />
-                )}
-                {handlers.onImplement && (
-                  <MenuItem
-                    icon={feature.status === 'merge_conflict' ? RotateCcw : PlayCircle}
-                    label={feature.status === 'merge_conflict' ? 'Restart' : 'Make'}
-                    onClick={withClose(handlers.onImplement)}
-                    variant="primary"
-                  />
-                )}
-                {handlers.onSpawnTask && (
-                  <MenuItem
-                    icon={GitFork}
-                    label="Spawn Sub-Task"
-                    onClick={withClose(handlers.onSpawnTask)}
-                  />
-                )}
-                {handlers.onDuplicate && (
-                  <DropdownMenuSub>
-                    <div className="flex items-center">
-                      <DropdownMenuItem
-                        onClick={withClose(handlers.onDuplicate)}
-                        className="flex-1 pr-0 rounded-r-none"
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Duplicate
-                      </DropdownMenuItem>
-                      {handlers.onDuplicateAsChild && (
-                        <DropdownMenuSubTrigger className="px-1 rounded-l-none border-l border-border/30 h-8" />
-                      )}
-                    </div>
-                    {handlers.onDuplicateAsChild && (
-                      <DropdownMenuSubContent>
-                        <MenuItem
-                          icon={GitFork}
-                          label="Duplicate as Child"
-                          onClick={withClose(handlers.onDuplicateAsChild)}
-                        />
-                        {handlers.onDuplicateAsChildMultiple && (
-                          <MenuItem
-                            icon={Repeat}
-                            label="Duplicate as Child ×N"
-                            onClick={withClose(handlers.onDuplicateAsChildMultiple)}
-                          />
-                        )}
-                      </DropdownMenuSubContent>
-                    )}
-                  </DropdownMenuSub>
-                )}
-                <DropdownMenuSeparator />
+          {!isCurrentAutoTask && !isRunningTask && isBacklogLikeStatus(feature.status) && (
+            <>
+              <MenuItem icon={Edit} label="Edit" onClick={withClose(handlers.onEdit)} />
+              {handlers.onViewOutput && (
                 <MenuItem
-                  icon={Trash2}
-                  label="Delete"
-                  onClick={withClose(handlers.onDelete)}
-                  variant="destructive"
+                  icon={FileText}
+                  label="View Logs"
+                  onClick={withClose(handlers.onViewOutput)}
                 />
-              </>
-            )}
+              )}
+              {feature.planSpec?.content && handlers.onViewPlan && (
+                <MenuItem icon={Eye} label="View Plan" onClick={withClose(handlers.onViewPlan)} />
+              )}
+              {handlers.onImplement && (
+                <MenuItem
+                  icon={feature.status === 'merge_conflict' ? RotateCcw : PlayCircle}
+                  label={feature.status === 'merge_conflict' ? 'Restart' : 'Make'}
+                  onClick={withClose(handlers.onImplement)}
+                  variant="primary"
+                />
+              )}
+              {handlers.onSpawnTask && (
+                <MenuItem
+                  icon={GitFork}
+                  label="Spawn Sub-Task"
+                  onClick={withClose(handlers.onSpawnTask)}
+                />
+              )}
+              {handlers.onDuplicate && (
+                <DropdownMenuSub>
+                  <div className="flex items-center">
+                    <DropdownMenuItem
+                      onClick={withClose(handlers.onDuplicate)}
+                      className="flex-1 pr-0 rounded-r-none"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    {handlers.onDuplicateAsChild && (
+                      <DropdownMenuSubTrigger className="px-1 rounded-l-none border-l border-border/30 h-8" />
+                    )}
+                  </div>
+                  {handlers.onDuplicateAsChild && (
+                    <DropdownMenuSubContent>
+                      <MenuItem
+                        icon={GitFork}
+                        label="Duplicate as Child"
+                        onClick={withClose(handlers.onDuplicateAsChild)}
+                      />
+                      {handlers.onDuplicateAsChildMultiple && (
+                        <MenuItem
+                          icon={Repeat}
+                          label="Duplicate as Child ×N"
+                          onClick={withClose(handlers.onDuplicateAsChildMultiple)}
+                        />
+                      )}
+                    </DropdownMenuSubContent>
+                  )}
+                </DropdownMenuSub>
+              )}
+              <DropdownMenuSeparator />
+              <MenuItem
+                icon={Trash2}
+                label="Delete"
+                onClick={withClose(handlers.onDelete)}
+                variant="destructive"
+              />
+            </>
+          )}
 
           {/* In Progress actions - starting/running (no error, force stop available) - mirrors running task actions */}
           {!isCurrentAutoTask &&
@@ -824,7 +820,7 @@ export const RowActions = memo(function RowActions({
           )}
 
           {/* Pipeline status actions (generic fallback) */}
-          {!isCurrentAutoTask && feature.status.startsWith('pipeline_') && (
+          {!isCurrentAutoTask && isPipelineStatus(feature.status) && (
             <>
               {handlers.onViewOutput && (
                 <MenuItem

@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Feature, useAppStore } from '@/store/app-store';
 import { useShallow } from 'zustand/react/shallow';
+import { isInProgressFeatureStatus, isPipelineStatus } from '@automaker/types';
+import { isBacklogLikeStatus } from '../../constants';
 import { CardBadges, PriorityBadges } from './card-badges';
 import { CardHeaderSection } from './card-header';
 import { CardContentSections } from './card-content-sections';
@@ -120,20 +122,13 @@ export const KanbanCard = memo(function KanbanCard({
   // (still 'backlog', 'ready', or 'interrupted'). In this case, we still want to show
   // running controls (Logs/Stop) and animated border, but not the full "actively running"
   // state that gates all UI behavior.
-  const isInExecutionState =
-    feature.status === 'in_progress' ||
-    (typeof feature.status === 'string' && feature.status.startsWith('pipeline_'));
+  const isInExecutionState = isInProgressFeatureStatus(feature.status);
   const isActivelyRunning = !!isCurrentAutoTask && isInExecutionState;
   // isRunningWithStaleStatus: feature is tracked as running but status hasn't updated yet.
   // This happens during the timing gap between when the server starts a feature and when
   // the UI receives the status update. Show running UI to prevent "Make" button flash.
   const isRunningWithStaleStatus =
-    !!isCurrentAutoTask &&
-    !isInExecutionState &&
-    (feature.status === 'backlog' ||
-      feature.status === 'merge_conflict' ||
-      feature.status === 'ready' ||
-      feature.status === 'interrupted');
+    !!isCurrentAutoTask && !isInExecutionState && isBacklogLikeStatus(feature.status);
   // Show running visual treatment for both fully confirmed and stale-status running tasks
   const showRunningVisuals = isActivelyRunning || isRunningWithStaleStatus;
   const [isLifted, setIsLifted] = useState(false);
@@ -149,13 +144,10 @@ export const KanbanCard = memo(function KanbanCard({
   const isDraggable =
     !isSelectionMode &&
     !isRunningWithStaleStatus &&
-    (feature.status === 'backlog' ||
-      feature.status === 'merge_conflict' ||
-      feature.status === 'interrupted' ||
-      feature.status === 'ready' ||
+    (isBacklogLikeStatus(feature.status) ||
       feature.status === 'waiting_approval' ||
       feature.status === 'verified' ||
-      feature.status.startsWith('pipeline_') ||
+      isPipelineStatus(feature.status) ||
       (feature.status === 'in_progress' && !isCurrentAutoTask));
   const {
     attributes,

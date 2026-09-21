@@ -12,7 +12,7 @@ import { getElectronAPI } from '@/lib/electron';
 import { queryKeys } from '@/lib/query-keys';
 import { STALE_TIMES } from '@/lib/query-client';
 import { createSmartPollingInterval, getGlobalEventsRecent } from '@/hooks/use-event-recency';
-import { isPipelineStatus } from '@automaker/types';
+import { isFeatureStatus } from '@automaker/types';
 import type { Feature } from '@/store/app-store';
 
 const FEATURES_REFETCH_ON_FOCUS = false;
@@ -38,23 +38,6 @@ interface PersistedFeaturesCache {
   features: Feature[];
 }
 
-const STATIC_FEATURE_STATUSES: ReadonlySet<string> = new Set([
-  'backlog',
-  'merge_conflict',
-  'ready',
-  'in_progress',
-  'interrupted',
-  'waiting_approval',
-  'verified',
-  'completed',
-]);
-
-function isValidFeatureStatus(value: unknown): value is Feature['status'] {
-  return (
-    typeof value === 'string' && (STATIC_FEATURE_STATUSES.has(value) || isPipelineStatus(value))
-  );
-}
-
 function sanitizePersistedFeatureEntry(value: unknown): Feature | null {
   if (typeof value !== 'object' || value === null) {
     return null;
@@ -76,7 +59,7 @@ function sanitizePersistedFeatureEntry(value: unknown): Feature | null {
     steps: Array.isArray(raw.steps)
       ? raw.steps.filter((step): step is string => typeof step === 'string')
       : [],
-    status: isValidFeatureStatus(raw.status) ? raw.status : 'backlog',
+    status: isFeatureStatus(raw.status) ? raw.status : 'backlog',
     branchName:
       typeof raw.branchName === 'string' && raw.branchName.trim() ? raw.branchName : undefined,
   };

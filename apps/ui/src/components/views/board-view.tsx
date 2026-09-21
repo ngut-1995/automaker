@@ -36,6 +36,7 @@ import type {
   FeatureTemplate,
   ReasoningEffort,
 } from '@automaker/types';
+import { isPipelineStatus } from '@automaker/types';
 import { pathsEqual } from '@/lib/utils';
 import { initializeProject } from '@/lib/project-init';
 import { toast } from 'sonner';
@@ -596,10 +597,10 @@ export function BoardView({ initialFeatureId, initialProjectPath }: BoardViewPro
       // Column header droppable (e.g. 'column-header-backlog')
       if (colId.startsWith('column-header-')) {
         const baseId = colId.replace('column-header-', '');
-        return COLUMNS.some((col) => col.id === baseId) || baseId.startsWith('pipeline_');
+        return COLUMNS.some((col) => col.id === baseId) || isPipelineStatus(baseId);
       }
       // Pipeline column IDs (e.g. 'pipeline_tests')
-      if (colId.startsWith('pipeline_')) return true;
+      if (isPipelineStatus(colId)) return true;
       return false;
     });
 
