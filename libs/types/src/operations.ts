@@ -588,6 +588,532 @@ export interface WorktreeDeleteResponse {
   error?: string;
 }
 
+export interface WorktreeCreatePRRequest {
+  worktreePath: string;
+  projectPath?: string;
+  commitMessage?: string;
+  prTitle?: string;
+  prBody?: string;
+  baseBranch?: string;
+  draft?: boolean;
+  remote?: string;
+  targetRemote?: string;
+}
+export interface WorktreeCreatePRResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    committed: boolean;
+    commitHash?: string;
+    pushed: boolean;
+    prUrl?: string;
+    prNumber?: number;
+    prCreated: boolean;
+    prAlreadyExisted?: boolean;
+    prError?: string;
+    browserUrl?: string;
+    ghCliAvailable?: boolean;
+  };
+  error?: string;
+}
+
+export interface WorktreeGetPRInfoRequest {
+  worktreePath: string;
+  branchName: string;
+}
+export interface WorktreeGetPRInfoResponse {
+  success: boolean;
+  result?: {
+    hasPR: boolean;
+    ghCliAvailable: boolean;
+    prInfo?: {
+      number: number;
+      title: string;
+      url: string;
+      state: string;
+      author: string;
+      body: string;
+      comments: Array<{
+        id: number;
+        author: string;
+        body: string;
+        createdAt: string;
+        isReviewComment: boolean;
+      }>;
+      reviewComments: Array<{
+        id: number;
+        author: string;
+        body: string;
+        path?: string;
+        line?: number;
+        createdAt: string;
+        isReviewComment: boolean;
+      }>;
+    };
+    error?: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeUpdatePRNumberRequest {
+  worktreePath: string;
+  prNumber: number;
+  projectPath?: string;
+}
+export interface WorktreeUpdatePRNumberResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    prInfo: {
+      number: number;
+      url: string;
+      title: string;
+      state: string;
+      createdAt: string;
+    };
+    ghCliUnavailable?: boolean;
+  };
+  error?: string;
+}
+
+export interface WorktreeCommitRequest {
+  worktreePath: string;
+  message: string;
+  files?: string[];
+}
+export interface WorktreeCommitResponse {
+  success: boolean;
+  result?: {
+    committed: boolean;
+    commitHash?: string;
+    branch?: string;
+    message?: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeGenerateCommitMessageRequest {
+  worktreePath: string;
+  model?: string;
+  thinkingLevel?: string;
+  providerId?: string;
+}
+export interface WorktreeGenerateCommitMessageResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface WorktreePushRequest {
+  worktreePath: string;
+  force?: boolean;
+  remote?: string;
+  autoResolve?: boolean;
+}
+export interface WorktreePushResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    pushed: boolean;
+    diverged?: boolean;
+    autoResolved?: boolean;
+    message: string;
+  };
+  error?: string;
+  diverged?: boolean;
+  hasConflicts?: boolean;
+  conflictFiles?: string[];
+  code?: 'NOT_GIT_REPO' | 'NO_COMMITS';
+}
+
+export interface WorktreePullRequest {
+  worktreePath: string;
+  remote?: string;
+  stashIfNeeded?: boolean;
+  remoteBranch?: string;
+}
+export interface WorktreePullResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    pulled: boolean;
+    message: string;
+    hasLocalChanges?: boolean;
+    localChangedFiles?: string[];
+    hasConflicts?: boolean;
+    conflictSource?: 'pull' | 'stash';
+    conflictFiles?: string[];
+    stashed?: boolean;
+    stashRestored?: boolean;
+  };
+  error?: string;
+  code?: 'NOT_GIT_REPO' | 'NO_COMMITS';
+}
+
+export interface WorktreeSyncRequest {
+  worktreePath: string;
+  remote?: string;
+}
+export interface WorktreeSyncResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    pulled: boolean;
+    pushed: boolean;
+    isFastForward?: boolean;
+    isMerge?: boolean;
+    autoResolved?: boolean;
+    message: string;
+  };
+  error?: string;
+  hasConflicts?: boolean;
+  conflictFiles?: string[];
+  conflictSource?: 'pull' | 'stash';
+}
+
+export interface WorktreeSetTrackingRequest {
+  worktreePath: string;
+  remote: string;
+  branch?: string;
+}
+export interface WorktreeSetTrackingResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    remote: string;
+    upstream: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeCheckoutBranchRequest {
+  worktreePath: string;
+  branchName: string;
+  baseBranch?: string;
+  stashChanges?: boolean;
+  includeUntracked?: boolean;
+}
+export interface WorktreeCheckoutBranchResponse {
+  success: boolean;
+  result?: {
+    previousBranch: string;
+    newBranch: string;
+    message: string;
+    hasConflicts?: boolean;
+    stashedChanges?: boolean;
+  };
+  error?: string;
+  code?: 'NOT_GIT_REPO' | 'NO_COMMITS';
+  stashPopConflicts?: boolean;
+  stashPopConflictMessage?: string;
+}
+
+export interface WorktreeCheckChangesRequest {
+  worktreePath: string;
+}
+export interface WorktreeCheckChangesResponse {
+  success: boolean;
+  result?: {
+    hasChanges: boolean;
+    staged: string[];
+    unstaged: string[];
+    untracked: string[];
+    totalFiles: number;
+  };
+  error?: string;
+}
+
+export interface WorktreeListBranchesRequest {
+  worktreePath: string;
+  includeRemote?: boolean;
+}
+export interface WorktreeListBranchesResponse {
+  success: boolean;
+  result?: {
+    currentBranch: string;
+    branches: Array<{
+      name: string;
+      isCurrent: boolean;
+      isRemote: boolean;
+    }>;
+    aheadCount: number;
+    behindCount: number;
+    hasRemoteBranch: boolean;
+    hasAnyRemotes: boolean;
+    trackingRemote?: string;
+  };
+  error?: string;
+  code?: 'NOT_GIT_REPO' | 'NO_COMMITS';
+}
+
+export interface WorktreeSwitchBranchRequest {
+  worktreePath: string;
+  branchName: string;
+}
+export interface WorktreeSwitchBranchResponse {
+  success: boolean;
+  result?: {
+    previousBranch: string;
+    currentBranch: string;
+    message: string;
+    hasConflicts: boolean;
+    stashedChanges: boolean;
+  };
+  error?: string;
+  code?: 'NOT_GIT_REPO' | 'NO_COMMITS' | 'UNCOMMITTED_CHANGES';
+  stashPopConflicts?: boolean;
+  stashPopConflictMessage?: string;
+}
+
+export interface WorktreeDiscardChangesRequest {
+  worktreePath: string;
+  files?: string[];
+}
+export interface WorktreeDiscardChangesResponse {
+  success: boolean;
+  result?: {
+    discarded: boolean;
+    filesDiscarded: number;
+    filesRemaining: number;
+    branch: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeListRemotesRequest {
+  worktreePath: string;
+}
+export interface WorktreeListRemotesResponse {
+  success: boolean;
+  result?: {
+    remotes: Array<{
+      name: string;
+      url: string;
+      branches: Array<{
+        name: string;
+        fullRef: string;
+      }>;
+    }>;
+  };
+  error?: string;
+  code?: 'NOT_GIT_REPO' | 'NO_COMMITS';
+}
+
+export interface WorktreeAddRemoteRequest {
+  worktreePath: string;
+  remoteName: string;
+  remoteUrl: string;
+}
+export interface WorktreeAddRemoteResponse {
+  success: boolean;
+  result?: {
+    remoteName: string;
+    remoteUrl: string;
+    fetched: boolean;
+    message: string;
+  };
+  error?: string;
+  code?: 'REMOTE_EXISTS';
+}
+
+/** One entry of the commit log returned by `worktree.getCommitLog`/`getBranchCommitLog`. */
+export interface WorktreeCommitSummary {
+  hash: string;
+  shortHash: string;
+  author: string;
+  authorEmail: string;
+  date: string;
+  subject: string;
+  body: string;
+  files: string[];
+}
+
+export interface WorktreeGetCommitLogRequest {
+  worktreePath: string;
+  limit?: number;
+}
+export interface WorktreeGetCommitLogResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    commits: WorktreeCommitSummary[];
+    total: number;
+  };
+  error?: string;
+}
+
+export interface WorktreeStashPushRequest {
+  worktreePath: string;
+  message?: string;
+  files?: string[];
+}
+export interface WorktreeStashPushResponse {
+  success: boolean;
+  result?: {
+    stashed: boolean;
+    branch?: string;
+    message?: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeStashListRequest {
+  worktreePath: string;
+}
+export interface WorktreeStashListResponse {
+  success: boolean;
+  result?: {
+    stashes: Array<{
+      index: number;
+      message: string;
+      branch: string;
+      date: string;
+      files: string[];
+    }>;
+    total: number;
+  };
+  error?: string;
+}
+
+export interface WorktreeStashApplyRequest {
+  worktreePath: string;
+  stashIndex: number;
+  pop?: boolean;
+}
+export interface WorktreeStashApplyResponse {
+  success: boolean;
+  result?: {
+    applied: boolean;
+    hasConflicts: boolean;
+    conflictFiles?: string[];
+    operation: 'apply' | 'pop';
+    stashIndex: number;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeStashDropRequest {
+  worktreePath: string;
+  stashIndex: number;
+}
+export interface WorktreeStashDropResponse {
+  success: boolean;
+  result?: {
+    dropped: boolean;
+    stashIndex: number;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeCherryPickRequest {
+  worktreePath: string;
+  commitHashes: string[];
+  options?: {
+    noCommit?: boolean;
+  };
+}
+export interface WorktreeCherryPickResponse {
+  success: boolean;
+  result?: {
+    cherryPicked: boolean;
+    commitHashes: string[];
+    branch: string;
+    message: string;
+  };
+  error?: string;
+  hasConflicts?: boolean;
+  aborted?: boolean;
+}
+
+export interface WorktreeGeneratePRDescriptionRequest {
+  worktreePath: string;
+  baseBranch?: string;
+  model?: string;
+  thinkingLevel?: string;
+  providerId?: string;
+}
+export interface WorktreeGeneratePRDescriptionResponse {
+  success: boolean;
+  title?: string;
+  body?: string;
+  error?: string;
+}
+
+export interface WorktreeGetBranchCommitLogRequest {
+  worktreePath: string;
+  branchName?: string;
+  limit?: number;
+}
+export interface WorktreeGetBranchCommitLogResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    commits: WorktreeCommitSummary[];
+    total: number;
+  };
+  error?: string;
+}
+
+export interface WorktreeRebaseRequest {
+  worktreePath: string;
+  ontoBranch: string;
+  remote?: string;
+}
+export interface WorktreeRebaseResponse {
+  success: boolean;
+  result?: {
+    branch: string;
+    ontoBranch: string;
+    message: string;
+  };
+  error?: string;
+  hasConflicts?: boolean;
+  conflictFiles?: string[];
+  aborted?: boolean;
+}
+
+export interface WorktreeAbortOperationRequest {
+  worktreePath: string;
+}
+export interface WorktreeAbortOperationResponse {
+  success: boolean;
+  result?: {
+    operation: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeContinueOperationRequest {
+  worktreePath: string;
+}
+export interface WorktreeContinueOperationResponse {
+  success: boolean;
+  result?: {
+    operation: string;
+    message: string;
+  };
+  error?: string;
+}
+
+export interface WorktreeStageFilesRequest {
+  worktreePath: string;
+  files: string[];
+  operation: 'stage' | 'unstage';
+}
+export interface WorktreeStageFilesResponse {
+  success: boolean;
+  result?: {
+    operation: 'stage' | 'unstage';
+    filesCount: number;
+  };
+  error?: string;
+}
+
 export interface WorktreeOpenInEditorRequest {
   worktreePath: string;
   editorCommand?: string;
@@ -1347,6 +1873,228 @@ export const OPERATIONS = {
     request: null as unknown as WorktreeRunInitScriptRequest,
     response: null as unknown as WorktreeRunInitScriptResponse,
     pathParams: ['projectPath', 'worktreePath'],
+  },
+  'worktree.createPR': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/create-pr',
+    request: null as unknown as WorktreeCreatePRRequest,
+    response: null as unknown as WorktreeCreatePRResponse,
+  },
+  'worktree.getPRInfo': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/pr-info',
+    request: null as unknown as WorktreeGetPRInfoRequest,
+    response: null as unknown as WorktreeGetPRInfoResponse,
+  },
+  'worktree.updatePRNumber': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/update-pr-number',
+    request: null as unknown as WorktreeUpdatePRNumberRequest,
+    response: null as unknown as WorktreeUpdatePRNumberResponse,
+    pathParams: ['worktreePath', 'projectPath?'],
+  },
+  'worktree.commit': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/commit',
+    request: null as unknown as WorktreeCommitRequest,
+    response: null as unknown as WorktreeCommitResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.generateCommitMessage': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/generate-commit-message',
+    request: null as unknown as WorktreeGenerateCommitMessageRequest,
+    response: null as unknown as WorktreeGenerateCommitMessageResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.push': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/push',
+    request: null as unknown as WorktreePushRequest,
+    response: null as unknown as WorktreePushResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.pull': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/pull',
+    request: null as unknown as WorktreePullRequest,
+    response: null as unknown as WorktreePullResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.sync': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/sync',
+    request: null as unknown as WorktreeSyncRequest,
+    response: null as unknown as WorktreeSyncResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.setTracking': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/set-tracking',
+    request: null as unknown as WorktreeSetTrackingRequest,
+    response: null as unknown as WorktreeSetTrackingResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.checkoutBranch': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/checkout-branch',
+    request: null as unknown as WorktreeCheckoutBranchRequest,
+    response: null as unknown as WorktreeCheckoutBranchResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.checkChanges': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/check-changes',
+    request: null as unknown as WorktreeCheckChangesRequest,
+    response: null as unknown as WorktreeCheckChangesResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.listBranches': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/list-branches',
+    request: null as unknown as WorktreeListBranchesRequest,
+    response: null as unknown as WorktreeListBranchesResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.switchBranch': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/switch-branch',
+    request: null as unknown as WorktreeSwitchBranchRequest,
+    response: null as unknown as WorktreeSwitchBranchResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.discardChanges': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/discard-changes',
+    request: null as unknown as WorktreeDiscardChangesRequest,
+    response: null as unknown as WorktreeDiscardChangesResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.listRemotes': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/list-remotes',
+    request: null as unknown as WorktreeListRemotesRequest,
+    response: null as unknown as WorktreeListRemotesResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.addRemote': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/add-remote',
+    request: null as unknown as WorktreeAddRemoteRequest,
+    response: null as unknown as WorktreeAddRemoteResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.getCommitLog': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/commit-log',
+    request: null as unknown as WorktreeGetCommitLogRequest,
+    response: null as unknown as WorktreeGetCommitLogResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.stashPush': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/stash-push',
+    request: null as unknown as WorktreeStashPushRequest,
+    response: null as unknown as WorktreeStashPushResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.stashList': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/stash-list',
+    request: null as unknown as WorktreeStashListRequest,
+    response: null as unknown as WorktreeStashListResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.stashApply': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/stash-apply',
+    request: null as unknown as WorktreeStashApplyRequest,
+    response: null as unknown as WorktreeStashApplyResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.stashDrop': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/stash-drop',
+    request: null as unknown as WorktreeStashDropRequest,
+    response: null as unknown as WorktreeStashDropResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.cherryPick': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/cherry-pick',
+    request: null as unknown as WorktreeCherryPickRequest,
+    response: null as unknown as WorktreeCherryPickResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.generatePRDescription': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/generate-pr-description',
+    request: null as unknown as WorktreeGeneratePRDescriptionRequest,
+    response: null as unknown as WorktreeGeneratePRDescriptionResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.getBranchCommitLog': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/branch-commit-log',
+    request: null as unknown as WorktreeGetBranchCommitLogRequest,
+    response: null as unknown as WorktreeGetBranchCommitLogResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.rebase': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/rebase',
+    request: null as unknown as WorktreeRebaseRequest,
+    response: null as unknown as WorktreeRebaseResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.abortOperation': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/abort-operation',
+    request: null as unknown as WorktreeAbortOperationRequest,
+    response: null as unknown as WorktreeAbortOperationResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.continueOperation': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/continue-operation',
+    request: null as unknown as WorktreeContinueOperationRequest,
+    response: null as unknown as WorktreeContinueOperationResponse,
+    pathParams: ['worktreePath'],
+  },
+  'worktree.stageFiles': {
+    method: 'POST',
+    mount: '/api/worktree',
+    path: '/stage-files',
+    request: null as unknown as WorktreeStageFilesRequest,
+    response: null as unknown as WorktreeStageFilesResponse,
+    pathParams: ['worktreePath', 'files[]'],
   },
 } as const satisfies Record<string, OperationDefinition<unknown, unknown>>;
 

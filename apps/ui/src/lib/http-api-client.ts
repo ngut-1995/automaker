@@ -2218,14 +2218,14 @@ export class HttpApiClient implements ElectronAPI {
         deleteBranch,
       }),
     commit: (worktreePath: string, message: string, files?: string[]) =>
-      this.post('/api/worktree/commit', { worktreePath, message, files }),
+      this.request('worktree.commit', { worktreePath, message, files }),
     generateCommitMessage: (
       worktreePath: string,
       model?: string,
       thinkingLevel?: string,
       providerId?: string
     ) =>
-      this.post('/api/worktree/generate-commit-message', {
+      this.request('worktree.generateCommitMessage', {
         worktreePath,
         model,
         thinkingLevel,
@@ -2238,7 +2238,7 @@ export class HttpApiClient implements ElectronAPI {
       thinkingLevel?: string,
       providerId?: string
     ) =>
-      this.post('/api/worktree/generate-pr-description', {
+      this.request('worktree.generatePRDescription', {
         worktreePath,
         baseBranch,
         model,
@@ -2246,15 +2246,15 @@ export class HttpApiClient implements ElectronAPI {
         providerId,
       }),
     push: (worktreePath: string, force?: boolean, remote?: string, autoResolve?: boolean) =>
-      this.post('/api/worktree/push', { worktreePath, force, remote, autoResolve }),
+      this.request('worktree.push', { worktreePath, force, remote, autoResolve }),
     sync: (worktreePath: string, remote?: string) =>
-      this.post('/api/worktree/sync', { worktreePath, remote }),
+      this.request('worktree.sync', { worktreePath, remote }),
     setTracking: (worktreePath: string, remote: string, branch?: string) =>
-      this.post('/api/worktree/set-tracking', { worktreePath, remote, branch }),
+      this.request('worktree.setTracking', { worktreePath, remote, branch }),
     createPR: (worktreePath: string, options?: CreatePROptions) =>
-      this.post('/api/worktree/create-pr', { worktreePath, ...options }),
+      this.request('worktree.createPR', { worktreePath, ...options }),
     updatePRNumber: (worktreePath: string, prNumber: number, projectPath?: string) =>
-      this.post('/api/worktree/update-pr-number', { worktreePath, prNumber, projectPath }),
+      this.request('worktree.updatePRNumber', { worktreePath, prNumber, projectPath }),
     getDiffs: (projectPath: string, featureId: string) =>
       this.request('worktree.diffs', { projectPath, featureId }),
     getFileDiff: (projectPath: string, featureId: string, filePath: string) =>
@@ -2264,9 +2264,9 @@ export class HttpApiClient implements ElectronAPI {
         filePath,
       }),
     stageFiles: (worktreePath: string, files: string[], operation: 'stage' | 'unstage') =>
-      this.post('/api/worktree/stage-files', { worktreePath, files, operation }),
+      this.request('worktree.stageFiles', { worktreePath, files, operation }),
     pull: (worktreePath: string, remote?: string, stashIfNeeded?: boolean, remoteBranch?: string) =>
-      this.post('/api/worktree/pull', { worktreePath, remote, remoteBranch, stashIfNeeded }),
+      this.request('worktree.pull', { worktreePath, remote, remoteBranch, stashIfNeeded }),
     checkoutBranch: (
       worktreePath: string,
       branchName: string,
@@ -2274,23 +2274,21 @@ export class HttpApiClient implements ElectronAPI {
       stashChanges?: boolean,
       includeUntracked?: boolean
     ) =>
-      this.post('/api/worktree/checkout-branch', {
+      this.request('worktree.checkoutBranch', {
         worktreePath,
         branchName,
         baseBranch,
         stashChanges,
         includeUntracked,
       }),
-    checkChanges: (worktreePath: string) =>
-      this.post('/api/worktree/check-changes', { worktreePath }),
+    checkChanges: (worktreePath: string) => this.request('worktree.checkChanges', { worktreePath }),
     listBranches: (worktreePath: string, includeRemote?: boolean, signal?: AbortSignal) =>
-      this.post('/api/worktree/list-branches', { worktreePath, includeRemote }, signal),
+      this.request('worktree.listBranches', { worktreePath, includeRemote }, { signal }),
     switchBranch: (worktreePath: string, branchName: string) =>
-      this.post('/api/worktree/switch-branch', { worktreePath, branchName }),
-    listRemotes: (worktreePath: string) =>
-      this.post('/api/worktree/list-remotes', { worktreePath }),
+      this.request('worktree.switchBranch', { worktreePath, branchName }),
+    listRemotes: (worktreePath: string) => this.request('worktree.listRemotes', { worktreePath }),
     addRemote: (worktreePath: string, remoteName: string, remoteUrl: string) =>
-      this.post('/api/worktree/add-remote', { worktreePath, remoteName, remoteUrl }),
+      this.request('worktree.addRemote', { worktreePath, remoteName, remoteUrl }),
     openInEditor: (worktreePath: string, editorCommand?: string) =>
       this.request('worktree.openInEditor', { worktreePath, editorCommand }),
     openInTerminal: (worktreePath: string) =>
@@ -2336,7 +2334,7 @@ export class HttpApiClient implements ElectronAPI {
       };
     },
     getPRInfo: (worktreePath: string, branchName: string) =>
-      this.post('/api/worktree/pr-info', { worktreePath, branchName }),
+      this.request('worktree.getPRInfo', { worktreePath, branchName }),
     // Init script methods
     getInitScript: (projectPath: string) => this.request('worktree.getInitScript', { projectPath }),
     setInitScript: (projectPath: string, content: string) =>
@@ -2346,7 +2344,7 @@ export class HttpApiClient implements ElectronAPI {
     runInitScript: (projectPath: string, worktreePath: string, branch: string) =>
       this.request('worktree.runInitScript', { projectPath, worktreePath, branch }),
     discardChanges: (worktreePath: string, files?: string[]) =>
-      this.post('/api/worktree/discard-changes', { worktreePath, files }),
+      this.request('worktree.discardChanges', { worktreePath, files }),
     onInitScriptEvent: (
       callback: (event: {
         type: 'worktree:init-started' | 'worktree:init-output' | 'worktree:init-completed';
@@ -2374,24 +2372,24 @@ export class HttpApiClient implements ElectronAPI {
       this.request('worktree.startTests', { worktreePath, ...options }),
     stopTests: (sessionId: string) => this.request('worktree.stopTests', { sessionId }),
     getCommitLog: (worktreePath: string, limit?: number) =>
-      this.post('/api/worktree/commit-log', { worktreePath, limit }),
+      this.request('worktree.getCommitLog', { worktreePath, limit }),
     stashPush: (worktreePath: string, message?: string, files?: string[]) =>
-      this.post('/api/worktree/stash-push', { worktreePath, message, files }),
-    stashList: (worktreePath: string) => this.post('/api/worktree/stash-list', { worktreePath }),
+      this.request('worktree.stashPush', { worktreePath, message, files }),
+    stashList: (worktreePath: string) => this.request('worktree.stashList', { worktreePath }),
     stashApply: (worktreePath: string, stashIndex: number, pop?: boolean) =>
-      this.post('/api/worktree/stash-apply', { worktreePath, stashIndex, pop }),
+      this.request('worktree.stashApply', { worktreePath, stashIndex, pop }),
     stashDrop: (worktreePath: string, stashIndex: number) =>
-      this.post('/api/worktree/stash-drop', { worktreePath, stashIndex }),
+      this.request('worktree.stashDrop', { worktreePath, stashIndex }),
     cherryPick: (worktreePath: string, commitHashes: string[], options?: { noCommit?: boolean }) =>
-      this.post('/api/worktree/cherry-pick', { worktreePath, commitHashes, options }),
+      this.request('worktree.cherryPick', { worktreePath, commitHashes, options }),
     rebase: (worktreePath: string, ontoBranch: string, remote?: string) =>
-      this.post('/api/worktree/rebase', { worktreePath, ontoBranch, remote }),
+      this.request('worktree.rebase', { worktreePath, ontoBranch, remote }),
     abortOperation: (worktreePath: string) =>
-      this.post('/api/worktree/abort-operation', { worktreePath }),
+      this.request('worktree.abortOperation', { worktreePath }),
     continueOperation: (worktreePath: string) =>
-      this.post('/api/worktree/continue-operation', { worktreePath }),
+      this.request('worktree.continueOperation', { worktreePath }),
     getBranchCommitLog: (worktreePath: string, branchName?: string, limit?: number) =>
-      this.post('/api/worktree/branch-commit-log', { worktreePath, branchName, limit }),
+      this.request('worktree.getBranchCommitLog', { worktreePath, branchName, limit }),
     getTestLogs: (worktreePath?: string, sessionId?: string): Promise<TestLogsResponse> =>
       this.request('worktree.getTestLogs', { worktreePath, sessionId }),
     onTestRunnerEvent: (callback: (event: TestRunnerEvent) => void) => {
