@@ -14,16 +14,9 @@
  */
 
 import path from 'path';
-import type {
-  Feature,
-  FeatureStatus,
-  FeatureStatusWithPipeline,
-  ParsedTask,
-  PlanSpec,
-} from '@automaker/types';
+import type { Feature, ParsedTask, PlanSpec } from '@automaker/types';
 import { isPipelineStatus } from '@automaker/types';
 import {
-  atomicWriteJson,
   readJsonWithRecovery,
   logRecoveryWarning,
   DEFAULT_BACKUP_COUNT,
@@ -37,7 +30,6 @@ import { getNotificationService } from './notification-service.js';
 import { FeatureLoader } from './feature-loader.js';
 import type { FeatureTransitioner } from './feature-record.js';
 import { pipelineService } from './pipeline-service.js';
-import { finalizeInProgressTasks } from './feature-plan-tasks.js';
 
 const logger = createLogger('FeatureStateManager');
 
@@ -127,70 +119,6 @@ export class FeatureStateManager {
       return result.data;
     } catch {
       return null;
-    }
-  }
-
-  /**
-   * Update feature status with proper persistence and event ordering.
-   *
-   * IMPORTANT: Persists to disk BEFORE emitting events to prevent stale data
-   * on client refresh (Pitfall 2 from research).
-   *
-   * @param projectPath - Path to the project
-   * @param featureId - ID of the feature to update
-   * @param status - New status value
-   */
-  async updateFeatureStatus(
-    projectPath: string,
-    featureId: string,
-    status: FeatureStatus
-  ): Promise<void> {
-    const featureDir = getFeatureDir(projectPath, featureId);
-    const featurePath = path.join(featureDir, 'feature.json');
-
-    try {
-      // Use recovery-enabled read for corrupted file handling
-      const result = await readJsonWithRecovery<Feature | null>(featurePath, null, {
-        maxBackups: DEFAULT_BACKUP_COUNT,
-        autoRestore: true,
-      });
-
-      logRecoveryWarning(result, `Feature ${featureId}`, logger);
-
-      const feature = result.data;
-      if (!feature) {
-        logger.warn(`Feature ${featureId} not found or could not be recovered`);
-        return;
-      }
-
-      feature.status = status;
-      feature.updatedAt = new Date().toISOString();
-
-      // Handle justFinishedAt timestamp based on status
-      const shouldSetJustFinishedAt = status === 'waiting_approval';
-      const shouldClearJustFinishedAt = status !== 'waiting_approval';
-      if (shouldSetJustFinishedAt) {
-        feature.justFinishedAt = new Date().toISOString();
-      } else if (shouldClearJustFinishedAt) {
-        feature.justFinishedAt = undefined;
-      }
-
-      // Finalize in-progress tasks when reaching terminal states (waiting_approval or verified)
-      if (status === 'waiting_approval' || status === 'verified') {
-        finalizeInProgressTasks(feature, featureId, status);
-      }
-
-      // PERSIST BEFORE EMIT (Pitfall 2)
-      await atomicWriteJson(featurePath, feature, { backupCount: DEFAULT_BACKUP_COUNT });
-
-      // Emit status change event so UI can react without polling
-      this.emitAutoModeEvent('feature_status_changed', {
-        featureId,
-        projectPath,
-        status,
-      });
-    } catch (error) {
-      logger.error(`Failed to update feature status for ${featureId}:`, error);
     }
   }
 
@@ -484,18 +412,8 @@ export class FeatureStateManager {
     featureId: string,
     updates: Partial<PlanSpec>
   ): Promise<void> {
-    const featureDir = getFeatureDir(projectPath, featureId);
-    const featurePath = path.join(featureDir, 'feature.json');
-
     try {
-      const result = await readJsonWithRecovery<Feature | null>(featurePath, null, {
-        maxBackups: DEFAULT_BACKUP_COUNT,
-        autoRestore: true,
-      });
-
-      logRecoveryWarning(result, `Feature ${featureId}`, logger);
-
-      const feature = result.data;
+      const feature = await this.loadFeature(projectPath, featureId);
       if (!feature) {
         logger.warn(`Feature ${featureId} not found or could not be recovered`);
         return;
@@ -521,10 +439,11 @@ export class FeatureStateManager {
         feature.planSpec.version = (feature.planSpec.version || 0) + 1;
       }
 
-      feature.updatedAt = new Date().toISOString();
-
       // PERSIST BEFORE EMIT
-      await atomicWriteJson(featurePath, feature, { backupCount: DEFAULT_BACKUP_COUNT });
+      await this.featureLoader.update(projectPath, featureId, {
+        planSpec: feature.planSpec,
+        updatedAt: new Date().toISOString(),
+      });
 
       // Emit event for UI update
       this.emitAutoModeEvent('plan_spec_updated', {
@@ -551,19 +470,10 @@ export class FeatureStateManager {
    * @param summary - The summary text to save
    */
   async saveFeatureSummary(projectPath: string, featureId: string, summary: string): Promise<void> {
-    const featureDir = getFeatureDir(projectPath, featureId);
-    const featurePath = path.join(featureDir, 'feature.json');
     const normalizedSummary = summary.trim();
 
     try {
-      const result = await readJsonWithRecovery<Feature | null>(featurePath, null, {
-        maxBackups: DEFAULT_BACKUP_COUNT,
-        autoRestore: true,
-      });
-
-      logRecoveryWarning(result, `Feature ${featureId}`, logger);
-
-      const feature = result.data;
+      const feature = await this.loadFeature(projectPath, featureId);
       if (!feature) {
         logger.warn(`Feature ${featureId} not found or could not be recovered`);
         return;
@@ -626,10 +536,11 @@ export class FeatureStateManager {
         feature.summary = normalizedSummary;
       }
 
-      feature.updatedAt = new Date().toISOString();
-
       // PERSIST BEFORE EMIT
-      await atomicWriteJson(featurePath, feature, { backupCount: DEFAULT_BACKUP_COUNT });
+      await this.featureLoader.update(projectPath, featureId, {
+        summary: feature.summary,
+        updatedAt: new Date().toISOString(),
+      });
 
       // Emit event for UI update
       this.emitAutoModeEvent('auto_mode_summary', {
@@ -651,7 +562,7 @@ export class FeatureStateManager {
    */
   private async getPipelineStepName(projectPath: string, status: string): Promise<string> {
     try {
-      const stepId = pipelineService.getStepIdFromStatus(status as FeatureStatusWithPipeline);
+      const stepId = pipelineService.getStepIdFromStatus(status);
       if (stepId) {
         const step = await pipelineService.getStep(projectPath, stepId);
         if (step) return step.name;
@@ -686,18 +597,8 @@ export class FeatureStateManager {
     status: ParsedTask['status'],
     summary?: string
   ): Promise<void> {
-    const featureDir = getFeatureDir(projectPath, featureId);
-    const featurePath = path.join(featureDir, 'feature.json');
-
     try {
-      const result = await readJsonWithRecovery<Feature | null>(featurePath, null, {
-        maxBackups: DEFAULT_BACKUP_COUNT,
-        autoRestore: true,
-      });
-
-      logRecoveryWarning(result, `Feature ${featureId}`, logger);
-
-      const feature = result.data;
+      const feature = await this.loadFeature(projectPath, featureId);
       if (!feature || !feature.planSpec?.tasks) {
         logger.warn(`Feature ${featureId} not found or has no tasks`);
         return;
@@ -710,10 +611,12 @@ export class FeatureStateManager {
         if (summary) {
           task.summary = summary;
         }
-        feature.updatedAt = new Date().toISOString();
 
         // PERSIST BEFORE EMIT
-        await atomicWriteJson(featurePath, feature, { backupCount: DEFAULT_BACKUP_COUNT });
+        await this.featureLoader.update(projectPath, featureId, {
+          planSpec: feature.planSpec,
+          updatedAt: new Date().toISOString(),
+        });
 
         // Emit event for UI update
         this.emitAutoModeEvent('auto_mode_task_status', {

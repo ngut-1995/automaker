@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { COLUMNS } from '../../constants';
 import { isPipelineStatus } from '@automaker/types';
-import type { FeatureStatus, FeatureStatusWithPipeline, PipelineConfig } from '@automaker/types';
+import type { FeatureStatus, PipelineConfig } from '@automaker/types';
 
 /**
  * Status display configuration
@@ -84,7 +84,7 @@ function getPipelineStatusDisplay(
  * Get the display configuration for a status
  */
 function getStatusDisplay(
-  status: FeatureStatusWithPipeline,
+  status: FeatureStatus,
   pipelineConfig: PipelineConfig | null
 ): StatusDisplay {
   // Check for pipeline status first
@@ -130,7 +130,7 @@ function getStatusDisplay(
 
 export interface StatusBadgeProps {
   /** The status to display */
-  status: FeatureStatusWithPipeline;
+  status: FeatureStatus;
   /** Optional pipeline configuration for custom pipeline steps */
   pipelineConfig?: PipelineConfig | null;
   /** Size variant for the badge */
@@ -198,7 +198,7 @@ export const StatusBadge = memo(function StatusBadge({
  * Useful for sorting or filtering operations
  */
 export function getStatusLabel(
-  status: FeatureStatusWithPipeline,
+  status: FeatureStatus,
   pipelineConfig: PipelineConfig | null = null
 ): string {
   return getStatusDisplay(status, pipelineConfig).label;
@@ -208,7 +208,7 @@ export function getStatusLabel(
  * Helper function to get the status order for sorting
  * Returns a numeric value representing the status position in the workflow
  */
-export function getStatusOrder(status: FeatureStatusWithPipeline): number {
+export function getStatusOrder(status: FeatureStatus): number {
   const baseOrder: Record<string, number> = {
     backlog: 0,
     merge_conflict: 0,

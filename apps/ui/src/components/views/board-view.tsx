@@ -30,12 +30,7 @@ class DialogAwarePointerSensor extends PointerSensor {
 import { useAppStore, Feature, type ModelAlias, type ThinkingLevel } from '@/store/app-store';
 import { getElectronAPI } from '@/lib/electron';
 import { getHttpApiClient } from '@/lib/http-api-client';
-import type {
-  BacklogPlanResult,
-  FeatureStatusWithPipeline,
-  FeatureTemplate,
-  ReasoningEffort,
-} from '@automaker/types';
+import type { BacklogPlanResult, FeatureTemplate, ReasoningEffort } from '@automaker/types';
 import { isPipelineStatus } from '@automaker/types';
 import { pathsEqual } from '@/lib/utils';
 import { initializeProject } from '@/lib/project-init';
@@ -1691,7 +1686,7 @@ export function BoardView({ initialFeatureId, initialProjectPath }: BoardViewPro
     const columns = getColumnsWithPipeline(pipelineConfig ?? null);
     const map: Record<string, typeof hookFeatures> = {};
     for (const column of columns) {
-      map[column.id] = getColumnFeatures(column.id as FeatureStatusWithPipeline);
+      map[column.id] = getColumnFeatures(column.id);
     }
     return map;
   }, [pipelineConfig, getColumnFeatures]);

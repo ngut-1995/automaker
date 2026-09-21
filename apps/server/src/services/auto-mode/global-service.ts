@@ -11,6 +11,7 @@
 
 import path from 'path';
 import { createLogger } from '@automaker/utils';
+import { isDoneFeatureStatus, isPipelineStatus, isRunnableFeatureStatus } from '@automaker/types';
 import type { EventEmitter } from '../../lib/events.js';
 import { TypedEventBus } from '../typed-event-bus.js';
 import { ConcurrencyManager } from '../concurrency-manager.js';
@@ -78,7 +79,9 @@ export class GlobalAutoModeService {
         }
         return features.filter(
           (f) =>
-            (f.status === 'backlog' || f.status === 'ready') &&
+            isRunnableFeatureStatus(f.status) &&
+            !isPipelineStatus(f.status) &&
+            f.status !== 'interrupted' &&
             (branchName === null
               ? !f.branchName || (primaryBranch && f.branchName === primaryBranch)
               : f.branchName === branchName)
@@ -91,10 +94,7 @@ export class GlobalAutoModeService {
       // resetStuckFeaturesFn
       (pPath) => this.featureStateManager.resetStuckFeatures(pPath),
       // isFeatureDoneFn
-      (feature) =>
-        feature.status === 'completed' ||
-        feature.status === 'verified' ||
-        feature.status === 'waiting_approval',
+      (feature) => isDoneFeatureStatus(feature.status) || feature.status === 'waiting_approval',
       // isFeatureRunningFn
       (featureId) => this.concurrencyManager.isRunning(featureId)
     );

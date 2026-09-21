@@ -10,7 +10,11 @@
 import * as secureFs from '../../lib/secure-fs.js';
 import type { EventEmitter } from '../../lib/events.js';
 import { createLogger } from '@automaker/utils';
-import { DEFAULT_PHASE_MODELS, supportsStructuredOutput } from '@automaker/types';
+import {
+  DEFAULT_PHASE_MODELS,
+  isDoneFeatureStatus,
+  supportsStructuredOutput,
+} from '@automaker/types';
 import { resolvePhaseModel } from '@automaker/model-resolver';
 import { streamingQuery } from '../../providers/simple-query-service.js';
 import { extractJson } from '../../lib/json-extractor.js';
@@ -126,9 +130,7 @@ export async function syncSpec(
   // Load completed Automaker features
   const featureLoader = new FeatureLoader();
   const allFeatures = await featureLoader.getAll(projectPath);
-  const completedFeatures = allFeatures.filter(
-    (f) => f.status === 'completed' || f.status === 'verified'
-  );
+  const completedFeatures = allFeatures.filter((f) => isDoneFeatureStatus(f.status));
 
   logger.info(`Found ${completedFeatures.length} completed/verified features in Automaker`);
 

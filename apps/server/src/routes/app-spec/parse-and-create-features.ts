@@ -2,14 +2,13 @@
  * Parse agent response and create feature files
  */
 
-import path from 'path';
-import * as secureFs from '../../lib/secure-fs.js';
+import type { Feature, PlanningMode } from '@automaker/types';
 import type { EventEmitter } from '../../lib/events.js';
-import { createLogger, atomicWriteJson, DEFAULT_BACKUP_COUNT } from '@automaker/utils';
-import { getFeaturesDir } from '@automaker/platform';
+import { createLogger } from '@automaker/utils';
 import { extractJsonWithArray } from '../../lib/json-extractor.js';
 import { getNotificationService } from '../../services/notification-service.js';
 import type { SettingsService } from '../../services/settings-service.js';
+import { FeatureLoader } from '../../services/feature-loader.js';
 import { resolvePhaseModel } from '@automaker/model-resolver';
 
 const logger = createLogger('SpecRegeneration');
@@ -28,7 +27,7 @@ export async function parseAndCreateFeatures(
 
   // Load default model and planning settings from settingsService
   let defaultModel: string | undefined;
-  let defaultPlanningMode: string = 'skip';
+  let defaultPlanningMode: PlanningMode = 'skip';
   let defaultRequirePlanApproval = false;
 
   if (settingsService) {
@@ -85,17 +84,13 @@ export async function parseAndCreateFeatures(
     logger.info(`Parsed ${parsed.features?.length || 0} features`);
     logger.info('Parsed features:', JSON.stringify(parsed.features, null, 2));
 
-    const featuresDir = getFeaturesDir(projectPath);
-    await secureFs.mkdir(featuresDir, { recursive: true });
-
+    const featureLoader = new FeatureLoader();
     const createdFeatures: Array<{ id: string; title: string }> = [];
 
     for (const feature of parsed.features) {
       logger.debug('Creating feature:', feature.id);
-      const featureDir = path.join(featuresDir, feature.id);
-      await secureFs.mkdir(featureDir, { recursive: true });
 
-      const featureData: Record<string, unknown> = {
+      const featureData: Partial<Feature> = {
         id: feature.id,
         category: feature.category || 'Uncategorized',
         title: feature.title,
@@ -118,10 +113,7 @@ export async function parseAndCreateFeatures(
         featureData.model = defaultModel;
       }
 
-      // Use atomic write with backup support for crash protection
-      await atomicWriteJson(path.join(featureDir, 'feature.json'), featureData, {
-        backupCount: DEFAULT_BACKUP_COUNT,
-      });
+      await featureLoader.create(projectPath, featureData);
 
       createdFeatures.push({ id: feature.id, title: feature.title });
     }

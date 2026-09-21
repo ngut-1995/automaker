@@ -128,7 +128,6 @@ describe('PipelineOrchestrator - providerId passthrough', () => {
     } as unknown as TypedEventBus;
 
     mockFeatureStateManager = {
-      updateFeatureStatus: vi.fn().mockResolvedValue(undefined),
       loadFeature: vi.fn().mockResolvedValue(createFeatureWithProvider()),
     } as unknown as FeatureStateManager;
 

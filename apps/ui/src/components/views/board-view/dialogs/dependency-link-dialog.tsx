@@ -13,7 +13,6 @@ import { ArrowDown, ArrowUp, Link2, X } from 'lucide-react';
 import type { Feature } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '../components';
-import type { FeatureStatusWithPipeline } from '@automaker/types';
 
 export type DependencyLinkType = 'parent' | 'child';
 
@@ -61,7 +60,7 @@ export function DependencyLinkDialog({
           <div className="p-3 rounded-lg border bg-muted/30">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Dragged Feature</span>
-              <StatusBadge status={draggedFeature.status as FeatureStatusWithPipeline} size="sm" />
+              <StatusBadge status={draggedFeature.status} size="sm" />
             </div>
             <div className="text-sm font-medium line-clamp-3 break-words">
               {draggedFeature.description}
@@ -78,7 +77,7 @@ export function DependencyLinkDialog({
           <div className="p-3 rounded-lg border bg-muted/30">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Target Feature</span>
-              <StatusBadge status={targetFeature.status as FeatureStatusWithPipeline} size="sm" />
+              <StatusBadge status={targetFeature.status} size="sm" />
             </div>
             <div className="text-sm font-medium line-clamp-3 break-words">
               {targetFeature.description}

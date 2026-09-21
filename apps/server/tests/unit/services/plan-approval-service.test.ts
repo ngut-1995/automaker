@@ -24,7 +24,6 @@ describe('PlanApprovalService', () => {
 
     mockFeatureStateManager = {
       loadFeature: vi.fn(),
-      updateFeatureStatus: vi.fn(),
       updateFeaturePlanSpec: vi.fn(),
     } as unknown as FeatureStateManager;
 

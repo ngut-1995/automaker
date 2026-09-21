@@ -5,11 +5,11 @@
 import path from 'path';
 import type {
   Feature,
+  FeatureStatus,
   FeatureTrigger,
   TransitionContext,
   PipelineStep,
   PipelineConfig,
-  FeatureStatusWithPipeline,
 } from '@automaker/types';
 import { createLogger, loadContextFiles, classifyError } from '@automaker/utils';
 import { getFeatureDir } from '@automaker/platform';
@@ -207,7 +207,7 @@ export class PipelineOrchestrator {
   async detectPipelineStatus(
     projectPath: string,
     featureId: string,
-    currentStatus: FeatureStatusWithPipeline
+    currentStatus: FeatureStatus | undefined
   ): Promise<PipelineStatusInfo> {
     const isPipeline = pipelineService.isPipelineStatus(currentStatus);
     if (!isPipeline)

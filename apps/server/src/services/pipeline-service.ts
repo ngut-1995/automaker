@@ -9,7 +9,7 @@ import path from 'path';
 import { createLogger } from '@automaker/utils';
 import * as secureFs from '../lib/secure-fs.js';
 import { ensureAutomakerDir } from '@automaker/platform';
-import type { PipelineConfig, PipelineStep, FeatureStatusWithPipeline } from '@automaker/types';
+import type { FeatureStatus, PipelineConfig, PipelineStep } from '@automaker/types';
 
 const logger = createLogger('PipelineService');
 
@@ -243,11 +243,11 @@ export class PipelineService {
    * @returns The next status in the pipeline flow
    */
   getNextStatus(
-    currentStatus: FeatureStatusWithPipeline,
+    currentStatus: FeatureStatus,
     config: PipelineConfig | null,
     skipTests: boolean,
     excludedStepIds?: string[]
-  ): FeatureStatusWithPipeline {
+  ): FeatureStatus {
     const steps = config?.steps || [];
     const exclusions = new Set(excludedStepIds || []);
 
@@ -325,15 +325,15 @@ export class PipelineService {
   /**
    * Check if a status is a pipeline status
    */
-  isPipelineStatus(status: FeatureStatusWithPipeline): boolean {
-    return status.startsWith('pipeline_');
+  isPipelineStatus(status: string | null | undefined): boolean {
+    return typeof status === 'string' && status.startsWith('pipeline_');
   }
 
   /**
    * Extract step ID from a pipeline status
    */
-  getStepIdFromStatus(status: FeatureStatusWithPipeline): string | null {
-    if (!this.isPipelineStatus(status)) {
+  getStepIdFromStatus(status: string | null | undefined): string | null {
+    if (typeof status !== 'string' || !this.isPipelineStatus(status)) {
       return null;
     }
     return status.replace('pipeline_', '');

@@ -1,5 +1,5 @@
 import type { Feature } from '@/store/app-store';
-import type { PipelineConfig, FeatureStatusWithPipeline } from '@automaker/types';
+import type { FeatureStatus, PipelineConfig } from '@automaker/types';
 import { isPipelineStatus, isRunnableFeatureStatus } from '@automaker/types';
 
 export type ColumnId = Feature['status'];
@@ -68,7 +68,7 @@ export function getEmptyStateConfig(columnId: string): EmptyStateConfig {
 }
 
 export interface Column {
-  id: FeatureStatusWithPipeline;
+  id: FeatureStatus;
   title: string;
   colorClass: string;
   isPipelineStep?: boolean;
@@ -119,7 +119,7 @@ export function getColumnsWithPipeline(pipelineConfig: PipelineConfig | null): C
   const pipelineColumns: Column[] = sortedSteps
     .filter((step) => step && step.id) // Only include valid steps with an id
     .map((step) => ({
-      id: `pipeline_${step.id}` as FeatureStatusWithPipeline,
+      id: `pipeline_${step.id}`,
       title: step.name || 'Pipeline Step',
       colorClass: step.colorClass || 'bg-[var(--status-in-progress)]',
       isPipelineStep: true,
@@ -148,7 +148,7 @@ export function getPipelineInsertIndex(): number {
  * but its status hasn't updated yet (race condition during WebSocket/cache sync).
  * See use-board-column-features.ts for the column assignment logic.
  */
-export function isBacklogLikeStatus(status: FeatureStatusWithPipeline | null | undefined): boolean {
+export function isBacklogLikeStatus(status: FeatureStatus | null | undefined): boolean {
   return (
     (isRunnableFeatureStatus(status) && !isPipelineStatus(status)) || status === 'merge_conflict'
   );

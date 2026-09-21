@@ -164,6 +164,7 @@ describe('getFirstNonEmptySummary', () => {
 describe('Agent Output Summary E2E Flow', () => {
   let manager: FeatureStateManager;
   let mockEvents: EventEmitter;
+  let mockFeatureLoader: FeatureLoader;
 
   const baseFeature: Feature = {
     id: 'e2e-feature-1',
@@ -183,8 +184,9 @@ describe('Agent Output Summary E2E Flow', () => {
       subscribe: vi.fn(() => vi.fn()),
     };
 
-    const mockFeatureLoader = {
+    mockFeatureLoader = {
       syncFeatureToAppSpec: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
     } as unknown as FeatureLoader;
 
     manager = new FeatureStateManager(mockEvents, mockFeatureLoader, { transition: vi.fn() });
@@ -211,7 +213,7 @@ describe('Agent Output Summary E2E Flow', () => {
         '## Changes\n- Created auth module\n- Added user service'
       );
 
-      const step1Feature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const step1Feature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       const step1Summary = step1Feature.summary;
 
       // Verify server-side accumulation format
@@ -243,7 +245,7 @@ describe('Agent Output Summary E2E Flow', () => {
         '## Review Results\n- Approved with minor suggestions'
       );
 
-      const step2Feature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const step2Feature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       const step2Summary = step2Feature.summary;
 
       // Verify accumulation now has both steps
@@ -276,7 +278,7 @@ describe('Agent Output Summary E2E Flow', () => {
         '## Test Results\n- 42 tests pass\n- 98% coverage'
       );
 
-      const finalFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const finalFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       const finalSummary = finalFeature.summary;
 
       // Verify final accumulation has all three steps
@@ -427,7 +429,7 @@ Working on tests...
 
       await manager.saveFeatureSummary('/project', 'e2e-feature-1', 'Implementation done');
 
-      const step1Summary = ((atomicWriteJson as Mock).mock.calls[0][1] as Feature).summary;
+      const step1Summary = ((mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature).summary;
 
       // Pipeline gets interrupted (status changes but summary is preserved)
       // When user views the feature later, the summary should still be available
@@ -474,7 +476,7 @@ Working on tests...
 
         await manager.saveFeatureSummary('/project', 'e2e-feature-1', generateLargeContent(i + 1));
 
-        currentSummary = ((atomicWriteJson as Mock).mock.calls[0][1] as Feature).summary;
+        currentSummary = ((mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature).summary;
       }
 
       // Final summary should be large but still parseable
