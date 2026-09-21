@@ -19,7 +19,7 @@ describe('feature-export-service.ts', () => {
     title: 'Test Feature',
     category: 'UI',
     description: 'A test feature description',
-    status: 'pending',
+    status: 'backlog',
     priority: 1,
     dependencies: ['feature-456'],
     descriptionHistory: [
@@ -193,7 +193,7 @@ describe('feature-export-service.ts', () => {
     const features: Feature[] = [
       { ...sampleFeature, id: 'feature-1', category: 'UI' },
       { ...sampleFeature, id: 'feature-2', category: 'Backend', status: 'completed' },
-      { ...sampleFeature, id: 'feature-3', category: 'UI', status: 'pending' },
+      { ...sampleFeature, id: 'feature-3', category: 'UI', status: 'backlog' },
     ];
 
     it('should export all features', async () => {

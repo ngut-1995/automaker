@@ -37,6 +37,7 @@ export function createFeaturesHandlers(
   autoModeService?: AutoModeServiceCompat
 ): OperationHandlers {
   const listHandler = createListHandler(featureLoader, autoModeService);
+  const featureRecord = autoModeService?.getGlobalService().getSharedServices().featureRecord;
 
   return {
     'features.list': listHandler,
@@ -54,8 +55,8 @@ export function createFeaturesHandlers(
     'features.import': createImportHandler(featureLoader),
     'features.checkConflicts': createConflictCheckHandler(featureLoader),
     'features.getOrphaned': createOrphanedListHandler(featureLoader, autoModeService),
-    'features.resolveOrphaned': createOrphanedResolveHandler(featureLoader, autoModeService),
-    'features.bulkResolveOrphaned': createOrphanedBulkResolveHandler(featureLoader),
+    'features.resolveOrphaned': createOrphanedResolveHandler(featureLoader, featureRecord),
+    'features.bulkResolveOrphaned': createOrphanedBulkResolveHandler(featureLoader, featureRecord),
   };
 }
 

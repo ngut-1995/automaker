@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import path from 'path';
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
+import type { FeatureTransitioner } from '../../../services/feature-record.js';
 import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
 import { getErrorMessage, logError } from '../common.js';
 import { execGitCommand } from '../../../lib/git.js';
@@ -49,7 +50,7 @@ export function createOrphanedListHandler(
 
 export function createOrphanedResolveHandler(
   featureLoader: FeatureLoader,
-  _autoModeService?: AutoModeServiceCompat
+  featureRecord?: FeatureTransitioner
 ) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
@@ -78,6 +79,7 @@ export function createOrphanedResolveHandler(
 
       const result = await resolveOrphanedFeature(
         featureLoader,
+        featureRecord,
         projectPath,
         featureId,
         action,
@@ -106,6 +108,7 @@ interface BulkResolveResult {
 
 async function resolveOrphanedFeature(
   featureLoader: FeatureLoader,
+  featureRecord: FeatureTransitioner | undefined,
   projectPath: string,
   featureId: string,
   action: ResolveAction,
@@ -188,10 +191,13 @@ async function resolveOrphanedFeature(
           }
         }
 
-        await featureLoader.update(projectPath, featureId, {
-          branchName: newBranch,
-          status: 'pending',
-        });
+        await featureLoader.update(projectPath, featureId, { branchName: newBranch });
+
+        if (!featureRecord) {
+          return { featureId, success: false, error: 'Feature record not available' };
+        }
+
+        await featureRecord.transition(projectPath, featureId, 'returnToBacklog');
 
         // Clean up old worktree metadata
         if (missingBranch) {
@@ -214,7 +220,10 @@ async function resolveOrphanedFeature(
   }
 }
 
-export function createOrphanedBulkResolveHandler(featureLoader: FeatureLoader) {
+export function createOrphanedBulkResolveHandler(
+  featureLoader: FeatureLoader,
+  featureRecord?: FeatureTransitioner
+) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureIds, action, targetBranch } = req.body as {
@@ -254,6 +263,7 @@ export function createOrphanedBulkResolveHandler(featureLoader: FeatureLoader) {
         for (const featureId of featureIds) {
           const result = await resolveOrphanedFeature(
             featureLoader,
+            featureRecord,
             projectPath,
             featureId,
             action,
@@ -264,7 +274,14 @@ export function createOrphanedBulkResolveHandler(featureLoader: FeatureLoader) {
       } else {
         const batchResults = await Promise.all(
           featureIds.map((featureId) =>
-            resolveOrphanedFeature(featureLoader, projectPath, featureId, action, targetBranch)
+            resolveOrphanedFeature(
+              featureLoader,
+              featureRecord,
+              projectPath,
+              featureId,
+              action,
+              targetBranch
+            )
           )
         );
         results.push(...batchResults);

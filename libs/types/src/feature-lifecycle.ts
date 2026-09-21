@@ -62,9 +62,6 @@ function isStartable(status: FeatureStatus): boolean {
     status === 'backlog' ||
     status === 'ready' ||
     status === 'interrupted' ||
-    status === 'pending' ||
-    status === 'running' ||
-    status === 'failed' ||
     status === 'in_progress' ||
     status === 'merge_conflict' ||
     isPipelineStatus(status)

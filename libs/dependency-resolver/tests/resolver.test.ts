@@ -24,7 +24,7 @@ function createFeature(
     category: 'test',
     description: `Feature ${id}`,
     dependencies: options.dependencies,
-    status: options.status || 'pending',
+    status: options.status || 'backlog',
     priority: options.priority,
   };
 }
@@ -137,8 +137,8 @@ describe('resolver.ts', () => {
 
     it('should detect blocked features (incomplete dependencies)', () => {
       const features = [
-        createFeature('A', { status: 'pending' }),
-        createFeature('B', { dependencies: ['A'], status: 'pending' }),
+        createFeature('A', { status: 'backlog' }),
+        createFeature('B', { dependencies: ['A'], status: 'backlog' }),
       ];
 
       const result = resolveDependencies(features);
@@ -150,7 +150,7 @@ describe('resolver.ts', () => {
     it('should not mark features as blocked if dependencies are completed', () => {
       const features = [
         createFeature('A', { status: 'completed' }),
-        createFeature('B', { dependencies: ['A'], status: 'pending' }),
+        createFeature('B', { dependencies: ['A'], status: 'backlog' }),
       ];
 
       const result = resolveDependencies(features);
@@ -161,7 +161,7 @@ describe('resolver.ts', () => {
     it('should not mark features as blocked if dependencies are verified', () => {
       const features = [
         createFeature('A', { status: 'verified' }),
-        createFeature('B', { dependencies: ['A'], status: 'pending' }),
+        createFeature('B', { dependencies: ['A'], status: 'backlog' }),
       ];
 
       const result = resolveDependencies(features);
@@ -258,8 +258,8 @@ describe('resolver.ts', () => {
       expect(areDependenciesSatisfied(feature, allFeatures)).toBe(true);
     });
 
-    it('should return false when any dependency is pending', () => {
-      const dep = createFeature('Dep', { status: 'pending' });
+    it('should return false when any dependency is backlog', () => {
+      const dep = createFeature('Dep', { status: 'backlog' });
       const feature = createFeature('A', { dependencies: ['Dep'] });
       const allFeatures = [dep, feature];
 
@@ -267,7 +267,7 @@ describe('resolver.ts', () => {
     });
 
     it('should return false when any dependency is running', () => {
-      const dep = createFeature('Dep', { status: 'running' });
+      const dep = createFeature('Dep', { status: 'in_progress' });
       const feature = createFeature('A', { dependencies: ['Dep'] });
       const allFeatures = [dep, feature];
 
@@ -283,7 +283,7 @@ describe('resolver.ts', () => {
 
     it('should check all dependencies', () => {
       const dep1 = createFeature('Dep1', { status: 'completed' });
-      const dep2 = createFeature('Dep2', { status: 'pending' });
+      const dep2 = createFeature('Dep2', { status: 'backlog' });
       const feature = createFeature('A', { dependencies: ['Dep1', 'Dep2'] });
       const allFeatures = [dep1, dep2, feature];
 
@@ -315,24 +315,24 @@ describe('resolver.ts', () => {
       expect(getBlockingDependencies(feature, allFeatures)).toEqual([]);
     });
 
-    it('should return pending dependencies', () => {
-      const dep = createFeature('Dep', { status: 'pending' });
+    it('should return backlog dependencies', () => {
+      const dep = createFeature('Dep', { status: 'backlog' });
       const feature = createFeature('A', { dependencies: ['Dep'] });
       const allFeatures = [dep, feature];
 
       expect(getBlockingDependencies(feature, allFeatures)).toEqual(['Dep']);
     });
 
-    it('should return running dependencies', () => {
-      const dep = createFeature('Dep', { status: 'running' });
+    it('should return in-progress dependencies', () => {
+      const dep = createFeature('Dep', { status: 'in_progress' });
       const feature = createFeature('A', { dependencies: ['Dep'] });
       const allFeatures = [dep, feature];
 
       expect(getBlockingDependencies(feature, allFeatures)).toEqual(['Dep']);
     });
 
-    it('should return failed dependencies', () => {
-      const dep = createFeature('Dep', { status: 'failed' });
+    it('should return backlog dependencies for non-done features', () => {
+      const dep = createFeature('Dep', { status: 'backlog' });
       const feature = createFeature('A', { dependencies: ['Dep'] });
       const allFeatures = [dep, feature];
 
@@ -340,9 +340,9 @@ describe('resolver.ts', () => {
     });
 
     it('should return all incomplete dependencies', () => {
-      const dep1 = createFeature('Dep1', { status: 'pending' });
+      const dep1 = createFeature('Dep1', { status: 'backlog' });
       const dep2 = createFeature('Dep2', { status: 'completed' });
-      const dep3 = createFeature('Dep3', { status: 'running' });
+      const dep3 = createFeature('Dep3', { status: 'in_progress' });
       const feature = createFeature('A', { dependencies: ['Dep1', 'Dep2', 'Dep3'] });
       const allFeatures = [dep1, dep2, dep3, feature];
 
@@ -355,9 +355,9 @@ describe('resolver.ts', () => {
 
   describe('getBlockingDependenciesFromMap', () => {
     it('should match getBlockingDependencies when using a feature map', () => {
-      const dep1 = createFeature('Dep1', { status: 'pending' });
+      const dep1 = createFeature('Dep1', { status: 'backlog' });
       const dep2 = createFeature('Dep2', { status: 'completed' });
-      const dep3 = createFeature('Dep3', { status: 'running' });
+      const dep3 = createFeature('Dep3', { status: 'in_progress' });
       const feature = createFeature('A', { dependencies: ['Dep1', 'Dep2', 'Dep3'] });
       const allFeatures = [dep1, dep2, dep3, feature];
       const featureMap = createFeatureMap(allFeatures);
