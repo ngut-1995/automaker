@@ -8,7 +8,17 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getModelDisplayName, getClaudeTierDisplayName } from '../../src/model-display.js';
+import {
+  getModelDisplayName,
+  getClaudeTierDisplayName,
+  MODEL_DISPLAY_NAMES,
+  CODEX_MODELS,
+  CLAUDE_TIER_DISPLAY_NAMES,
+} from '../../src/model-display.js';
+import { CURSOR_MODEL_MAP } from '../../src/cursor-models.js';
+import { COPILOT_MODEL_MAP } from '../../src/copilot-models.js';
+import { GEMINI_MODEL_MAP } from '../../src/gemini-models.js';
+import { OPENCODE_MODELS } from '../../src/opencode-models.js';
 
 describe('getClaudeTierDisplayName', () => {
   it('names the tier for bare tier aliases', () => {
@@ -78,11 +88,94 @@ describe('getModelDisplayName', () => {
     expect(getModelDisplayName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
   });
 
-  it('leaves models from other providers untouched', () => {
+  it('names a model from another provider by its own catalogue label', () => {
     expect(getModelDisplayName('codex-gpt-5.2')).toBe('GPT-5.2');
     expect(getModelDisplayName('gemini-2.5-flash')).toBe('Gemini 2.5 Flash');
-    expect(getModelDisplayName('cursor-opus-4.5')).toBe('cursor-opus-4.5');
-    expect(getModelDisplayName('copilot-claude-opus-4.5')).toBe('copilot-claude-opus-4.5');
-    expect(getModelDisplayName('opencode-big-pickle')).toBe('opencode-big-pickle');
+    expect(getModelDisplayName('cursor-opus-4.5')).toBe('Claude Opus 4.5');
+    expect(getModelDisplayName('copilot-claude-opus-4.5')).toBe('Claude Opus 4.5');
+    expect(getModelDisplayName('opencode-big-pickle')).toBe('Big Pickle');
+  });
+
+  it('echoes an identifier it has never heard of rather than inventing a name', () => {
+    // The old behaviour in one of the three helpers was to split on dashes and
+    // keep the middle -- which named "unknown-model-name" as "model name" and a
+    // single-token ID as the empty string. An identifier is at least true.
+    expect(getModelDisplayName('unknown-model-name')).toBe('unknown-model-name');
+    expect(getModelDisplayName('single')).toBe('single');
+  });
+
+  it('names a model that was migrated from a legacy or retired identifier', () => {
+    expect(getModelDisplayName('sonnet-4.6')).toBe('Claude Sonnet 4.6');
+    expect(getModelDisplayName('opencode/big-pickle')).toBe('Big Pickle');
+    expect(getModelDisplayName('opencode-minimax-m2.1-free')).toBe('MiniMax M2.5 Free');
+  });
+});
+
+/**
+ * Criterion: one table, in the shared types package, is the only source of model
+ * display names, and a fourth cannot reappear unnoticed (ngut-1995/harbor#38).
+ *
+ * The defence is structural rather than a list of expected strings: the table is
+ * *derived* from the provider catalogues, so these tests fail if anyone writes a
+ * name a second time and it drifts, or adds a catalogue model the table cannot
+ * name.
+ */
+describe('the single display-name table', () => {
+  const CATALOGUE_LABELS: Record<string, string> = {
+    ...Object.fromEntries(CODEX_MODELS.map((m) => [m.id, m.label])),
+    ...Object.fromEntries(Object.entries(CURSOR_MODEL_MAP).map(([id, c]) => [id, c.label])),
+    ...Object.fromEntries(Object.entries(GEMINI_MODEL_MAP).map(([id, c]) => [id, c.label])),
+    ...Object.fromEntries(Object.entries(COPILOT_MODEL_MAP).map(([id, c]) => [id, c.label])),
+    ...Object.fromEntries(OPENCODE_MODELS.map((m) => [m.id, m.label])),
+  };
+
+  /**
+   * The complete set of identifiers whose name is written by hand instead of
+   * taken from the provider's catalogue. Every entry needs a reason in
+   * `DISPLAY_NAME_OVERRIDES`; this test is what forces one to be given.
+   */
+  const DOCUMENTED_OVERRIDES: Record<string, string> = {
+    'cursor-auto': 'Cursor Auto',
+  };
+
+  it('names every model in every provider catalogue', () => {
+    for (const id of Object.keys(CATALOGUE_LABELS)) {
+      expect(getModelDisplayName(id), id).not.toBe(id);
+    }
+  });
+
+  it('names each of them exactly as its own provider catalogue does', () => {
+    for (const [id, label] of Object.entries(CATALOGUE_LABELS)) {
+      if (id in DOCUMENTED_OVERRIDES) continue;
+      expect(getModelDisplayName(id), id).toBe(label);
+    }
+  });
+
+  it('overrides a catalogue label only where a reason is recorded', () => {
+    const overridden = Object.entries(CATALOGUE_LABELS)
+      .filter(([id, label]) => getModelDisplayName(id) !== label)
+      .map(([id]) => id);
+    expect(overridden.sort()).toEqual(Object.keys(DOCUMENTED_OVERRIDES).sort());
+
+    for (const [id, label] of Object.entries(DOCUMENTED_OVERRIDES)) {
+      expect(getModelDisplayName(id), id).toBe(label);
+    }
+  });
+
+  it('holds no row for a Claude model, so only the tier helper can name one', () => {
+    // A Claude row here would be a second place a Claude name could come from,
+    // and the version in the row would be one the provider is free to ignore
+    // (docs/adr/0001-claude-tier-aliases.md).
+    const claudeRows = Object.keys(MODEL_DISPLAY_NAMES).filter(
+      (id) => id.startsWith('claude-') || id in CLAUDE_TIER_DISPLAY_NAMES
+    );
+    expect(claudeRows).toEqual([]);
+  });
+
+  it('answers every Claude tier from CLAUDE_TIER_DISPLAY_NAMES and nowhere else', () => {
+    for (const [tier, label] of Object.entries(CLAUDE_TIER_DISPLAY_NAMES)) {
+      expect(getModelDisplayName(tier)).toBe(label);
+      expect(getModelDisplayName(`claude-${tier}`)).toBe(label);
+    }
   });
 });

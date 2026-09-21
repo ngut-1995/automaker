@@ -25,7 +25,11 @@ import type {
   ClaudeCompatibleProvider,
   ClaudeModelAlias,
 } from '@automaker/types';
-import { DEFAULT_PHASE_MODELS, DEFAULT_GLOBAL_SETTINGS } from '@automaker/types';
+import {
+  DEFAULT_PHASE_MODELS,
+  DEFAULT_GLOBAL_SETTINGS,
+  CLAUDE_TIER_DISPLAY_NAMES,
+} from '@automaker/types';
 
 interface ProjectBulkReplaceDialogProps {
   open: boolean;
@@ -54,13 +58,6 @@ const ALL_PHASES = Object.keys(PHASE_LABELS) as PhaseModelKey[];
 // Special key for default feature model (not a phase but included in bulk replace)
 const DEFAULT_FEATURE_MODEL_KEY = '__defaultFeatureModel__' as const;
 type ExtendedPhaseKey = PhaseModelKey | typeof DEFAULT_FEATURE_MODEL_KEY;
-
-// Claude model display names
-const CLAUDE_MODEL_DISPLAY: Record<ClaudeModelAlias, string> = {
-  haiku: 'Claude Haiku',
-  sonnet: 'Claude Sonnet',
-  opus: 'Claude Opus',
-};
 
 export function ProjectBulkReplaceDialog({
   open,
@@ -181,7 +178,7 @@ export function ProjectBulkReplaceDialog({
           return model?.displayName || currentEntry.model;
         }
       }
-      return CLAUDE_MODEL_DISPLAY[claudeAlias] || currentEntry.model;
+      return CLAUDE_TIER_DISPLAY_NAMES[claudeAlias] || currentEntry.model;
     };
 
     const getNewDisplay = (): string => {
@@ -189,7 +186,7 @@ export function ProjectBulkReplaceDialog({
         const model = selectedProviderConfig.models?.find((m) => m.id === newEntry.model);
         return model?.displayName || newEntry.model;
       }
-      return CLAUDE_MODEL_DISPLAY[newEntry.model as ClaudeModelAlias] || newEntry.model;
+      return CLAUDE_TIER_DISPLAY_NAMES[newEntry.model as ClaudeModelAlias] || newEntry.model;
     };
 
     const isChanged =

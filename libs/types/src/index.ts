@@ -233,6 +233,7 @@ export {
   REASONING_EFFORT_LEVELS,
   REASONING_EFFORT_LABELS,
   CLAUDE_TIER_DISPLAY_NAMES,
+  MODEL_DISPLAY_NAMES,
   getModelDisplayName,
   getClaudeTier,
   getClaudeTierDisplayName,

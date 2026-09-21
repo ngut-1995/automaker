@@ -4,7 +4,7 @@
  */
 
 import type { ClaudeCompatibleProvider } from '@automaker/types';
-import { getClaudeTierDisplayName } from '@automaker/types';
+import { getModelDisplayName } from '@automaker/types';
 
 export interface AgentTaskInfo {
   // Task list extracted from TodoWrite tool calls
@@ -43,102 +43,28 @@ export interface FormatModelNameOptions {
 }
 
 /**
- * Formats a model name for display, with optional provider-aware lookup.
+ * Formats a model name for display, with one precedence rule in front of the
+ * shared answer.
  *
- * When a providerId and providers array are supplied, this function will:
- * 1. Look up the provider configuration
- * 2. Find the model in the provider's models array
- * 3. Return the displayName from that configuration
+ * A Claude-compatible provider (GLM, MiniMax, OpenRouter, Moonshot) serves its
+ * own model behind a Claude-shaped ID, so when the caller knows which provider
+ * ran, that provider's `displayName` is the truth and wins -- "GLM 4.7" rather
+ * than "Claude Sonnet". That precedence is this function's whole reason to
+ * exist and is pinned by its own test.
  *
- * This allows Claude-compatible providers (like GLM, MiniMax, OpenRouter) to
- * show their own model names (e.g., "GLM 4.7", "MiniMax M2.1") instead of
- * the internal Claude model aliases (e.g., "Sonnet 4.5").
+ * Everything else is `getModelDisplayName` from `@automaker/types`, which holds
+ * the one table. There is deliberately no table here: this function used to
+ * carry a third one and it disagreed with the other two on most non-Claude
+ * models (see ngut-1995/harbor#38).
  */
 export function formatModelName(model: string, options?: FormatModelNameOptions): string {
-  // If we have a providerId and providers array, look up the display name from the provider
   if (options?.providerId && options?.claudeCompatibleProviders) {
     const provider = options.claudeCompatibleProviders.find((p) => p.id === options.providerId);
-    if (provider?.models) {
-      const providerModel = provider.models.find((m) => m.id === model);
-      if (providerModel?.displayName) {
-        return providerModel.displayName;
-      }
-    }
+    const providerModel = provider?.models?.find((m) => m.id === model);
+    if (providerModel?.displayName) return providerModel.displayName;
   }
 
-  // Claude models: the tier name, for every Claude string, with no exceptions.
-  //
-  // There is no table of version labels here, and deliberately so. Automaker
-  // addresses Claude by tier alias and the provider picks the version, so no
-  // identifier that reaches this function carries a version Automaker can
-  // vouch for:
-  //
-  // - a bare alias or canonical ID (`opus`, `claude-opus`) names no version;
-  // - an undated identifier such as `claude-haiku-4-5` is itself a tier alias,
-  //   which the provider's own ANTHROPIC_DEFAULT_HAIKU_MODEL can point at any
-  //   version, so its apparent version is not the version that runs;
-  // - the versions Automaker once wrote on the user's behalf collapse to their
-  //   tier when read, so labelling them would report a model that never
-  //   executes (see PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP in @automaker/types);
-  // - a version released after this build is unknown to any table anyway.
-  //
-  // Naming no version is correct; naming a wrong one is not. See
-  // docs/adr/0001-claude-tier-aliases.md.
-  const claudeTierName = getClaudeTierDisplayName(model);
-  if (claudeTierName) return claudeTierName;
-
-  // Codex/GPT models - specific formatting
-  if (model === 'codex-gpt-5.3-codex') return 'GPT-5.3 Codex';
-  if (model === 'codex-gpt-5.2-codex') return 'GPT-5.2 Codex';
-  if (model === 'codex-gpt-5.2') return 'GPT-5.2';
-  if (model === 'codex-gpt-5.1-codex-max') return 'GPT-5.1 Max';
-  if (model === 'codex-gpt-5.1-codex-mini') return 'GPT-5.1 Mini';
-  if (model === 'codex-gpt-5.1') return 'GPT-5.1';
-  // Generic fallbacks for other GPT models
-  if (model.startsWith('gpt-')) return model.toUpperCase();
-  if (model.match(/^o\d/)) return model.toUpperCase(); // o1, o3, etc.
-
-  // Cursor models
-  if (model === 'cursor-auto' || model === 'auto') return 'Cursor Auto';
-  if (model === 'cursor-composer-1' || model === 'composer-1') return 'Composer 1';
-  if (model.startsWith('cursor-sonnet')) return 'Cursor Sonnet';
-  if (model.startsWith('cursor-opus')) return 'Cursor Opus';
-  if (model.startsWith('cursor-gpt')) return model.replace('cursor-', '').replace('gpt-', 'GPT-');
-  if (model.startsWith('cursor-gemini'))
-    return model.replace('cursor-', 'Cursor ').replace('gemini', 'Gemini');
-  if (model.startsWith('cursor-grok')) return 'Cursor Grok';
-
-  // OpenCode static models (canonical opencode- prefix)
-  if (model === 'opencode-big-pickle') return 'Big Pickle';
-  if (model === 'opencode-glm-5-free') return 'GLM 5 Free';
-  if (model === 'opencode-gpt-5-nano') return 'GPT-5 Nano';
-  if (model === 'opencode-kimi-k2.5-free') return 'Kimi K2.5';
-  if (model === 'opencode-minimax-m2.5-free') return 'MiniMax M2.5';
-
-  // OpenCode dynamic models (provider/model format like "google/gemini-2.5-pro")
-  if (model.includes('/') && !model.includes('://')) {
-    const slashIndex = model.indexOf('/');
-    const modelName = model.substring(slashIndex + 1);
-    // Extract last path segment (handles nested paths like "arcee-ai/trinity-large-preview:free")
-    let lastSegment = modelName.split('/').pop()!;
-    // Detect and save tier suffixes like ":free", ":extended", ":beta", ":preview"
-    const tierMatch = lastSegment.match(/:(free|extended|beta|preview)$/i);
-    if (tierMatch) {
-      lastSegment = lastSegment.slice(0, lastSegment.length - tierMatch[0].length);
-    }
-    // Clean up the model name for display (remove version tags, capitalize)
-    const cleanedName = lastSegment.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-    // Append tier as a human-friendly label in parentheses
-    if (tierMatch) {
-      const capitalizedTier =
-        tierMatch[1].charAt(0).toUpperCase() + tierMatch[1].slice(1).toLowerCase();
-      return `${cleanedName} (${capitalizedTier})`;
-    }
-    return cleanedName;
-  }
-
-  // Default: split by dash and capitalize
-  return model.split('-').slice(1, 3).join(' ');
+  return getModelDisplayName(model);
 }
 
 /**

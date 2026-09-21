@@ -1,10 +1,10 @@
 /**
- * Tests for getModelDisplayName in the UI utils.
+ * Tests for getModelDisplayName as reached through the UI utils.
  *
- * This table is deliberately kept separate from the one in @automaker/types;
- * unifying them is out of scope here. What both must share is the guarantee
- * that an unrecognised Claude string renders as its tier name rather than as a
- * raw identifier or a guessed version.
+ * There is no table here any more: `apps/ui/src/lib/utils.ts` re-exports the one in @automaker/types, so these
+ * tests check that the import path callers already use still answers correctly
+ * (ngut-1995/harbor#38). The identity of the two is asserted in
+ * tests/unit/lib/agent-context-parser.test.ts.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -30,12 +30,16 @@ describe('getModelDisplayName', () => {
     expect(getModelDisplayName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
   });
 
-  it('leaves models from other providers untouched', () => {
+  it("names a model from another provider by that provider's own label", () => {
+    // These used to come back as raw identifiers here while other panels named
+    // them. The single table is assembled from the provider catalogues, so a
+    // model is shown under the label the picker offered it under.
     expect(getModelDisplayName('codex-gpt-5.2')).toBe('GPT-5.2');
     expect(getModelDisplayName('cursor-auto')).toBe('Cursor Auto');
-    expect(getModelDisplayName('cursor-opus-4.5')).toBe('cursor-opus-4.5');
-    expect(getModelDisplayName('copilot-claude-opus-4.5')).toBe('copilot-claude-opus-4.5');
-    expect(getModelDisplayName('opencode-big-pickle')).toBe('opencode-big-pickle');
+    expect(getModelDisplayName('cursor-opus-4.5')).toBe('Claude Opus 4.5');
+    expect(getModelDisplayName('copilot-claude-opus-4.5')).toBe('Claude Opus 4.5');
+    expect(getModelDisplayName('opencode-big-pickle')).toBe('Big Pickle');
+    expect(getModelDisplayName('gemini-2.5-flash')).toBe('Gemini 2.5 Flash');
   });
 });
 

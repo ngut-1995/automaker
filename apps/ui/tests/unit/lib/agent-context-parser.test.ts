@@ -10,7 +10,14 @@ import {
   type FormatModelNameOptions,
 } from '../../../src/lib/agent-context-parser';
 import type { ClaudeCompatibleProvider, ProviderModel } from '@automaker/types';
-import { getModelDisplayName as getTypesModelDisplayName } from '@automaker/types';
+import {
+  getModelDisplayName as getTypesModelDisplayName,
+  CODEX_MODEL_IDS,
+  CURSOR_MODEL_MAP,
+  COPILOT_MODEL_MAP,
+  GEMINI_MODEL_MAP,
+  OPENCODE_MODELS,
+} from '@automaker/types';
 import { getModelDisplayName as getUiModelDisplayName } from '../../../src/lib/utils';
 
 /**
@@ -297,29 +304,64 @@ describe('agent-context-parser.ts', () => {
     });
 
     /**
-     * Criterion: two display helpers given the same Claude model string produce
-     * the same tier name.
+     * Criterion: no display helper can return a different name than another for
+     * the same input (ngut-1995/harbor#38).
      *
-     * The three tables are deliberately still three -- unifying them is separate
-     * work -- so nothing structural stops them drifting apart again. This is the
-     * assertion that catches it, and it is the one most likely to rot.
+     * There is now one function. `getModelDisplayName` in `@automaker/types`
+     * holds the single table, the UI's `getModelDisplayName` is a re-export of
+     * it, and `formatModelName` is a wrapper that adds one precedence rule and
+     * otherwise delegates. These tests are what fails if anyone reintroduces a
+     * table of their own: the first by identity, the rest by disagreement across
+     * every model ID that can be enumerated.
      */
     describe('agreement with the other display helpers', () => {
-      it('agrees with the UI utils helper on every Claude model string', () => {
-        for (const model of CLAUDE_MODEL_STRINGS) {
-          expect(formatModelName(model)).toBe(getUiModelDisplayName(model));
+      /** Every model ID Automaker can enumerate, plus loose shapes and Claude. */
+      const EVERY_KNOWN_MODEL_ID: string[] = [
+        ...CLAUDE_MODEL_STRINGS,
+        ...CODEX_MODEL_IDS,
+        ...Object.keys(CURSOR_MODEL_MAP),
+        ...Object.keys(COPILOT_MODEL_MAP),
+        ...Object.keys(GEMINI_MODEL_MAP),
+        ...OPENCODE_MODELS.map((m) => m.id),
+        // Shapes no catalogue enumerates.
+        'auto',
+        'composer-1',
+        'cursor-sonnet',
+        'gpt-4o',
+        'o1',
+        'google/gemini-2.5-pro',
+        'arcee-ai/trinity-large-preview:free',
+        'unknown-model-name',
+      ];
+
+      it('is the very same function as the @automaker/types helper', () => {
+        // Not "produces equal output" -- the same function object. A second
+        // implementation in apps/ui cannot satisfy this.
+        expect(getUiModelDisplayName).toBe(getTypesModelDisplayName);
+      });
+
+      it('agrees with the shared helper on every model ID Automaker knows', () => {
+        for (const model of EVERY_KNOWN_MODEL_ID) {
+          expect(formatModelName(model), model).toBe(getTypesModelDisplayName(model));
+          expect(getUiModelDisplayName(model), model).toBe(getTypesModelDisplayName(model));
         }
       });
 
-      it('agrees with the @automaker/types helper on every Claude model string', () => {
-        for (const model of CLAUDE_MODEL_STRINGS) {
-          expect(formatModelName(model)).toBe(getTypesModelDisplayName(model));
+      it('never renders a known model as its raw identifier', () => {
+        // A catalogue model that no table can name would show up as an ID on a
+        // card. This is what catches a provider adding a model to its catalogue
+        // and the display table not following.
+        const catalogued = EVERY_KNOWN_MODEL_ID.filter((id) => id !== 'unknown-model-name');
+        for (const model of catalogued) {
+          expect(formatModelName(model), model).not.toBe(model);
         }
       });
 
       it("still lets a Claude-compatible provider's own displayName win over the tier name", () => {
-        // The agreement above is about the tier-name answer. A provider that
-        // serves its own model behind a Claude-shaped ID keeps naming it.
+        // The agreement above is about the generic answer. A provider that serves
+        // its own model behind a Claude-shaped ID keeps naming it -- that
+        // precedence is formatModelName's entire reason to exist, and a
+        // unification must not buy agreement by breaking it.
         const options: FormatModelNameOptions = {
           providerId: 'moonshot-ai',
           claudeCompatibleProviders: [
@@ -336,24 +378,29 @@ describe('agent-context-parser.ts', () => {
     });
 
     describe('Codex/GPT model formatting', () => {
-      it('should format codex-gpt-5.3-codex as GPT-5.3 Codex', () => {
-        expect(formatModelName('codex-gpt-5.3-codex')).toBe('GPT-5.3 Codex');
-      });
-
-      it('should format codex-gpt-5.2-codex as GPT-5.2 Codex', () => {
-        expect(formatModelName('codex-gpt-5.2-codex')).toBe('GPT-5.2 Codex');
+      it("names every Codex model as OpenAI's own catalogue does", () => {
+        // Hyphenated, matching both the upstream model IDs and the label the
+        // model picker offers them under.
+        expect(formatModelName('codex-gpt-5.3-codex')).toBe('GPT-5.3-Codex');
+        expect(formatModelName('codex-gpt-5.3-codex-spark')).toBe('GPT-5.3-Codex-Spark');
+        expect(formatModelName('codex-gpt-5.2-codex')).toBe('GPT-5.2-Codex');
+        expect(formatModelName('codex-gpt-5-codex')).toBe('GPT-5-Codex');
+        expect(formatModelName('codex-gpt-5-codex-mini')).toBe('GPT-5-Codex-Mini');
+        expect(formatModelName('codex-gpt-5')).toBe('GPT-5');
       });
 
       it('should format codex-gpt-5.2 as GPT-5.2', () => {
         expect(formatModelName('codex-gpt-5.2')).toBe('GPT-5.2');
       });
 
-      it('should format codex-gpt-5.1-codex-max as GPT-5.1 Max', () => {
-        expect(formatModelName('codex-gpt-5.1-codex-max')).toBe('GPT-5.1 Max');
-      });
-
-      it('should format codex-gpt-5.1-codex-mini as GPT-5.1 Mini', () => {
-        expect(formatModelName('codex-gpt-5.1-codex-mini')).toBe('GPT-5.1 Mini');
+      it('keeps Codex in the name of a Codex-specific model', () => {
+        // These used to read "GPT-5.1 Max" here and "GPT-5.1 Codex Max" in the
+        // running-agents panel. Dropping "Codex" also collided with the
+        // general-purpose gpt-5.1 model, which is a different model.
+        expect(formatModelName('codex-gpt-5.1-codex-max')).toBe('GPT-5.1-Codex-Max');
+        expect(formatModelName('codex-gpt-5.1-codex-mini')).toBe('GPT-5.1-Codex-Mini');
+        expect(formatModelName('codex-gpt-5.1-codex')).toBe('GPT-5.1-Codex');
+        expect(formatModelName('codex-gpt-5.1')).not.toContain('Codex');
       });
 
       it('should format codex-gpt-5.1 as GPT-5.1', () => {
@@ -389,15 +436,21 @@ describe('agent-context-parser.ts', () => {
         expect(formatModelName('composer-1')).toBe('Composer 1');
       });
 
-      it('should format cursor sonnet models as Cursor Sonnet', () => {
-        // The Claude rules no longer shadow these: they only match Claude models.
-        expect(formatModelName('cursor-sonnet')).toBe('Cursor Sonnet');
-        expect(formatModelName('cursor-sonnet-4.6')).toBe('Cursor Sonnet');
+      it("names a catalogued Cursor model as Cursor's own catalogue does", () => {
+        // Cursor pins a real version, and the user picked the model under this
+        // exact label, so the version is nameable -- unlike a Claude tier alias.
+        expect(formatModelName('cursor-sonnet-4.6')).toBe('Claude Sonnet 4.6');
+        expect(formatModelName('cursor-sonnet-4.6-thinking')).toBe('Claude Sonnet 4.6 (Thinking)');
+        expect(formatModelName('cursor-opus-4.5')).toBe('Claude Opus 4.5');
+        expect(formatModelName('cursor-grok')).toBe('Grok');
+        expect(formatModelName('cursor-gemini-3-pro')).toBe('Gemini 3 Pro');
       });
 
-      it('should format cursor opus models as Cursor Opus', () => {
+      it('falls back to provider and tier for a Cursor model not in the catalogue', () => {
+        // A model Cursor adds after this build. The Claude rules do not shadow
+        // these: they only match Claude models.
+        expect(formatModelName('cursor-sonnet')).toBe('Cursor Sonnet');
         expect(formatModelName('cursor-opus')).toBe('Cursor Opus');
-        expect(formatModelName('cursor-opus-4.5')).toBe('Cursor Opus');
       });
 
       it('should format cursor-gpt models', () => {
@@ -414,21 +467,25 @@ describe('agent-context-parser.ts', () => {
         expect(formatModelName('cursor-gemini-2')).toBe('Cursor Gemini-2');
       });
 
-      it('should format cursor-grok as Cursor Grok', () => {
-        expect(formatModelName('cursor-grok')).toBe('Cursor Grok');
+      it('falls back for an uncatalogued grok model', () => {
+        expect(formatModelName('cursor-grok-5')).toBe('Cursor Grok');
       });
     });
 
     describe('Unknown model formatting (fallback)', () => {
-      it('should format unknown models by splitting and joining parts', () => {
-        // The fallback splits by dash and joins parts 1 and 2 (indices 1 and 2)
-        expect(formatModelName('unknown-model-name')).toBe('model name');
-        expect(formatModelName('some-random-model')).toBe('random model');
+      it('echoes an identifier it does not recognise', () => {
+        // This used to split on dashes and keep the middle, which named
+        // "unknown-model-name" as "model name" -- a name no model has. The other
+        // two helpers echoed the identifier, and that is the answer kept.
+        expect(formatModelName('unknown-model-name')).toBe('unknown-model-name');
+        expect(formatModelName('some-random-model')).toBe('some-random-model');
       });
 
-      it('should handle models with fewer parts', () => {
-        expect(formatModelName('single')).toBe(''); // slice(1,3) on ['single'] = []
-        expect(formatModelName('two-parts')).toBe('parts'); // slice(1,3) on ['two', 'parts'] = ['parts']
+      it('never renders a model as the empty string', () => {
+        // The dash-splitting fallback returned '' for a single-token identifier,
+        // leaving the badge blank.
+        expect(formatModelName('single')).toBe('single');
+        expect(formatModelName('two-parts')).toBe('two-parts');
       });
     });
   });

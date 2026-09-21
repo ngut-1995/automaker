@@ -51,6 +51,37 @@ Notable behaviour changes. Release notes are generated from commits (see
   `ANTHROPIC_DEFAULT_SONNET_MODEL` environment variable, or write the model ID on the feature
   yourself.
 
+- **Every panel now names a model the same way, and names it the way you picked it.** Three
+  separate functions used to answer "what do I call this model", each with its own table, and
+  they disagreed on most non-Claude models: the same Codex model read as `GPT-5.1 Max` on a
+  kanban card and `GPT-5.1 Codex Max` in the running-agents list, while a Cursor, Copilot,
+  Gemini or OpenCode model was often shown as a raw identifier in one panel and a lowercase
+  fragment of one (`claude sonnet`, `2.5 flash`) in another. There is now one table, and it is
+  assembled from each provider's own model catalogue — the same labels the model picker offers
+  — so a model is displayed under the name you chose it by.
+
+  Claude is unaffected: a Claude model is still named by its tier and never by a version.
+  Labels that change on screen:
+  - **Codex**: hyphenated, matching OpenAI's own model names. `GPT-5.1 Max` and
+    `GPT-5.1 Codex Max` both become `GPT-5.1-Codex-Max`; likewise `-Codex-Mini`, `-Codex`,
+    `GPT-5.2-Codex`, `GPT-5.3-Codex`, `GPT-5.3-Codex-Spark`, `GPT-5-Codex`, `GPT-5-Codex-Mini`
+    and `GPT-5`. `GPT-5.1` and `GPT-5.2` are unchanged.
+  - **Cursor**: the model's own name rather than `Cursor Sonnet` / `Cursor Opus` — for example
+    `Claude Sonnet 4.6`, `Claude Opus 4.5 (Thinking)`, `Gemini 3 Pro`, `Grok`,
+    `GPT-5.1 Codex Max`. `Cursor Auto` and `Composer 1` are unchanged. A Cursor model too new
+    to be in the catalogue still falls back to `Cursor Sonnet` / `Cursor Opus`.
+  - **Copilot**, **Gemini** and **OpenCode**: their catalogue labels, where previously either a
+    raw identifier or a lowercase fragment — `Claude Sonnet 4.6`, `GPT-5.1 Codex Max`,
+    `Gemini 2.5 Flash`, `Big Pickle`. Two OpenCode models regain the tier they are: `Kimi K2.5`
+    and `MiniMax M2.5` are now `Kimi K2.5 Free` and `MiniMax M2.5 Free`.
+  - **An unrecognised model** is shown as its identifier instead of a name invented from its
+    dashes. `unknown-model-name` read as `model name` on a kanban card, and a single-word
+    identifier rendered as a blank badge.
+  - **Project settings** (the per-phase "Using: …" lines) named only Claude models and showed
+    everything else as an identifier; they now use the same names as the rest of the app.
+
+  A Claude-compatible provider's own name for a model still wins over all of this, unchanged.
+
 - **Claude-compatible providers: your tier mappings now genuinely decide.** If you use a
   Claude-compatible provider (GLM, MiniMax, OpenRouter), Automaker already set
   `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` from the tier mappings you configured,

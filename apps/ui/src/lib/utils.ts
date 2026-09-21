@@ -5,7 +5,6 @@ import {
   normalizeThinkingLevelForModel,
   normalizeReasoningEffortForModel,
   migrateClaudeModelId,
-  getClaudeTierDisplayName,
   type PhaseModelEntry,
 } from '@automaker/types';
 
@@ -111,46 +110,16 @@ export function getProviderFromModel(model?: string): ModelProvider {
 }
 
 /**
- * Get display name for a model
+ * Get display name for a model.
  *
- * Handles both tier aliases (e.g., "sonnet") and canonical IDs (e.g.,
- * "claude-sonnet"). Any Claude string that is not an exact match falls back to
- * its tier name: Automaker addresses Claude by tier, so it cannot know which
- * version ran (see docs/adr/0001-claude-tier-aliases.md). Non-Claude models are
- * returned unchanged when unknown, exactly as before.
+ * Re-exported, not reimplemented: `@automaker/types` holds the one table that
+ * decides how a model is named on screen, and this used to be a second copy of
+ * it that disagreed with the first. Importing from here still works so callers
+ * do not have to change.
+ *
+ * @see getModelDisplayName in libs/types/src/model-display.ts
  */
-export function getModelDisplayName(model: ModelAlias | string): string {
-  const displayNames: Record<string, string> = {
-    // Claude aliases
-    haiku: 'Claude Haiku',
-    sonnet: 'Claude Sonnet',
-    opus: 'Claude Opus',
-    // Claude canonical IDs (without version suffix)
-    'claude-haiku': 'Claude Haiku',
-    'claude-sonnet': 'Claude Sonnet',
-    'claude-opus': 'Claude Opus',
-    // Claude pinned model IDs a feature card may still carry. `claude-opus-4-6`,
-    // `claude-sonnet-4-6` and `claude-haiku-4-5-20251001` are deliberately absent:
-    // those are the versions Automaker wrote on the user's behalf and they now
-    // collapse to their tier on read, so they can no longer reach this table
-    // (see PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP in @automaker/types). The rows
-    // that remain resolve to the same tier name the fallback below would give.
-    'claude-haiku-4-5': 'Claude Haiku',
-    'claude-sonnet-4-20250514': 'Claude Sonnet',
-    // Codex models
-    'codex-gpt-5.2': 'GPT-5.2',
-    'codex-gpt-5.1-codex-max': 'GPT-5.1 Codex Max',
-    'codex-gpt-5.1-codex': 'GPT-5.1 Codex',
-    'codex-gpt-5.1-codex-mini': 'GPT-5.1 Codex Mini',
-    'codex-gpt-5.1': 'GPT-5.1',
-    // Cursor models (common ones)
-    'cursor-auto': 'Cursor Auto',
-    'cursor-composer-1': 'Composer 1',
-    'cursor-gpt-5.2': 'GPT-5.2',
-    'cursor-gpt-5.1': 'GPT-5.1',
-  };
-  return displayNames[model] || getClaudeTierDisplayName(model) || model;
-}
+export { getModelDisplayName } from '@automaker/types';
 
 /**
  * Truncate a description string with ellipsis

@@ -8,9 +8,16 @@
 import type { ModelAlias, ThinkingLevel, ModelProvider } from './settings.js';
 import type { ReasoningEffort } from './provider.js';
 import type { CursorModelId } from './cursor-models.js';
+import { CURSOR_MODEL_MAP, LEGACY_CURSOR_MODEL_MAP } from './cursor-models.js';
 import type { AgentModel, CodexModelId } from './model.js';
 import { CODEX_MODEL_MAP } from './model.js';
 import { GEMINI_MODEL_MAP, type GeminiModelId } from './gemini-models.js';
+import { COPILOT_MODEL_MAP } from './copilot-models.js';
+import {
+  OPENCODE_MODELS,
+  LEGACY_OPENCODE_MODEL_MAP,
+  RETIRED_OPENCODE_MODEL_MAP,
+} from './opencode-models.js';
 
 /**
  * ModelOption - Display metadata for a model option in the UI
@@ -322,61 +329,155 @@ export function getClaudeTierDisplayName(model: string): string | undefined {
 }
 
 /**
- * Get display name for a model
+ * The one table that decides how a model is named on screen.
  *
- * @param model - Model identifier or full model string
- * @returns Human-readable model name
+ * ## Why it is assembled, not written
+ *
+ * Every non-Claude model Automaker offers already has a label in its provider's
+ * own catalogue -- the same label the model picker offers it under
+ * (`CURSOR_MODEL_MAP`, `COPILOT_MODEL_MAP`, `GEMINI_MODEL_MAP`,
+ * `OPENCODE_MODELS`, and `CODEX_MODELS` above). Writing those names a second
+ * time here is how the three display helpers drifted apart in the first place,
+ * so this table is *derived* from those catalogues instead. A new model, or a
+ * renamed one, is a one-line change in the single catalogue entry it already
+ * needs -- and the name a card shows is by construction the name the user
+ * picked the model by.
+ *
+ * Claude is deliberately absent: a Claude string is answered by
+ * `getClaudeTierDisplayName`, which names a tier and never a version. See
+ * docs/adr/0001-claude-tier-aliases.md.
+ */
+const PROVIDER_CATALOGUE_DISPLAY_NAMES: Record<string, string> = {
+  ...Object.fromEntries(CODEX_MODELS.map((m) => [m.id, m.label])),
+  ...Object.fromEntries(Object.entries(CURSOR_MODEL_MAP).map(([id, c]) => [id, c.label])),
+  ...Object.fromEntries(Object.entries(GEMINI_MODEL_MAP).map(([id, c]) => [id, c.label])),
+  ...Object.fromEntries(Object.entries(COPILOT_MODEL_MAP).map(([id, c]) => [id, c.label])),
+  ...Object.fromEntries(OPENCODE_MODELS.map((m) => [m.id, m.label])),
+};
+
+/**
+ * The only rows written by hand, and each one needs a reason.
+ *
+ * A catalogue label is written for a picker, where a row can afford a
+ * recommendation or a qualifier. Where that makes it the wrong name for a
+ * one-line badge *and* the surfaces that name the model already agreed on a
+ * better one, the better one is kept here rather than silently changed.
+ */
+const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
+  // `CURSOR_MODEL_MAP` calls this "Auto (Recommended)", which is advice, not a
+  // name. Both surfaces that named it already said "Cursor Auto".
+  'cursor-auto': 'Cursor Auto',
+};
+
+/**
+ * Every exact identifier this module can name, in one object.
+ *
+ * Overrides are applied last so a hand-written row always wins over the
+ * catalogue row it replaces.
+ */
+export const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  ...PROVIDER_CATALOGUE_DISPLAY_NAMES,
+  ...DISPLAY_NAME_OVERRIDES,
+};
+
+/**
+ * Identifiers that are no longer canonical but can still be sitting in a saved
+ * feature card or settings file. Resolved to the canonical ID before the table
+ * is consulted, so a migrated model keeps its name.
+ */
+const ALIASED_MODEL_IDS: Record<string, string> = {
+  ...LEGACY_CURSOR_MODEL_MAP,
+  ...LEGACY_OPENCODE_MODEL_MAP,
+  ...RETIRED_OPENCODE_MODEL_MAP,
+};
+
+/**
+ * Names the shapes of identifier no catalogue enumerates: a model a provider
+ * added after this build, or a loose `gpt-`/`o1` string. Graceful degradation
+ * only -- anything a catalogue lists is answered above, before this runs.
+ */
+function getPatternedDisplayName(model: string): string | undefined {
+  // Cursor models absent from CURSOR_MODEL_MAP: name the provider and the tier
+  // rather than echo an identifier.
+  if (model.startsWith('cursor-sonnet')) return 'Cursor Sonnet';
+  if (model.startsWith('cursor-opus')) return 'Cursor Opus';
+  if (model.startsWith('cursor-gpt')) return model.replace('cursor-', '').replace('gpt-', 'GPT-');
+  if (model.startsWith('cursor-gemini'))
+    return model.replace('cursor-', 'Cursor ').replace('gemini', 'Gemini');
+  if (model.startsWith('cursor-grok')) return 'Cursor Grok';
+
+  // Bare OpenAI identifiers.
+  if (model.startsWith('gpt-')) return model.toUpperCase();
+  if (/^o\d/.test(model)) return model.toUpperCase();
+
+  // OpenCode dynamic models, which arrive as `provider/model` and are not
+  // enumerable at build time (e.g. "google/gemini-2.5-pro").
+  if (model.includes('/') && !model.includes('://')) {
+    const modelName = model.substring(model.indexOf('/') + 1);
+    let lastSegment = modelName.split('/').pop()!;
+    // Tier suffixes like ":free" become a human-friendly parenthetical.
+    const tierMatch = lastSegment.match(/:(free|extended|beta|preview)$/i);
+    if (tierMatch) {
+      lastSegment = lastSegment.slice(0, lastSegment.length - tierMatch[0].length);
+    }
+    const cleanedName = lastSegment.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    if (tierMatch) {
+      const tier = tierMatch[1].charAt(0).toUpperCase() + tierMatch[1].slice(1).toLowerCase();
+      return `${cleanedName} (${tier})`;
+    }
+    return cleanedName;
+  }
+
+  return undefined;
+}
+
+/**
+ * Get the display name for a model. **The only function that answers this.**
+ *
+ * Every surface that names a model on screen goes through here -- the UI's
+ * `getModelDisplayName` is a re-export of this function and `formatModelName`
+ * is a thin wrapper that adds one precedence rule in front of it. There is no
+ * second table, and `libs/types/tests/unit/model-display.test.ts` asserts that
+ * a third cannot appear without a test failing.
+ *
+ * ## Resolution order
+ *
+ * 1. **A Claude string** is answered by its tier name, never a version.
+ * 2. **An exact identifier** in `MODEL_DISPLAY_NAMES`, which is the providers'
+ *    own catalogues.
+ * 3. **A legacy or retired identifier** is resolved to its canonical ID, then
+ *    looked up as in (2).
+ * 4. **A recognised shape** -- an unenumerated `cursor-*`, a bare `gpt-*`, an
+ *    OpenCode `provider/model` string.
+ * 5. **Otherwise the identifier itself.** Echoing an unknown ID is honest;
+ *    inventing a name from its dashes is not.
  *
  * @example
  * ```typescript
- * getModelDisplayName("haiku");  // "Claude Haiku"
- * getModelDisplayName("sonnet"); // "Claude Sonnet"
- * getModelDisplayName("claude-sonnet-4-6"); // "Claude Sonnet" (tier fallback)
- * getModelDisplayName("claude-haiku-4-5-20251001"); // "Claude Haiku" (tier fallback)
+ * getModelDisplayName("haiku");                     // "Claude Haiku"
+ * getModelDisplayName("claude-sonnet-4-6");         // "Claude Sonnet" (tier, not version)
+ * getModelDisplayName("codex-gpt-5.1-codex-max");   // "GPT-5.1-Codex-Max"
+ * getModelDisplayName("cursor-sonnet-4.6");         // "Claude Sonnet 4.6"
+ * getModelDisplayName("gemini-2.5-flash");          // "Gemini 2.5 Flash"
  * ```
  *
  * @remarks
- * The pinned model IDs Automaker once wrote on the user's behalf
- * (`claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`) are
- * deliberately absent from the table below. They now collapse to their tier on
- * read, so the model they name is not the model that runs; labelling them with
- * a version would report a model that never executes.
+ * The pinned Claude IDs Automaker once wrote on the user's behalf
+ * (`claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`) get no
+ * row of their own. They collapse to their tier on read, so the model they name
+ * is not the model that runs; labelling them with a version would report a
+ * model that never executes.
  */
 export function getModelDisplayName(model: ModelAlias | string): string {
-  const displayNames: Record<string, string> = {
-    haiku: 'Claude Haiku',
-    sonnet: 'Claude Sonnet',
-    opus: 'Claude Opus',
-    'claude-haiku': 'Claude Haiku',
-    'claude-sonnet': 'Claude Sonnet',
-    'claude-opus': 'Claude Opus',
-    [CODEX_MODEL_MAP.gpt53Codex]: 'GPT-5.3-Codex',
-    [CODEX_MODEL_MAP.gpt53CodexSpark]: 'GPT-5.3-Codex-Spark',
-    [CODEX_MODEL_MAP.gpt52Codex]: 'GPT-5.2-Codex',
-    [CODEX_MODEL_MAP.gpt51CodexMax]: 'GPT-5.1-Codex-Max',
-    [CODEX_MODEL_MAP.gpt51CodexMini]: 'GPT-5.1-Codex-Mini',
-    [CODEX_MODEL_MAP.gpt51Codex]: 'GPT-5.1-Codex',
-    [CODEX_MODEL_MAP.gpt5Codex]: 'GPT-5-Codex',
-    [CODEX_MODEL_MAP.gpt5CodexMini]: 'GPT-5-Codex-Mini',
-    [CODEX_MODEL_MAP.gpt52]: 'GPT-5.2',
-    [CODEX_MODEL_MAP.gpt51]: 'GPT-5.1',
-    [CODEX_MODEL_MAP.gpt5]: 'GPT-5',
-  };
-
-  // Check direct match first
-  if (model in displayNames) {
-    return displayNames[model];
-  }
-
-  // Check Gemini model map - IDs are like 'gemini-2.5-flash'
-  if (model in GEMINI_MODEL_MAP) {
-    return GEMINI_MODEL_MAP[model as keyof typeof GEMINI_MODEL_MAP].label;
-  }
-
-  // Unrecognised Claude string: name the tier rather than print a raw ID.
-  // Automaker cannot know which version a tier alias resolved to.
+  // Claude first: a Claude string is named by tier and nothing else may claim
+  // it. No catalogue ID is a Claude string, so nothing is shadowed.
   const claudeTierName = getClaudeTierDisplayName(model);
   if (claudeTierName) return claudeTierName;
 
-  return model;
+  if (model in MODEL_DISPLAY_NAMES) return MODEL_DISPLAY_NAMES[model];
+
+  const canonical = ALIASED_MODEL_IDS[model];
+  if (canonical && canonical in MODEL_DISPLAY_NAMES) return MODEL_DISPLAY_NAMES[canonical];
+
+  return getPatternedDisplayName(model) ?? model;
 }

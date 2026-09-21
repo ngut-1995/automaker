@@ -47,7 +47,7 @@ import type {
   ProviderModel,
   ClaudeModelAlias,
 } from '@automaker/types';
-import { CLAUDE_PROVIDER_TEMPLATES } from '@automaker/types';
+import { CLAUDE_PROVIDER_TEMPLATES, CLAUDE_TIER_DISPLAY_NAMES } from '@automaker/types';
 import { Badge } from '@/components/ui/badge';
 
 // Generate unique ID for providers
@@ -77,13 +77,6 @@ const PROVIDER_TYPE_COLORS: Record<ClaudeCompatibleProviderType, string> = {
   minimax: 'bg-purple-500/20 text-purple-500',
   openrouter: 'bg-amber-500/20 text-amber-500',
   custom: 'bg-zinc-500/20 text-zinc-400',
-};
-
-// Claude model display names
-const CLAUDE_MODEL_LABELS: Record<ClaudeModelAlias, string> = {
-  haiku: 'Claude Haiku',
-  sonnet: 'Claude Sonnet',
-  opus: 'Claude Opus',
 };
 
 interface ModelFormEntry {
@@ -872,7 +865,7 @@ function ProviderCard({ provider, onEdit, onDelete, onToggleEnabled }: ProviderC
                   <span>{model.displayName || model.id}</span>
                   {model.mapsToClaudeModel && (
                     <span className="ml-1 text-muted-foreground">
-                      → {CLAUDE_MODEL_LABELS[model.mapsToClaudeModel]}
+                      → {CLAUDE_TIER_DISPLAY_NAMES[model.mapsToClaudeModel]}
                     </span>
                   )}
                 </Badge>
