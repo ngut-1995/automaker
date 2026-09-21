@@ -6,8 +6,7 @@
  * them.
  */
 
-import type { ParsedTask } from './feature.js';
-import type { FeatureStatusWithPipeline } from './pipeline.js';
+import type { FeatureStatus, ParsedTask } from './feature.js';
 
 /**
  * Auto-mode event types that can be emitted through the TypedEventBus.
@@ -246,8 +245,8 @@ export type AutoModeEvent =
       type: 'feature_status_changed';
       featureId: string;
       projectPath?: string;
-      status: FeatureStatusWithPipeline;
-      previousStatus: FeatureStatusWithPipeline;
+      status: FeatureStatus;
+      previousStatus: FeatureStatus;
       reason?: string;
     }
   | {

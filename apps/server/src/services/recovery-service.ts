@@ -3,7 +3,7 @@
  */
 
 import path from 'path';
-import type { Feature, FeatureStatusWithPipeline } from '@automaker/types';
+import type { Feature, FeatureStatus } from '@automaker/types';
 import { DEFAULT_MAX_CONCURRENCY, isInProgressFeatureStatus } from '@automaker/types';
 import {
   createLogger,
@@ -59,7 +59,7 @@ export type LoadFeatureFn = (projectPath: string, featureId: string) => Promise<
 export type DetectPipelineStatusFn = (
   projectPath: string,
   featureId: string,
-  status: FeatureStatusWithPipeline
+  status: FeatureStatus | undefined
 ) => Promise<PipelineStatusInfo>;
 export type ResumePipelineFn = (
   projectPath: string,
@@ -215,7 +215,7 @@ export class RecoveryService {
       const pipelineInfo = await this.detectPipelineStatusFn(
         projectPath,
         featureId,
-        (feature.status || '') as FeatureStatusWithPipeline
+        feature.status
       );
       if (pipelineInfo.isPipeline)
         return await this.resumePipelineFn(projectPath, feature, useWorktrees, pipelineInfo);

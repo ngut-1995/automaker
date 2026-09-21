@@ -34,19 +34,13 @@ export function createConvertHandler(
       // Convert idea to feature structure
       const featureData = await ideationService.convertToFeature(projectPath, ideaId);
 
-      // Apply any options from the request
-      if (column) {
-        featureData.status = column;
-      }
-      if (dependencies && dependencies.length > 0) {
-        featureData.dependencies = dependencies;
-      }
-      if (tags && tags.length > 0) {
-        featureData.tags = tags;
-      }
-
-      // Create the feature using FeatureLoader
-      const feature = await featureLoader.create(projectPath, featureData);
+      // Apply any options from the request via the create input
+      const feature = await featureLoader.create(projectPath, {
+        ...featureData,
+        ...(column ? { status: column } : {}),
+        ...(dependencies && dependencies.length > 0 ? { dependencies } : {}),
+        ...(tags && tags.length > 0 ? { tags } : {}),
+      });
 
       // Delete the idea unless keepIdea is explicitly true
       if (!keepIdea) {

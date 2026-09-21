@@ -9,16 +9,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import path from 'path';
 
 // Use vi.hoisted to create mock functions that can be referenced in vi.mock factories
-const { mockMkdir, mockAtomicWriteJson, mockExtractJsonWithArray, mockCreateNotification } =
-  vi.hoisted(() => ({
-    mockMkdir: vi.fn().mockResolvedValue(undefined),
-    mockAtomicWriteJson: vi.fn().mockResolvedValue(undefined),
-    mockExtractJsonWithArray: vi.fn(),
-    mockCreateNotification: vi.fn().mockResolvedValue(undefined),
-  }));
+const { mockLoaderCreate, mockExtractJsonWithArray, mockCreateNotification } = vi.hoisted(() => ({
+  mockLoaderCreate: vi.fn().mockResolvedValue(undefined),
+  mockExtractJsonWithArray: vi.fn(),
+  mockCreateNotification: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('@/lib/secure-fs.js', () => ({
-  mkdir: mockMkdir,
+  mkdir: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@automaker/utils', () => ({
@@ -28,12 +26,20 @@ vi.mock('@automaker/utils', () => ({
     error: vi.fn(),
     debug: vi.fn(),
   }),
-  atomicWriteJson: mockAtomicWriteJson,
+  atomicWriteJson: vi.fn(),
   DEFAULT_BACKUP_COUNT: 3,
 }));
 
 vi.mock('@automaker/platform', () => ({
   getFeaturesDir: vi.fn((projectPath: string) => path.join(projectPath, '.automaker', 'features')),
+}));
+
+vi.mock('@/services/feature-loader.js', () => ({
+  FeatureLoader: class {
+    create(...args: unknown[]) {
+      return mockLoaderCreate(...args);
+    }
+  },
 }));
 
 vi.mock('@/lib/json-extractor.js', () => ({
@@ -75,8 +81,8 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    expect(mockAtomicWriteJson).toHaveBeenCalledTimes(1);
-    const writtenData = mockAtomicWriteJson.mock.calls[0][1];
+    expect(mockLoaderCreate).toHaveBeenCalledTimes(1);
+    const writtenData = mockLoaderCreate.mock.calls[0][1];
     expect(writtenData.planningMode).toBe('skip');
   });
 
@@ -93,7 +99,7 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    const writtenData = mockAtomicWriteJson.mock.calls[0][1];
+    const writtenData = mockLoaderCreate.mock.calls[0][1];
     expect(writtenData.requirePlanApproval).toBe(false);
   });
 
@@ -110,7 +116,7 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    const writtenData = mockAtomicWriteJson.mock.calls[0][1];
+    const writtenData = mockLoaderCreate.mock.calls[0][1];
     expect(writtenData.dependencies).toEqual([]);
   });
 
@@ -128,7 +134,7 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    const writtenData = mockAtomicWriteJson.mock.calls[0][1];
+    const writtenData = mockLoaderCreate.mock.calls[0][1];
     expect(writtenData.dependencies).toEqual(['feature-0']);
   });
 
@@ -156,20 +162,20 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    expect(mockAtomicWriteJson).toHaveBeenCalledTimes(3);
+    expect(mockLoaderCreate).toHaveBeenCalledTimes(3);
 
     for (let i = 0; i < 3; i++) {
-      const writtenData = mockAtomicWriteJson.mock.calls[i][1];
+      const writtenData = mockLoaderCreate.mock.calls[i][1];
       expect(writtenData.planningMode, `feature ${i + 1} planningMode`).toBe('skip');
       expect(writtenData.requirePlanApproval, `feature ${i + 1} requirePlanApproval`).toBe(false);
       expect(Array.isArray(writtenData.dependencies), `feature ${i + 1} dependencies`).toBe(true);
     }
 
     // Feature 2 should have its explicit dependency preserved
-    expect(mockAtomicWriteJson.mock.calls[1][1].dependencies).toEqual(['feature-1']);
+    expect(mockLoaderCreate.mock.calls[1][1].dependencies).toEqual(['feature-1']);
     // Features 1 and 3 should have empty arrays
-    expect(mockAtomicWriteJson.mock.calls[0][1].dependencies).toEqual([]);
-    expect(mockAtomicWriteJson.mock.calls[2][1].dependencies).toEqual([]);
+    expect(mockLoaderCreate.mock.calls[0][1].dependencies).toEqual([]);
+    expect(mockLoaderCreate.mock.calls[2][1].dependencies).toEqual([]);
   });
 
   it('should set status to "backlog" on all created features', async () => {
@@ -185,7 +191,7 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    const writtenData = mockAtomicWriteJson.mock.calls[0][1];
+    const writtenData = mockLoaderCreate.mock.calls[0][1];
     expect(writtenData.status).toBe('backlog');
   });
 
@@ -202,7 +208,7 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    const writtenData = mockAtomicWriteJson.mock.calls[0][1];
+    const writtenData = mockLoaderCreate.mock.calls[0][1];
     expect(writtenData.createdAt).toBeDefined();
     expect(writtenData.updatedAt).toBeDefined();
     // Should be valid ISO date strings
@@ -223,7 +229,7 @@ describe('parseAndCreateFeatures - default fields', () => {
 
     await parseAndCreateFeatures(projectPath, 'content', mockEvents);
 
-    const writtenData = mockAtomicWriteJson.mock.calls[0][1];
+    const writtenData = mockLoaderCreate.mock.calls[0][1];
     expect(writtenData.category).toBe('Uncategorized');
     expect(writtenData.priority).toBe(2);
     expect(writtenData.complexity).toBe('moderate');

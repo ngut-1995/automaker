@@ -57,6 +57,7 @@ vi.mock('@/services/pipeline-service.js', () => ({
 describe('Pipeline Summary Accumulation (Integration)', () => {
   let manager: FeatureStateManager;
   let mockEvents: EventEmitter;
+  let mockFeatureLoader: FeatureLoader;
 
   const baseFeature: Feature = {
     id: 'pipeline-feature-1',
@@ -76,8 +77,9 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
       subscribe: vi.fn(() => vi.fn()),
     };
 
-    const mockFeatureLoader = {
+    mockFeatureLoader = {
       syncFeatureToAppSpec: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
     } as unknown as FeatureLoader;
 
     manager = new FeatureStateManager(mockEvents, mockFeatureLoader, { transition: vi.fn() });
@@ -101,7 +103,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
         '## Changes\n- Added auth module\n- Created user service'
       );
 
-      const step1Feature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const step1Feature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(step1Feature.summary).toBe(
         '### Implementation\n\n## Changes\n- Added auth module\n- Created user service'
       );
@@ -122,7 +124,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
         '## Review Findings\n- Style issues fixed\n- Added error handling'
       );
 
-      const step2Feature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const step2Feature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
 
       // --- Step 3: Testing ---
       vi.clearAllMocks();
@@ -140,7 +142,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
         '## Test Results\n- 42 tests pass\n- 98% coverage'
       );
 
-      const finalFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const finalFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
 
       // Verify the full accumulated summary has all three steps separated by ---
       const expectedSummary = [
@@ -230,7 +232,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'Reviewed and approved');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toBe(
         '### Implementation\n\nImplemented authentication and settings updates.\n\n---\n\n### Code Review\n\nReviewed and approved'
       );
@@ -248,7 +250,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
       // Empty summary should be ignored to avoid persisting blank sections.
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', '');
 
-      expect(atomicWriteJson).not.toHaveBeenCalled();
+      expect(mockFeatureLoader.update).not.toHaveBeenCalled();
       expect(mockEvents.emit).not.toHaveBeenCalled();
     });
 
@@ -264,7 +266,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'Review output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       // Fallback: capitalize words from status suffix
       expect(savedFeature.summary).toBe('### Code Review\n\nReview output');
     });
@@ -293,7 +295,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', markdownSummary);
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toBe(`### Implementation\n\n${markdownSummary}`);
       // Verify markdown is preserved
       expect(savedFeature.summary).toContain('```typescript');
@@ -327,7 +329,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
         await manager.saveFeatureSummary('/project', 'pipeline-feature-1', step.content);
 
-        currentSummary = ((atomicWriteJson as Mock).mock.calls[0][1] as Feature).summary;
+        currentSummary = ((mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature).summary;
       }
 
       // Final summary should contain all 5 steps
@@ -361,7 +363,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'First step');
 
-      const step1Summary = ((atomicWriteJson as Mock).mock.calls[0][1] as Feature).summary;
+      const step1Summary = ((mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature).summary;
 
       // Step 2
       vi.clearAllMocks();
@@ -395,7 +397,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'Single step output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toBe('### Implementation\n\nSingle step output');
 
       // No separator should be present for single step
@@ -412,7 +414,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
       });
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'First');
 
-      const step1Summary = ((atomicWriteJson as Mock).mock.calls[0][1] as Feature).summary;
+      const step1Summary = ((mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature).summary;
 
       // Step 2
       vi.clearAllMocks();
@@ -425,7 +427,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
       });
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'Second');
 
-      const finalSummary = ((atomicWriteJson as Mock).mock.calls[0][1] as Feature).summary;
+      const finalSummary = ((mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature).summary;
 
       // Verify order: Alpha should come before Beta
       const alphaIndex = finalSummary!.indexOf('### Alpha');
@@ -448,7 +450,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'New summary');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toBe('New summary');
     });
 
@@ -465,7 +467,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'Simple summary');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toBe('Simple summary');
       expect(savedFeature.summary).not.toContain('###');
     });
@@ -483,7 +485,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
       const unicodeSummary = 'Test results: ✅ 42 passed, ❌ 0 failed, 🎉 100% coverage';
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', unicodeSummary);
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toContain('✅');
       expect(savedFeature.summary).toContain('❌');
       expect(savedFeature.summary).toContain('🎉');
@@ -501,7 +503,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
       const longContent = 'This is a line of content.\n'.repeat(500);
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', longContent);
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary!.length).toBeGreaterThan(10000);
     });
 
@@ -524,7 +526,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 `;
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', tableSummary);
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toContain('| Test Suite |');
       expect(savedFeature.summary).toContain('| Unit       | 42     |');
     });
@@ -548,7 +550,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
 `;
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', nestedSummary);
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = (mockFeatureLoader.update as Mock).mock.calls[0][2] as Feature;
       expect(savedFeature.summary).toContain('### Backend');
       expect(savedFeature.summary).toContain('### Frontend');
       expect(savedFeature.summary).toContain('#### Deep nesting');
@@ -565,7 +567,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
         recovered: false,
         source: 'main',
       });
-      (atomicWriteJson as Mock).mockImplementation(async () => {
+      (mockFeatureLoader.update as Mock).mockImplementation(async () => {
         callOrder.push('persist');
       });
       (mockEvents.emit as Mock).mockImplementation(() => {
@@ -586,7 +588,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
         recovered: false,
         source: 'main',
       });
-      (atomicWriteJson as Mock).mockRejectedValue(new Error('Disk full'));
+      (mockFeatureLoader.update as Mock).mockRejectedValue(new Error('Disk full'));
 
       // Method completes without throwing (error is logged internally)
       await manager.saveFeatureSummary('/project', 'pipeline-feature-1', 'Summary');

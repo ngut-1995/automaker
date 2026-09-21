@@ -147,7 +147,6 @@ describe('PipelineOrchestrator - status and providerId coexistence', () => {
     } as unknown as TypedEventBus;
 
     const mockFeatureStateManager = {
-      updateFeatureStatus: vi.fn().mockResolvedValue(undefined),
       loadFeature: vi.fn().mockResolvedValue(createFeature()),
     } as unknown as FeatureStateManager;
 

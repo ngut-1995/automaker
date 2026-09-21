@@ -5,7 +5,7 @@ import type {
   FeatureTextFilePath,
   ThinkingLevel,
   ReasoningEffort,
-  FeatureStatusWithPipeline,
+  FeatureStatus,
   PlanSpec,
 } from '@automaker/types';
 import type { FeatureImage } from './chat-types';
@@ -34,7 +34,7 @@ export interface Feature extends Omit<
   category: string;
   description: string;
   steps: string[]; // Required in UI (not optional)
-  status: FeatureStatusWithPipeline;
+  status: FeatureStatus;
   images?: FeatureImage[]; // UI-specific base64 images
   imagePaths?: FeatureImagePath[]; // Stricter type than base (no string | union)
   textFilePaths?: FeatureTextFilePath[]; // Text file attachments for context

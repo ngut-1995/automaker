@@ -70,6 +70,11 @@ describe('FeatureStateManager', () => {
   let mockFeatureLoader: FeatureLoader;
   let mockFeatureRecord: { transition: Mock };
 
+  const lastUpdate = (): Partial<Feature> => {
+    const calls = (mockFeatureLoader.update as Mock).mock.calls;
+    return calls[calls.length - 1]?.[2] as Partial<Feature>;
+  };
+
   const mockFeature: Feature = {
     id: 'feature-123',
     name: 'Test Feature',
@@ -132,185 +137,6 @@ describe('FeatureStateManager', () => {
       const feature = await manager.loadFeature('/project', 'feature-123');
 
       expect(feature).toBeNull();
-    });
-  });
-
-  describe('updateFeatureStatus', () => {
-    it('should update feature status and persist to disk', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'in_progress');
-
-      expect(atomicWriteJson).toHaveBeenCalled();
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.status).toBe('in_progress');
-      expect(savedFeature.updatedAt).toBeDefined();
-    });
-
-    it('should set justFinishedAt when status is waiting_approval', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.justFinishedAt).toBeDefined();
-    });
-
-    it('should clear justFinishedAt when status is not waiting_approval', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature, justFinishedAt: '2024-01-01T00:00:00Z' },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'in_progress');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.justFinishedAt).toBeUndefined();
-    });
-
-    it('should finalize in_progress tasks but keep pending tasks when moving to waiting_approval', async () => {
-      const featureWithTasks: Feature = {
-        ...mockFeature,
-        status: 'in_progress',
-        planSpec: {
-          status: 'approved',
-          version: 1,
-          reviewedByUser: true,
-          currentTaskId: 'task-2',
-          tasksCompleted: 1,
-          tasks: [
-            { id: 'task-1', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'task-2', title: 'Task 2', status: 'in_progress', description: 'Second task' },
-            { id: 'task-3', title: 'Task 3', status: 'pending', description: 'Third task' },
-          ],
-        },
-      };
-
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithTasks,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      // Already completed tasks stay completed
-      expect(savedFeature.planSpec?.tasks?.[0].status).toBe('completed');
-      // in_progress tasks should be finalized to completed
-      expect(savedFeature.planSpec?.tasks?.[1].status).toBe('completed');
-      // pending tasks should remain pending (never started)
-      expect(savedFeature.planSpec?.tasks?.[2].status).toBe('pending');
-      // currentTaskId should be cleared
-      expect(savedFeature.planSpec?.currentTaskId).toBeUndefined();
-      // tasksCompleted should equal actual completed tasks count
-      expect(savedFeature.planSpec?.tasksCompleted).toBe(2);
-    });
-
-    it('should finalize tasks when moving to verified status', async () => {
-      const featureWithTasks: Feature = {
-        ...mockFeature,
-        status: 'in_progress',
-        planSpec: {
-          status: 'approved',
-          version: 1,
-          reviewedByUser: true,
-          currentTaskId: 'task-2',
-          tasksCompleted: 1,
-          tasks: [
-            { id: 'task-1', title: 'Task 1', status: 'completed', description: 'First task' },
-            { id: 'task-2', title: 'Task 2', status: 'in_progress', description: 'Second task' },
-            { id: 'task-3', title: 'Task 3', status: 'pending', description: 'Third task' },
-          ],
-        },
-      };
-
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithTasks,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      // Already completed tasks stay completed
-      expect(savedFeature.planSpec?.tasks?.[0].status).toBe('completed');
-      // in_progress tasks should be finalized to completed
-      expect(savedFeature.planSpec?.tasks?.[1].status).toBe('completed');
-      // pending tasks should remain pending (never started)
-      expect(savedFeature.planSpec?.tasks?.[2].status).toBe('pending');
-      // currentTaskId should be cleared
-      expect(savedFeature.planSpec?.currentTaskId).toBeUndefined();
-      // tasksCompleted should equal actual completed tasks count
-      expect(savedFeature.planSpec?.tasksCompleted).toBe(2);
-      // justFinishedAt should be cleared for verified
-      expect(savedFeature.justFinishedAt).toBeUndefined();
-    });
-
-    it('should handle waiting_approval without planSpec tasks gracefully', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.status).toBe('waiting_approval');
-      expect(savedFeature.justFinishedAt).toBeDefined();
-    });
-
-    it('should not create notifications itself (the record owns notifications)', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
-      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-
-      expect(mockNotificationService.createNotification).not.toHaveBeenCalled();
-    });
-
-    it('should not sync to app_spec itself (the record owns the sync)', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-      await manager.updateFeatureStatus('/project', 'feature-123', 'completed');
-
-      expect(mockFeatureLoader.syncFeatureToAppSpec).not.toHaveBeenCalled();
-    });
-
-    it('should handle feature not found gracefully', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: null,
-        recovered: true,
-        source: 'default',
-      });
-
-      // Should not throw
-      await expect(
-        manager.updateFeatureStatus('/project', 'non-existent', 'in_progress')
-      ).resolves.not.toThrow();
-      expect(atomicWriteJson).not.toHaveBeenCalled();
     });
   });
 
@@ -537,7 +363,7 @@ describe('FeatureStateManager', () => {
 
       expect(mockFeatureRecord.transition).not.toHaveBeenCalled();
       expect(mockFeatureLoader.update).not.toHaveBeenCalled();
-      expect(atomicWriteJson).not.toHaveBeenCalled();
+      expect(mockFeatureLoader.update).not.toHaveBeenCalled();
     });
   });
 
@@ -551,7 +377,7 @@ describe('FeatureStateManager', () => {
 
       await manager.updateFeaturePlanSpec('/project', 'feature-123', { status: 'approved' });
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.planSpec?.status).toBe('approved');
     });
 
@@ -564,7 +390,7 @@ describe('FeatureStateManager', () => {
 
       await manager.updateFeaturePlanSpec('/project', 'feature-123', { status: 'approved' });
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.planSpec).toBeDefined();
       expect(savedFeature.planSpec?.version).toBe(1);
     });
@@ -586,7 +412,7 @@ describe('FeatureStateManager', () => {
 
       await manager.updateFeaturePlanSpec('/project', 'feature-123', { content: 'new content' });
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.planSpec?.version).toBe(3);
     });
   });
@@ -602,7 +428,7 @@ describe('FeatureStateManager', () => {
       await manager.saveFeatureSummary('/project', 'feature-123', 'This is the summary');
 
       // Verify persisted
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe('This is the summary');
 
       // Verify event emitted AFTER persistence
@@ -624,7 +450,7 @@ describe('FeatureStateManager', () => {
       await expect(
         manager.saveFeatureSummary('/project', 'non-existent', 'Summary')
       ).resolves.not.toThrow();
-      expect(atomicWriteJson).not.toHaveBeenCalled();
+      expect(mockFeatureLoader.update).not.toHaveBeenCalled();
       expect(mockEvents.emit).not.toHaveBeenCalled();
     });
 
@@ -638,7 +464,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'First step output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Code Review\n\nFirst step output`
       );
@@ -655,7 +481,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Second step output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Code Review\n\nFirst step output${PIPELINE_SUMMARY_SEPARATOR}${PIPELINE_SUMMARY_HEADER_PREFIX}Testing\n\nSecond step output`
       );
@@ -672,7 +498,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Reviewed and approved changes');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Implementation\n\nImplemented authentication and settings management.${PIPELINE_SUMMARY_SEPARATOR}${PIPELINE_SUMMARY_HEADER_PREFIX}Code Review\n\nReviewed and approved changes`
       );
@@ -688,7 +514,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Step output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Unknown Step\n\nStep output`
       );
@@ -703,7 +529,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'New summary');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe('New summary');
     });
 
@@ -738,7 +564,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Test output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       // Empty string is falsy, so should start fresh
       expect(savedFeature.summary).toBe('### Testing\n\nTest output');
     });
@@ -753,7 +579,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', '   \n\t  ');
 
-      expect(atomicWriteJson).not.toHaveBeenCalled();
+      expect(mockFeatureLoader.update).not.toHaveBeenCalled();
       expect(mockEvents.emit).not.toHaveBeenCalled();
     });
 
@@ -767,7 +593,7 @@ describe('FeatureStateManager', () => {
       });
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Review findings');
-      const afterStep1 = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const afterStep1 = lastUpdate();
       expect(afterStep1.summary).toBe('### Code Review\n\nReview findings');
 
       // Step 2: Testing (summary from step 1 exists)
@@ -781,7 +607,7 @@ describe('FeatureStateManager', () => {
       });
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'All tests pass');
-      const afterStep2 = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const afterStep2 = lastUpdate();
 
       // Step 3: Refinement (summaries from steps 1+2 exist)
       vi.clearAllMocks();
@@ -794,7 +620,7 @@ describe('FeatureStateManager', () => {
       });
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Code polished');
-      const afterStep3 = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const afterStep3 = lastUpdate();
 
       // Verify the full accumulated summary has all three steps in order
       expect(afterStep3.summary).toBe(
@@ -817,7 +643,7 @@ describe('FeatureStateManager', () => {
         'Second review attempt (success)'
       );
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       // Should REPLACE "First review attempt" with "Second review attempt (success)"
       // and NOT append it as a new section
       expect(savedFeature.summary).toBe(
@@ -845,7 +671,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'All tests pass');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Implementation\n\nInitial code${PIPELINE_SUMMARY_SEPARATOR}${PIPELINE_SUMMARY_HEADER_PREFIX}Testing\n\nAll tests pass`
       );
@@ -863,7 +689,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Second attempt');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Implementation\n\nSecond attempt${PIPELINE_SUMMARY_SEPARATOR}${PIPELINE_SUMMARY_HEADER_PREFIX}Testing\n\nAll tests pass`
       );
@@ -882,7 +708,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Updated test results');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       // The section replacement should only replace the actual Testing section at the boundary
       // NOT the "### Testing" that appears in the body text
       expect(savedFeature.summary).toBe(
@@ -902,7 +728,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Second attempt');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Code (Review)\n\nSecond attempt`
       );
@@ -920,7 +746,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Second attempt');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Step [0]\n\nSecond attempt`
       );
@@ -938,7 +764,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Step output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       // Should use fallback: capitalize each word in the status suffix
       expect(savedFeature.summary).toBe(`${PIPELINE_SUMMARY_HEADER_PREFIX}My Step\n\nStep output`);
     });
@@ -953,7 +779,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', 'Step output');
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       // Should use fallback: capitalize each word in the status suffix
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Code Review\n\nStep output`
@@ -973,7 +799,7 @@ describe('FeatureStateManager', () => {
 
       await manager.saveFeatureSummary('/project', 'feature-123', markdownSummary);
 
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.summary).toBe(
         `${PIPELINE_SUMMARY_HEADER_PREFIX}Code Review\n\n${markdownSummary}`
       );
@@ -989,7 +815,7 @@ describe('FeatureStateManager', () => {
         recovered: false,
         source: 'main',
       });
-      (atomicWriteJson as Mock).mockImplementation(async () => {
+      (mockFeatureLoader.update as Mock).mockImplementation(async () => {
         callOrder.push('persist');
       });
       (mockEvents.emit as Mock).mockImplementation(() => {
@@ -1026,7 +852,7 @@ describe('FeatureStateManager', () => {
       await manager.updateTaskStatus('/project', 'feature-123', 'task-1', 'completed');
 
       // Verify persisted
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.planSpec?.tasks?.[0].status).toBe('completed');
 
       // Verify event emitted
@@ -1066,7 +892,7 @@ describe('FeatureStateManager', () => {
       );
 
       // Verify persisted
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
+      const savedFeature = lastUpdate();
       expect(savedFeature.planSpec?.tasks?.[0].status).toBe('completed');
       expect(savedFeature.planSpec?.tasks?.[0].summary).toBe('Task finished successfully');
 
@@ -1102,7 +928,7 @@ describe('FeatureStateManager', () => {
       await manager.updateTaskStatus('/project', 'feature-123', 'non-existent-task', 'completed');
 
       // Should not persist or emit if task not found
-      expect(atomicWriteJson).not.toHaveBeenCalled();
+      expect(mockFeatureLoader.update).not.toHaveBeenCalled();
       expect(mockEvents.emit).not.toHaveBeenCalled();
     });
 
@@ -1116,7 +942,7 @@ describe('FeatureStateManager', () => {
       await expect(
         manager.updateTaskStatus('/project', 'feature-123', 'task-1', 'completed')
       ).resolves.not.toThrow();
-      expect(atomicWriteJson).not.toHaveBeenCalled();
+      expect(mockFeatureLoader.update).not.toHaveBeenCalled();
     });
   });
 
@@ -1129,7 +955,7 @@ describe('FeatureStateManager', () => {
         recovered: false,
         source: 'main',
       });
-      (atomicWriteJson as Mock).mockImplementation(async () => {
+      (mockFeatureLoader.update as Mock).mockImplementation(async () => {
         callOrder.push('persist');
       });
       (mockEvents.emit as Mock).mockImplementation(() => {
@@ -1159,7 +985,7 @@ describe('FeatureStateManager', () => {
         recovered: false,
         source: 'main',
       });
-      (atomicWriteJson as Mock).mockImplementation(async () => {
+      (mockFeatureLoader.update as Mock).mockImplementation(async () => {
         callOrder.push('persist');
       });
       (mockEvents.emit as Mock).mockImplementation(() => {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { getBlockingDependencies } from '@automaker/dependency-resolver';
 import { useAppStore, formatShortcut } from '@/store/app-store';
 import type { Feature } from '@/store/app-store';
-import type { PipelineConfig, FeatureStatusWithPipeline, FeatureTemplate } from '@automaker/types';
+import type { FeatureStatus, PipelineConfig, FeatureTemplate } from '@automaker/types';
 import { ListHeader } from './list-header';
 import { ListRow, sortFeatures } from './list-row';
 import { createRowActionHandlers, type RowActionHandlers } from './row-actions';
@@ -21,7 +21,7 @@ const EMPTY_SET = new Set<string>();
  * Status group configuration for the list view
  */
 interface StatusGroup {
-  id: FeatureStatusWithPipeline;
+  id: FeatureStatus;
   title: string;
   colorClass: string;
   features: Feature[];
@@ -267,7 +267,7 @@ export const ListView = memo(function ListView({
         );
 
         groups.push({
-          id: column.id as FeatureStatusWithPipeline,
+          id: column.id,
           title: column.title,
           colorClass: column.colorClass,
           features: sortedFeatures,

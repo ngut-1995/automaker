@@ -349,12 +349,7 @@ export {
 } from './model-migration.js';
 
 // Pipeline types
-export type {
-  PipelineStep,
-  PipelineConfig,
-  PipelineStatus,
-  FeatureStatusWithPipeline,
-} from './pipeline.js';
+export type { PipelineStep, PipelineConfig, PipelineStatus } from './pipeline.js';
 export { isPipelineStatus } from './pipeline.js';
 
 // Port configuration

@@ -151,7 +151,6 @@ describe('PipelineOrchestrator', () => {
     } as unknown as TypedEventBus;
 
     mockFeatureStateManager = {
-      updateFeatureStatus: vi.fn().mockResolvedValue(undefined),
       loadFeature: vi.fn().mockResolvedValue(testFeature),
     } as unknown as FeatureStateManager;
 
