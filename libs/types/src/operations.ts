@@ -19,7 +19,13 @@ import type { Feature } from './feature.js';
 import type { MergeStateInfo } from './worktree.js';
 import type { MultiProjectOverview } from './project-overview.js';
 import type { AgentDefinition, ReasoningEffort } from './provider.js';
-import type { Credentials, GlobalSettings, ProjectSettings, ThinkingLevel } from './settings.js';
+import type {
+  Credentials,
+  GlobalSettings,
+  MCPToolInfo,
+  ProjectSettings,
+  ThinkingLevel,
+} from './settings.js';
 import type {
   AnalysisSuggestion,
   ConvertToFeatureOptions,
@@ -2206,6 +2212,339 @@ export interface ModelsProvidersResponse {
   error?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Filesystem mount (/api/fs)
+// ---------------------------------------------------------------------------
+
+export interface FsFileEntryShape {
+  name: string;
+  isDirectory: boolean;
+  isFile: boolean;
+}
+
+export interface FsFileStatsShape {
+  isDirectory: boolean;
+  isFile: boolean;
+  size: number;
+  mtime: Date;
+}
+
+export interface FsReadRequest {
+  filePath: string;
+}
+export interface FsReadResponse {
+  success: boolean;
+  content?: string;
+  error?: string;
+}
+
+export interface FsWriteRequest {
+  filePath: string;
+  content: string;
+}
+export interface FsWriteResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface FsMkdirRequest {
+  dirPath: string;
+}
+export type FsMkdirResponse = FsWriteResponse;
+
+export interface FsReaddirRequest {
+  dirPath: string;
+}
+export interface FsReaddirResponse {
+  success: boolean;
+  entries?: FsFileEntryShape[];
+  error?: string;
+}
+
+export interface FsExistsRequest {
+  filePath: string;
+}
+export interface FsExistsResponse {
+  success: boolean;
+  exists: boolean;
+  error?: string;
+}
+
+export interface FsStatRequest {
+  filePath: string;
+}
+export interface FsStatResponse {
+  success: boolean;
+  stats?: FsFileStatsShape;
+  error?: string;
+}
+
+export interface FsDeleteRequest {
+  filePath: string;
+}
+export type FsDeleteResponse = FsWriteResponse;
+
+export interface FsValidatePathRequest {
+  filePath: string;
+}
+export interface FsValidatePathResponse {
+  success: boolean;
+  path?: string;
+  isAllowed?: boolean;
+  error?: string;
+}
+
+export interface FsResolveDirectoryRequest {
+  directoryName: string;
+  sampleFiles?: string[];
+  fileCount?: number;
+}
+export interface FsResolveDirectoryResponse {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface FsSaveImageRequest {
+  data: string;
+  filename: string;
+  mimeType?: string;
+  projectPath?: string;
+}
+export interface FsSaveImageResponse {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface FsBrowseRequest {
+  dirPath?: string;
+}
+export interface FsDirectoryEntryShape {
+  name: string;
+  path: string;
+}
+export interface FsBrowseResponse {
+  success: boolean;
+  currentPath?: string;
+  parentPath?: string | null;
+  directories?: FsDirectoryEntryShape[];
+  drives?: string[];
+  warning?: string;
+  error?: string;
+}
+
+export interface FsImageRequest {
+  path: string;
+  projectPath?: string;
+}
+export type FsImageResponse = unknown;
+
+export interface FsSaveBoardBackgroundRequest {
+  data: string;
+  filename: string;
+  mimeType?: string;
+  projectPath: string;
+}
+export type FsSaveBoardBackgroundResponse = FsSaveImageResponse;
+
+export interface FsDeleteBoardBackgroundRequest {
+  projectPath: string;
+}
+export type FsDeleteBoardBackgroundResponse = FsWriteResponse;
+
+export interface FsProjectFileEntryShape {
+  name: string;
+  relativePath: string;
+  isDirectory: boolean;
+  isFile: boolean;
+}
+export interface FsBrowseProjectFilesRequest {
+  projectPath: string;
+  relativePath?: string;
+}
+export interface FsBrowseProjectFilesResponse {
+  success: boolean;
+  currentRelativePath?: string;
+  parentRelativePath?: string | null;
+  entries?: FsProjectFileEntryShape[];
+  warning?: string;
+  error?: string;
+}
+
+export interface FsCopyRequest {
+  sourcePath: string;
+  destinationPath: string;
+  overwrite?: boolean;
+}
+export interface FsCopyResponse {
+  success: boolean;
+  exists?: boolean;
+  error?: string;
+}
+export type FsMoveRequest = FsCopyRequest;
+export type FsMoveResponse = FsCopyResponse;
+
+export interface FsDownloadRequest {
+  filePath: string;
+}
+export type FsDownloadResponse = void;
+
+// ---------------------------------------------------------------------------
+// Terminal mount (/api/terminal)
+// ---------------------------------------------------------------------------
+
+export interface TerminalPlatformInfoShape {
+  platform: string;
+  isWSL: boolean;
+  defaultShell: string;
+  arch: string;
+}
+
+export type TerminalStatusRequest = Record<string, never>;
+export interface TerminalStatusResponse {
+  success: boolean;
+  data?: {
+    enabled: boolean;
+    passwordRequired: boolean;
+    platform: TerminalPlatformInfoShape;
+  };
+  error?: string;
+}
+
+export interface TerminalAuthRequest {
+  password?: string;
+}
+export interface TerminalAuthResponse {
+  success: boolean;
+  data?: {
+    authenticated: boolean;
+    passwordRequired?: boolean;
+    token?: string;
+    expiresIn?: number;
+  };
+  error?: string;
+}
+
+export interface TerminalLogoutRequest {
+  token?: string;
+}
+export interface TerminalLogoutResponse {
+  success: boolean;
+}
+
+export interface TerminalSessionShape {
+  id: string;
+  cwd: string;
+  createdAt: Date;
+  shell: string;
+}
+
+export type TerminalSessionsRequest = Record<string, never>;
+export interface TerminalSessionsResponse {
+  success: boolean;
+  data?: TerminalSessionShape[];
+  error?: string;
+}
+
+export interface TerminalCreateSessionRequest {
+  cwd?: string;
+  cols?: number;
+  rows?: number;
+  shell?: string;
+}
+export interface TerminalCreateSessionResponse {
+  success: boolean;
+  data?: {
+    id: string;
+    cwd: string;
+    shell: string;
+    createdAt: Date;
+  };
+  error?: string;
+  details?: string;
+  currentSessions?: number;
+  maxSessions?: number;
+}
+
+export interface TerminalDeleteSessionRequest {
+  id: string;
+}
+export interface TerminalDeleteSessionResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface TerminalResizeSessionRequest {
+  id: string;
+  cols: number;
+  rows: number;
+}
+export type TerminalResizeSessionResponse = TerminalDeleteSessionResponse;
+
+export type TerminalGetSettingsRequest = Record<string, never>;
+export interface TerminalGetSettingsResponse {
+  success: boolean;
+  data?: {
+    maxSessions: number;
+    currentSessions: number;
+  };
+  error?: string;
+  details?: string;
+}
+
+export interface TerminalUpdateSettingsRequest {
+  maxSessions?: number;
+}
+export type TerminalUpdateSettingsResponse = TerminalGetSettingsResponse;
+
+// ---------------------------------------------------------------------------
+// Workspace mount (/api/workspace)
+// ---------------------------------------------------------------------------
+
+export type WorkspaceConfigRequest = Record<string, never>;
+export interface WorkspaceConfigResponse {
+  success: boolean;
+  configured: boolean;
+  workspaceDir?: string;
+  defaultDir?: string | null;
+  error?: string;
+}
+
+export type WorkspaceDirectoriesRequest = Record<string, never>;
+export interface WorkspaceDirectoriesResponse {
+  success: boolean;
+  directories?: FsDirectoryEntryShape[];
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// MCP mount (/api/mcp)
+// ---------------------------------------------------------------------------
+
+export interface McpTestServerRequest {
+  serverId: string;
+}
+export interface McpTestServerResponse {
+  success: boolean;
+  tools?: MCPToolInfo[];
+  error?: string;
+  connectionTime?: number;
+  serverInfo?: {
+    name?: string;
+    version?: string;
+  };
+}
+
+export interface McpListToolsRequest {
+  serverId: string;
+}
+export interface McpListToolsResponse {
+  success: boolean;
+  tools?: MCPToolInfo[];
+  error?: string;
+}
+
 /**
  * The registry. Add one entry per operation, named `<namespace>.<method>` where
  * the namespace matches the client's API namespace.
@@ -3361,6 +3700,223 @@ export const OPERATIONS = {
     path: '/providers',
     request: null as unknown as ModelsProvidersRequest,
     response: null as unknown as ModelsProvidersResponse,
+  },
+  'fs.read': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/read',
+    request: null as unknown as FsReadRequest,
+    response: null as unknown as FsReadResponse,
+  },
+  'fs.write': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/write',
+    request: null as unknown as FsWriteRequest,
+    response: null as unknown as FsWriteResponse,
+  },
+  'fs.mkdir': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/mkdir',
+    request: null as unknown as FsMkdirRequest,
+    response: null as unknown as FsMkdirResponse,
+  },
+  'fs.readdir': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/readdir',
+    request: null as unknown as FsReaddirRequest,
+    response: null as unknown as FsReaddirResponse,
+  },
+  'fs.exists': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/exists',
+    request: null as unknown as FsExistsRequest,
+    response: null as unknown as FsExistsResponse,
+  },
+  'fs.stat': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/stat',
+    request: null as unknown as FsStatRequest,
+    response: null as unknown as FsStatResponse,
+  },
+  'fs.delete': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/delete',
+    request: null as unknown as FsDeleteRequest,
+    response: null as unknown as FsDeleteResponse,
+  },
+  'fs.validatePath': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/validate-path',
+    request: null as unknown as FsValidatePathRequest,
+    response: null as unknown as FsValidatePathResponse,
+  },
+  'fs.resolveDirectory': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/resolve-directory',
+    request: null as unknown as FsResolveDirectoryRequest,
+    response: null as unknown as FsResolveDirectoryResponse,
+  },
+  'fs.saveImage': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/save-image',
+    request: null as unknown as FsSaveImageRequest,
+    response: null as unknown as FsSaveImageResponse,
+  },
+  'fs.browse': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/browse',
+    request: null as unknown as FsBrowseRequest,
+    response: null as unknown as FsBrowseResponse,
+  },
+  'fs.image': {
+    method: 'GET',
+    mount: '/api/fs',
+    path: '/image',
+    request: null as unknown as FsImageRequest,
+    response: null as unknown as FsImageResponse,
+  },
+  'fs.saveBoardBackground': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/save-board-background',
+    request: null as unknown as FsSaveBoardBackgroundRequest,
+    response: null as unknown as FsSaveBoardBackgroundResponse,
+  },
+  'fs.deleteBoardBackground': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/delete-board-background',
+    request: null as unknown as FsDeleteBoardBackgroundRequest,
+    response: null as unknown as FsDeleteBoardBackgroundResponse,
+  },
+  'fs.browseProjectFiles': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/browse-project-files',
+    request: null as unknown as FsBrowseProjectFilesRequest,
+    response: null as unknown as FsBrowseProjectFilesResponse,
+  },
+  'fs.copy': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/copy',
+    request: null as unknown as FsCopyRequest,
+    response: null as unknown as FsCopyResponse,
+  },
+  'fs.move': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/move',
+    request: null as unknown as FsMoveRequest,
+    response: null as unknown as FsMoveResponse,
+  },
+  'fs.download': {
+    method: 'POST',
+    mount: '/api/fs',
+    path: '/download',
+    request: null as unknown as FsDownloadRequest,
+    response: null as unknown as FsDownloadResponse,
+  },
+  'terminal.status': {
+    method: 'GET',
+    mount: '/api/terminal',
+    path: '/status',
+    request: null as unknown as TerminalStatusRequest,
+    response: null as unknown as TerminalStatusResponse,
+  },
+  'terminal.auth': {
+    method: 'POST',
+    mount: '/api/terminal',
+    path: '/auth',
+    request: null as unknown as TerminalAuthRequest,
+    response: null as unknown as TerminalAuthResponse,
+  },
+  'terminal.logout': {
+    method: 'POST',
+    mount: '/api/terminal',
+    path: '/logout',
+    request: null as unknown as TerminalLogoutRequest,
+    response: null as unknown as TerminalLogoutResponse,
+  },
+  'terminal.sessions': {
+    method: 'GET',
+    mount: '/api/terminal',
+    path: '/sessions',
+    request: null as unknown as TerminalSessionsRequest,
+    response: null as unknown as TerminalSessionsResponse,
+  },
+  'terminal.createSession': {
+    method: 'POST',
+    mount: '/api/terminal',
+    path: '/sessions',
+    request: null as unknown as TerminalCreateSessionRequest,
+    response: null as unknown as TerminalCreateSessionResponse,
+  },
+  'terminal.deleteSession': {
+    method: 'DELETE',
+    mount: '/api/terminal',
+    path: '/sessions/:id',
+    request: null as unknown as TerminalDeleteSessionRequest,
+    response: null as unknown as TerminalDeleteSessionResponse,
+  },
+  'terminal.resizeSession': {
+    method: 'POST',
+    mount: '/api/terminal',
+    path: '/sessions/:id/resize',
+    request: null as unknown as TerminalResizeSessionRequest,
+    response: null as unknown as TerminalResizeSessionResponse,
+  },
+  'terminal.getSettings': {
+    method: 'GET',
+    mount: '/api/terminal',
+    path: '/settings',
+    request: null as unknown as TerminalGetSettingsRequest,
+    response: null as unknown as TerminalGetSettingsResponse,
+  },
+  'terminal.updateSettings': {
+    method: 'PUT',
+    mount: '/api/terminal',
+    path: '/settings',
+    request: null as unknown as TerminalUpdateSettingsRequest,
+    response: null as unknown as TerminalUpdateSettingsResponse,
+  },
+  'workspace.config': {
+    method: 'GET',
+    mount: '/api/workspace',
+    path: '/config',
+    request: null as unknown as WorkspaceConfigRequest,
+    response: null as unknown as WorkspaceConfigResponse,
+  },
+  'workspace.directories': {
+    method: 'GET',
+    mount: '/api/workspace',
+    path: '/directories',
+    request: null as unknown as WorkspaceDirectoriesRequest,
+    response: null as unknown as WorkspaceDirectoriesResponse,
+  },
+  'mcp.testServer': {
+    method: 'POST',
+    mount: '/api/mcp',
+    path: '/test',
+    request: null as unknown as McpTestServerRequest,
+    response: null as unknown as McpTestServerResponse,
+  },
+  'mcp.listTools': {
+    method: 'POST',
+    mount: '/api/mcp',
+    path: '/tools',
+    request: null as unknown as McpListToolsRequest,
+    response: null as unknown as McpListToolsResponse,
   },
 } as const satisfies Record<string, OperationDefinition<unknown, unknown>>;
 

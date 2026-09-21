@@ -1290,12 +1290,7 @@ export class HttpApiClient implements ElectronAPI {
     }
 
     // Validate with server
-    const result = await this.post<{
-      success: boolean;
-      path?: string;
-      isAllowed?: boolean;
-      error?: string;
-    }>('/api/fs/validate-path', { filePath: path });
+    const result = await this.fs.validatePath(path);
 
     if (result.success && result.path && result.isAllowed !== false) {
       return { canceled: false, filePaths: [result.path] };
@@ -1320,11 +1315,7 @@ export class HttpApiClient implements ElectronAPI {
       return { canceled: true, filePaths: [] };
     }
 
-    const result = await this.post<{ success: boolean; exists: boolean }>('/api/fs/exists', {
-      filePath: path,
-    });
-
-    if (result.success && result.exists) {
+    if (await this.fs.exists(path)) {
       return { canceled: false, filePaths: [path] };
     }
 
@@ -1334,34 +1325,31 @@ export class HttpApiClient implements ElectronAPI {
 
   // File system operations
   async readFile(filePath: string): Promise<FileResult> {
-    return this.post('/api/fs/read', { filePath });
+    return this.fs.readFile(filePath);
   }
 
   async writeFile(filePath: string, content: string): Promise<WriteResult> {
-    return this.post('/api/fs/write', { filePath, content });
+    return this.fs.writeFile(filePath, content);
   }
 
   async mkdir(dirPath: string): Promise<WriteResult> {
-    return this.post('/api/fs/mkdir', { dirPath });
+    return this.fs.mkdir(dirPath);
   }
 
   async readdir(dirPath: string): Promise<ReaddirResult> {
-    return this.post('/api/fs/readdir', { dirPath });
+    return this.fs.readdir(dirPath);
   }
 
   async exists(filePath: string): Promise<boolean> {
-    const result = await this.post<{ success: boolean; exists: boolean }>('/api/fs/exists', {
-      filePath,
-    });
-    return result.exists;
+    return this.fs.exists(filePath);
   }
 
   async stat(filePath: string): Promise<StatResult> {
-    return this.post('/api/fs/stat', { filePath });
+    return this.fs.stat(filePath);
   }
 
   async deleteFile(filePath: string): Promise<WriteResult> {
-    return this.post('/api/fs/delete', { filePath });
+    return this.fs.deleteFile(filePath);
   }
 
   async trashItem(filePath: string): Promise<WriteResult> {
@@ -1374,7 +1362,7 @@ export class HttpApiClient implements ElectronAPI {
     destinationPath: string,
     overwrite?: boolean
   ): Promise<WriteResult & { exists?: boolean }> {
-    return this.post('/api/fs/copy', { sourcePath, destinationPath, overwrite });
+    return this.fs.copyItem(sourcePath, destinationPath, overwrite);
   }
 
   async moveItem(
@@ -1382,54 +1370,31 @@ export class HttpApiClient implements ElectronAPI {
     destinationPath: string,
     overwrite?: boolean
   ): Promise<WriteResult & { exists?: boolean }> {
-    return this.post('/api/fs/move', { sourcePath, destinationPath, overwrite });
+    return this.fs.moveItem(sourcePath, destinationPath, overwrite);
   }
 
   async downloadItem(filePath: string): Promise<void> {
-    const serverUrl = getServerUrl();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    const apiKey = getApiKey();
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
-    }
-    const token = getSessionToken();
-    if (token) {
-      headers['X-Session-Token'] = token;
-    }
+    return this.fs.downloadItem(filePath);
+  }
 
-    const response = await fetch(`${serverUrl}/api/fs/download`, {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-      body: JSON.stringify({ filePath }),
-    });
+  async validatePath(filePath: string) {
+    return this.fs.validatePath(filePath);
+  }
 
-    if (response.status === 401 || response.status === 403) {
-      handleUnauthorized();
-      throw new Error('Unauthorized');
-    }
+  async resolveDirectory(directoryName: string, sampleFiles?: string[], fileCount?: number) {
+    return this.fs.resolveDirectory(directoryName, sampleFiles, fileCount);
+  }
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Download failed' }));
-      throw new Error(error.error || `Download failed with status ${response.status}`);
-    }
+  async browse(dirPath?: string) {
+    return this.fs.browse(dirPath);
+  }
 
-    // Create download from response blob
-    const blob = await response.blob();
-    const contentDisposition = response.headers.get('Content-Disposition');
-    const fileNameMatch = contentDisposition?.match(/filename="(.+)"/);
-    const fileName = fileNameMatch ? fileNameMatch[1] : filePath.split('/').pop() || 'download';
+  async browseProjectFiles(projectPath: string, relativePath?: string) {
+    return this.fs.browseProjectFiles(projectPath, relativePath);
+  }
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  getImageUrl(imagePath: string, projectPath?: string, version?: string | number): string {
+    return this.fs.getImageUrl(imagePath, projectPath, version);
   }
 
   async getPath(name: string): Promise<string> {
@@ -1447,12 +1412,7 @@ export class HttpApiClient implements ElectronAPI {
     mimeType: string,
     projectPath?: string
   ): Promise<SaveImageResult> {
-    return this.post('/api/fs/save-image', {
-      data,
-      filename,
-      mimeType,
-      projectPath,
-    });
+    return this.fs.saveImageToTemp(data, filename, mimeType, projectPath);
   }
 
   async saveBoardBackground(
@@ -1461,16 +1421,11 @@ export class HttpApiClient implements ElectronAPI {
     mimeType: string,
     projectPath: string
   ): Promise<{ success: boolean; path?: string; error?: string }> {
-    return this.post('/api/fs/save-board-background', {
-      data,
-      filename,
-      mimeType,
-      projectPath,
-    });
+    return this.fs.saveBoardBackground(data, filename, mimeType, projectPath);
   }
 
   async deleteBoardBackground(projectPath: string): Promise<{ success: boolean; error?: string }> {
-    return this.post('/api/fs/delete-board-background', { projectPath });
+    return this.fs.deleteBoardBackground(projectPath);
   }
 
   // CLI checks - server-side
@@ -2528,6 +2483,155 @@ export class HttpApiClient implements ElectronAPI {
       this.request('github.resolveReviewThread', { projectPath, threadId, resolve }),
   };
 
+  // Filesystem API - contract-backed file operations
+  fs = {
+    readFile: (filePath: string): Promise<FileResult> => this.request('fs.read', { filePath }),
+
+    writeFile: (filePath: string, content: string): Promise<WriteResult> =>
+      this.request('fs.write', { filePath, content }),
+
+    mkdir: (dirPath: string): Promise<WriteResult> => this.request('fs.mkdir', { dirPath }),
+
+    readdir: (dirPath: string): Promise<ReaddirResult> => this.request('fs.readdir', { dirPath }),
+
+    exists: async (filePath: string): Promise<boolean> => {
+      const result = await this.request('fs.exists', { filePath });
+      return result.exists;
+    },
+
+    stat: (filePath: string): Promise<StatResult> => this.request('fs.stat', { filePath }),
+
+    deleteFile: (filePath: string): Promise<WriteResult> => this.request('fs.delete', { filePath }),
+
+    validatePath: (filePath: string) => this.request('fs.validatePath', { filePath }),
+
+    resolveDirectory: (directoryName: string, sampleFiles?: string[], fileCount?: number) =>
+      this.request('fs.resolveDirectory', { directoryName, sampleFiles, fileCount }),
+
+    saveImageToTemp: (
+      data: string,
+      filename: string,
+      mimeType: string,
+      projectPath?: string
+    ): Promise<SaveImageResult> =>
+      this.request('fs.saveImage', { data, filename, mimeType, projectPath }),
+
+    browse: (dirPath?: string) => this.request('fs.browse', { dirPath }),
+
+    // The image endpoint streams binary, so the client exposes its URL rather
+    // than going through request() (which parses JSON).
+    getImageUrl: (imagePath: string, projectPath?: string, version?: string | number): string => {
+      const params = new URLSearchParams({ path: imagePath });
+      if (projectPath) params.set('projectPath', projectPath);
+      if (version !== undefined) params.set('v', String(version));
+      const apiKey = getApiKey();
+      if (apiKey) params.set('apiKey', apiKey);
+      const sessionToken = getSessionToken();
+      if (sessionToken) params.set('token', sessionToken);
+      return `${getServerUrl()}${operationPath('fs.image')}?${params.toString()}`;
+    },
+
+    saveBoardBackground: (
+      data: string,
+      filename: string,
+      mimeType: string,
+      projectPath: string
+    ): Promise<{ success: boolean; path?: string; error?: string }> =>
+      this.request('fs.saveBoardBackground', { data, filename, mimeType, projectPath }),
+
+    deleteBoardBackground: (projectPath: string): Promise<{ success: boolean; error?: string }> =>
+      this.request('fs.deleteBoardBackground', { projectPath }),
+
+    browseProjectFiles: (projectPath: string, relativePath?: string) =>
+      this.request('fs.browseProjectFiles', { projectPath, relativePath }),
+
+    copyItem: (
+      sourcePath: string,
+      destinationPath: string,
+      overwrite?: boolean
+    ): Promise<WriteResult & { exists?: boolean }> =>
+      this.request('fs.copy', { sourcePath, destinationPath, overwrite }),
+
+    moveItem: (
+      sourcePath: string,
+      destinationPath: string,
+      overwrite?: boolean
+    ): Promise<WriteResult & { exists?: boolean }> =>
+      this.request('fs.move', { sourcePath, destinationPath, overwrite }),
+
+    // The download endpoint streams a file, so it keeps its raw-fetch implementation.
+    downloadItem: async (filePath: string): Promise<void> => {
+      const serverUrl = getServerUrl();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      const apiKey = getApiKey();
+      if (apiKey) {
+        headers['X-API-Key'] = apiKey;
+      }
+      const token = getSessionToken();
+      if (token) {
+        headers['X-Session-Token'] = token;
+      }
+
+      const response = await fetch(`${serverUrl}${operationPath('fs.download')}`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ filePath }),
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        handleUnauthorized();
+        throw new Error('Unauthorized');
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Download failed' }));
+        throw new Error(error.error || `Download failed with status ${response.status}`);
+      }
+
+      // Create download from response blob
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileNameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const fileName = fileNameMatch ? fileNameMatch[1] : filePath.split('/').pop() || 'download';
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  };
+
+  // Terminal API - contract-backed terminal session management
+  terminal = {
+    status: () => this.request('terminal.status'),
+
+    auth: (password?: string) => this.request('terminal.auth', { password }),
+
+    logout: (token?: string) => this.request('terminal.logout', { token }),
+
+    listSessions: () => this.request('terminal.sessions'),
+
+    createSession: (options?: { cwd?: string; cols?: number; rows?: number; shell?: string }) =>
+      this.request('terminal.createSession', options),
+
+    deleteSession: (id: string) => this.request('terminal.deleteSession', { id }),
+
+    resizeSession: (id: string, cols: number, rows: number) =>
+      this.request('terminal.resizeSession', { id, cols, rows }),
+
+    getSettings: () => this.request('terminal.getSettings'),
+
+    updateSettings: (maxSessions?: number) =>
+      this.request('terminal.updateSettings', { maxSessions }),
+  };
+
   // Workspace API
   workspace = {
     getConfig: (): Promise<{
@@ -2536,13 +2640,13 @@ export class HttpApiClient implements ElectronAPI {
       workspaceDir?: string;
       defaultDir?: string | null;
       error?: string;
-    }> => this.get('/api/workspace/config'),
+    }> => this.request('workspace.config'),
 
     getDirectories: (): Promise<{
       success: boolean;
       directories?: Array<{ name: string; path: string }>;
       error?: string;
-    }> => this.get('/api/workspace/directories'),
+    }> => this.request('workspace.directories'),
   };
 
   // Agent API
@@ -2933,7 +3037,7 @@ export class HttpApiClient implements ElectronAPI {
         name?: string;
         version?: string;
       };
-    }> => this.post('/api/mcp/test', { serverId }),
+    }> => this.request('mcp.testServer', { serverId }),
 
     listTools: (
       serverId: string
@@ -2946,7 +3050,7 @@ export class HttpApiClient implements ElectronAPI {
         enabled: boolean;
       }>;
       error?: string;
-    }> => this.post('/api/mcp/tools', { serverId }),
+    }> => this.request('mcp.listTools', { serverId }),
   };
 
   // Pipeline API - custom workflow pipeline steps

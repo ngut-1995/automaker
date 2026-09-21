@@ -1,10 +1,14 @@
 /**
  * File system routes
  * Provides REST API equivalents for Electron IPC file operations
+ *
+ * Routes are registered from the shared operation contract; this file only maps
+ * each operation to the handler that implements it.
  */
 
 import { Router } from 'express';
 import type { EventEmitter } from '../../lib/events.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createReadHandler } from './routes/read.js';
 import { createWriteHandler } from './routes/write.js';
 import { createMkdirHandler } from './routes/mkdir.js';
@@ -24,27 +28,31 @@ import { createCopyHandler } from './routes/copy.js';
 import { createMoveHandler } from './routes/move.js';
 import { createDownloadHandler } from './routes/download.js';
 
+export const FS_MOUNT = '/api/fs';
+
+export function createFsHandlers(): OperationHandlers {
+  return {
+    'fs.read': createReadHandler(),
+    'fs.write': createWriteHandler(),
+    'fs.mkdir': createMkdirHandler(),
+    'fs.readdir': createReaddirHandler(),
+    'fs.exists': createExistsHandler(),
+    'fs.stat': createStatHandler(),
+    'fs.delete': createDeleteHandler(),
+    'fs.validatePath': createValidatePathHandler(),
+    'fs.resolveDirectory': createResolveDirectoryHandler(),
+    'fs.saveImage': createSaveImageHandler(),
+    'fs.browse': createBrowseHandler(),
+    'fs.image': createImageHandler(),
+    'fs.saveBoardBackground': createSaveBoardBackgroundHandler(),
+    'fs.deleteBoardBackground': createDeleteBoardBackgroundHandler(),
+    'fs.browseProjectFiles': createBrowseProjectFilesHandler(),
+    'fs.copy': createCopyHandler(),
+    'fs.move': createMoveHandler(),
+    'fs.download': createDownloadHandler(),
+  };
+}
+
 export function createFsRoutes(_events: EventEmitter): Router {
-  const router = Router();
-
-  router.post('/read', createReadHandler());
-  router.post('/write', createWriteHandler());
-  router.post('/mkdir', createMkdirHandler());
-  router.post('/readdir', createReaddirHandler());
-  router.post('/exists', createExistsHandler());
-  router.post('/stat', createStatHandler());
-  router.post('/delete', createDeleteHandler());
-  router.post('/validate-path', createValidatePathHandler());
-  router.post('/resolve-directory', createResolveDirectoryHandler());
-  router.post('/save-image', createSaveImageHandler());
-  router.post('/browse', createBrowseHandler());
-  router.get('/image', createImageHandler());
-  router.post('/save-board-background', createSaveBoardBackgroundHandler());
-  router.post('/delete-board-background', createDeleteBoardBackgroundHandler());
-  router.post('/browse-project-files', createBrowseProjectFilesHandler());
-  router.post('/copy', createCopyHandler());
-  router.post('/move', createMoveHandler());
-  router.post('/download', createDownloadHandler());
-
-  return router;
+  return registerContractOperations(Router(), FS_MOUNT, createFsHandlers());
 }

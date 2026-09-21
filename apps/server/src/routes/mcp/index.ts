@@ -5,32 +5,30 @@
  * - Testing MCP server connections
  * - Listing available tools from MCP servers
  *
- * Mounted at /api/mcp in the main server.
+ * Mounted at /api/mcp in the main server. Routes are registered from the shared
+ * operation contract; this file only maps each operation to its handler.
  */
 
 import { Router } from 'express';
 import type { MCPTestService } from '../../services/mcp-test-service.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createTestServerHandler } from './routes/test-server.js';
 import { createListToolsHandler } from './routes/list-tools.js';
 
+export const MCP_MOUNT = '/api/mcp';
+
 /**
- * Create MCP router with all endpoints
- *
- * Endpoints:
- * - POST /test - Test MCP server connection
- * - POST /tools - List tools from MCP server
+ * Create MCP operation handlers.
  *
  * @param mcpTestService - Instance of MCPTestService for testing connections
- * @returns Express Router configured with all MCP endpoints
  */
+export function createMCPHandlers(mcpTestService: MCPTestService): OperationHandlers {
+  return {
+    'mcp.testServer': createTestServerHandler(mcpTestService),
+    'mcp.listTools': createListToolsHandler(mcpTestService),
+  };
+}
+
 export function createMCPRoutes(mcpTestService: MCPTestService): Router {
-  const router = Router();
-
-  // Test MCP server connection
-  router.post('/test', createTestServerHandler(mcpTestService));
-
-  // List tools from MCP server
-  router.post('/tools', createListToolsHandler(mcpTestService));
-
-  return router;
+  return registerContractOperations(Router(), MCP_MOUNT, createMCPHandlers(mcpTestService));
 }

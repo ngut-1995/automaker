@@ -3,6 +3,10 @@
  *
  * Provides REST API for terminal session management and authentication.
  * WebSocket connections for real-time I/O are handled separately in index.ts.
+ *
+ * Routes are registered from the shared operation contract; this file maps each
+ * operation to its handler and declares the auth middleware that applies to the
+ * protected operations.
  */
 
 import { Router } from 'express';
@@ -12,6 +16,11 @@ import {
   isTerminalEnabled,
   isTerminalPasswordRequired,
 } from './common.js';
+import {
+  registerContractOperations,
+  type OperationHandlers,
+  type OperationMiddleware,
+} from '../contract.js';
 import { createStatusHandler } from './routes/status.js';
 import { createAuthHandler } from './routes/auth.js';
 import { createLogoutHandler } from './routes/logout.js';
@@ -23,22 +32,39 @@ import { createSettingsGetHandler, createSettingsUpdateHandler } from './routes/
 // Re-export for use in main index.ts
 export { validateTerminalToken, isTerminalEnabled, isTerminalPasswordRequired };
 
+export const TERMINAL_MOUNT = '/api/terminal';
+
+export function createTerminalHandlers(): OperationHandlers {
+  return {
+    'terminal.status': createStatusHandler(),
+    'terminal.auth': createAuthHandler(),
+    'terminal.logout': createLogoutHandler(),
+    'terminal.sessions': createSessionsListHandler(),
+    'terminal.createSession': createSessionsCreateHandler(),
+    'terminal.deleteSession': createSessionDeleteHandler(),
+    'terminal.resizeSession': createSessionResizeHandler(),
+    'terminal.getSettings': createSettingsGetHandler(),
+    'terminal.updateSettings': createSettingsUpdateHandler(),
+  };
+}
+
+/** Terminal auth applies to every operation below the public status/auth/logout. */
+export function createTerminalMiddleware(): OperationMiddleware {
+  return {
+    'terminal.sessions': [terminalAuthMiddleware],
+    'terminal.createSession': [terminalAuthMiddleware],
+    'terminal.deleteSession': [terminalAuthMiddleware],
+    'terminal.resizeSession': [terminalAuthMiddleware],
+    'terminal.getSettings': [terminalAuthMiddleware],
+    'terminal.updateSettings': [terminalAuthMiddleware],
+  };
+}
+
 export function createTerminalRoutes(): Router {
-  const router = Router();
-
-  router.get('/status', createStatusHandler());
-  router.post('/auth', createAuthHandler());
-  router.post('/logout', createLogoutHandler());
-
-  // Apply terminal auth middleware to all routes below
-  router.use(terminalAuthMiddleware);
-
-  router.get('/sessions', createSessionsListHandler());
-  router.post('/sessions', createSessionsCreateHandler());
-  router.delete('/sessions/:id', createSessionDeleteHandler());
-  router.post('/sessions/:id/resize', createSessionResizeHandler());
-  router.get('/settings', createSettingsGetHandler());
-  router.put('/settings', createSettingsUpdateHandler());
-
-  return router;
+  return registerContractOperations(
+    Router(),
+    TERMINAL_MOUNT,
+    createTerminalHandlers(),
+    createTerminalMiddleware()
+  );
 }

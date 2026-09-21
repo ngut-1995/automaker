@@ -40,6 +40,10 @@ import { createGitHubHandlers, GITHUB_MOUNT } from '@/routes/github/index.js';
 import { createGitHandlers, GIT_MOUNT } from '@/routes/git/index.js';
 import { createTemplatesHandlers, TEMPLATES_MOUNT } from '@/routes/templates/index.js';
 import { createModelsHandlers, MODELS_MOUNT } from '@/routes/models/index.js';
+import { createFsHandlers, FS_MOUNT } from '@/routes/fs/index.js';
+import { createTerminalHandlers, TERMINAL_MOUNT } from '@/routes/terminal/index.js';
+import { createWorkspaceHandlers, WORKSPACE_MOUNT } from '@/routes/workspace/index.js';
+import { createMCPHandlers, MCP_MOUNT } from '@/routes/mcp/index.js';
 import { registerContractOperations, missingContractHandlers } from '@/routes/contract.js';
 import type { OperationHandlers } from '@/routes/contract.js';
 
@@ -168,5 +172,21 @@ describe('contract conformance', () => {
 
   it('models mount', () => {
     expectContractMount(MODELS_MOUNT, createModelsHandlers());
+  });
+
+  it('fs mount', () => {
+    expectContractMount(FS_MOUNT, createFsHandlers());
+  });
+
+  it('terminal mount', () => {
+    expectContractMount(TERMINAL_MOUNT, createTerminalHandlers());
+  });
+
+  it('workspace mount', () => {
+    expectContractMount(WORKSPACE_MOUNT, createWorkspaceHandlers());
+  });
+
+  it('mcp mount', () => {
+    expectContractMount(MCP_MOUNT, createMCPHandlers({} as never));
   });
 });
