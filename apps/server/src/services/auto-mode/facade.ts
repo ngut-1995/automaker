@@ -2,13 +2,12 @@
  * AutoModeServiceFacade - Clean interface for auto-mode functionality
  *
  * This facade provides a thin delegation layer over the extracted services,
- * exposing all 23 public methods that routes currently call on AutoModeService.
+ * exposing the per-project methods that routes call.
  *
  * Key design decisions:
  * - Per-project factory pattern (projectPath is implicit in method calls)
  * - Clean method names (e.g., startAutoLoop instead of startAutoLoopForProject)
  * - Thin delegation to underlying services - no new business logic
- * - Maintains backward compatibility during transition period
  */
 
 import path from 'path';
@@ -1069,13 +1068,11 @@ export class AutoModeServiceFacade {
   /**
    * Analyze project to gather context
    *
-   * NOTE: This method requires complex provider integration that is only available
-   * in AutoModeService. The facade exposes the method signature for API compatibility,
-   * but routes should use AutoModeService.analyzeProject() until migration is complete.
+   * Not implemented on the facade: it needs provider integration that lives
+   * outside this class. It throws so a caller fails loudly rather than silently
+   * doing nothing.
    */
   async analyzeProject(): Promise<void> {
-    // analyzeProject requires provider.execute which is complex to wire up
-    // For now, throw to indicate routes should use AutoModeService
     throw new Error(
       'analyzeProject not fully implemented in facade - use AutoModeService.analyzeProject instead'
     );

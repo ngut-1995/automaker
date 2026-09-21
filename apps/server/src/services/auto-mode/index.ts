@@ -1,10 +1,15 @@
 /**
  * Auto Mode Service Module
  *
- * Entry point for auto-mode functionality. Exports:
- * - GlobalAutoModeService: Global operations that span all projects
- * - AutoModeServiceFacade: Per-project facade for auto-mode operations
- * - createAutoModeFacade: Convenience factory function
+ * Entry point for auto-mode functionality. Auto-mode runs features to
+ * completion without a human in the loop. This module exports:
+ * - GlobalAutoModeService: process-wide operations and global questions
+ *   (status, running agents, state reconciliation) across all projects
+ * - AutoModeServiceFacade: a per-project facade that starts and stops the auto
+ *   loop and executes, resumes, verifies and stops individual features
+ * - createAutoModeFacade: convenience factory for a single project's facade
+ * - AutoModeFacadeCache / FacadeProvider: the composition-root cache that hands
+ *   every caller the same facade per project, and its provider type
  * - Types for route consumption
  */
 
@@ -13,7 +18,6 @@ export { GlobalAutoModeService } from './global-service.js';
 export { AutoModeServiceFacade } from './facade.js';
 export { AutoModeFacadeCache } from './facade-cache.js';
 export type { FacadeProvider } from './facade-cache.js';
-export { AutoModeServiceCompat } from './compat.js';
 
 // Convenience factory function
 import { AutoModeServiceFacade } from './facade.js';

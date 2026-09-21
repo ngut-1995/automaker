@@ -8,7 +8,7 @@
  * lifetime of the process.
  *
  * It lives at the composition root so ownership of the cache is explicit and
- * the compatibility shim no longer holds process-wide state of its own.
+ * every caller shares the same per-project instance.
  */
 
 import type { FacadeOptions } from './types.js';

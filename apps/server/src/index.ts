@@ -327,7 +327,7 @@ const featureLoader = new FeatureLoader();
 
 // Auto-mode services: the composition root owns the shared global service and
 // the per-project facade cache. Routes receive the global service or a facade
-// provider directly; there is no compatibility shim.
+// provider directly.
 const globalAutoModeService = new GlobalAutoModeService(events, settingsService, featureLoader);
 const facadeCache = new AutoModeFacadeCache({
   events,
