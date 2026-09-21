@@ -15,20 +15,16 @@ import { AgentExecutor } from '../../../../src/services/agent-executor.js';
 import * as settingsHelpers from '../../../../src/lib/settings-helpers.js';
 import { ProviderFactory } from '../../../../src/providers/provider-factory.js';
 import * as sdkOptions from '../../../../src/lib/sdk-options.js';
+import { SettingsService } from '../../../../src/services/settings-service.js';
 
 describe('AutoModeServiceFacade Agent Runner', () => {
   let mockAgentExecutor: MockAgentExecutor;
-  let mockSettingsService: MockSettingsService;
+  let mockSettingsService: SettingsService;
   let facade: AutoModeServiceFacade;
 
   // Type definitions for mocks
   interface MockAgentExecutor {
     execute: ReturnType<typeof vi.fn>;
-  }
-  interface MockSettingsService {
-    getGlobalSettings: ReturnType<typeof vi.fn>;
-    getCredentials: ReturnType<typeof vi.fn>;
-    getProjectSettings: ReturnType<typeof vi.fn>;
   }
 
   beforeEach(() => {
@@ -50,11 +46,7 @@ describe('AutoModeServiceFacade Agent Runner', () => {
       return mockAgentExecutor;
     });
 
-    mockSettingsService = {
-      getGlobalSettings: vi.fn().mockResolvedValue({}),
-      getCredentials: vi.fn().mockResolvedValue({}),
-      getProjectSettings: vi.fn().mockResolvedValue({}),
-    };
+    mockSettingsService = new SettingsService('/tmp/automaker-facade-runner-test');
 
     // Helper to access the private createRunAgentFn via factory creation
     facade = AutoModeServiceFacade.create('/project', {

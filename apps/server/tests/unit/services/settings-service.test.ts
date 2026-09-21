@@ -150,6 +150,7 @@ describe('settings-service.ts', () => {
     it('should deep merge keyboard shortcuts', async () => {
       const updates: Partial<GlobalSettings> = {
         keyboardShortcuts: {
+          ...DEFAULT_GLOBAL_SETTINGS.keyboardShortcuts,
           board: 'B',
         },
       };
@@ -367,6 +368,7 @@ describe('settings-service.ts', () => {
       const customCredentials: Credentials = {
         ...DEFAULT_CREDENTIALS,
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'sk-test-key',
         },
       };
@@ -396,6 +398,7 @@ describe('settings-service.ts', () => {
     it('should create credentials file with updates', async () => {
       const updates: Partial<Credentials> = {
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'sk-test-key',
         },
       };
@@ -415,6 +418,7 @@ describe('settings-service.ts', () => {
       const initial: Credentials = {
         ...DEFAULT_CREDENTIALS,
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'sk-initial',
         },
       };
@@ -423,6 +427,7 @@ describe('settings-service.ts', () => {
 
       const updates: Partial<Credentials> = {
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'sk-updated',
         },
       };
@@ -436,6 +441,7 @@ describe('settings-service.ts', () => {
       const initial: Credentials = {
         ...DEFAULT_CREDENTIALS,
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'sk-anthropic',
         },
       };
@@ -444,6 +450,7 @@ describe('settings-service.ts', () => {
 
       const updates: Partial<Credentials> = {
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'sk-updated-anthropic',
         },
       };
@@ -464,6 +471,7 @@ describe('settings-service.ts', () => {
     it('should mask keys correctly', async () => {
       await settingsService.updateCredentials({
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'sk-ant-api03-1234567890abcdef',
         },
       });
@@ -476,6 +484,7 @@ describe('settings-service.ts', () => {
     it('should handle short keys', async () => {
       await settingsService.updateCredentials({
         apiKeys: {
+          ...DEFAULT_CREDENTIALS.apiKeys,
           anthropic: 'short',
         },
       });
@@ -494,7 +503,7 @@ describe('settings-service.ts', () => {
 
     it('should return true when credentials file exists', async () => {
       await settingsService.updateCredentials({
-        apiKeys: { anthropic: 'test' },
+        apiKeys: { ...DEFAULT_CREDENTIALS.apiKeys, anthropic: 'test' },
       });
       const exists = await settingsService.hasCredentials();
       expect(exists).toBe(true);
@@ -600,11 +609,11 @@ describe('settings-service.ts', () => {
       const settingsPath = path.join(automakerDir, 'settings.json');
       await fs.writeFile(settingsPath, JSON.stringify(initial, null, 2));
 
-      const updates: Partial<ProjectSettings> = {
+      const updates = {
         boardBackground: {
           cardOpacity: 0.9,
         },
-      };
+      } as Parameters<typeof settingsService.updateProjectSettings>[1];
 
       const updated = await settingsService.updateProjectSettings(testProjectDir, updates);
 
@@ -1000,14 +1009,14 @@ describe('settings-service.ts', () => {
         phaseModels: {
           enhancementModel: { model: 'sonnet', thinkingLevel: 'high' },
         },
-      });
+      } as Parameters<typeof settingsService.updateGlobalSettings>[0]);
 
       // Update with a different phase model
       await settingsService.updateGlobalSettings({
         phaseModels: {
           specGenerationModel: { model: 'opus', thinkingLevel: 'ultrathink' },
         },
-      });
+      } as Parameters<typeof settingsService.updateGlobalSettings>[0]);
 
       const settings = await settingsService.getGlobalSettings();
 

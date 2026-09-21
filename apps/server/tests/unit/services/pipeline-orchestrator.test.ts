@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -99,11 +99,11 @@ describe('PipelineOrchestrator', () => {
   let mockWorktreeResolver: WorktreeResolver;
   let mockConcurrencyManager: ConcurrencyManager;
   let mockSettingsService: SettingsService | null;
-  let mockTransitionFeatureFn: TransitionFeatureFn;
-  let mockLoadContextFilesFn: vi.Mock;
-  let mockBuildFeaturePromptFn: BuildFeaturePromptFn;
-  let mockExecuteFeatureFn: ExecuteFeatureFn;
-  let mockRunAgentFn: RunAgentFn;
+  let mockTransitionFeatureFn: Mock<TransitionFeatureFn>;
+  let mockLoadContextFilesFn: Mock;
+  let mockBuildFeaturePromptFn: Mock<BuildFeaturePromptFn>;
+  let mockExecuteFeatureFn: Mock<ExecuteFeatureFn>;
+  let mockRunAgentFn: Mock<RunAgentFn>;
   let orchestrator: PipelineOrchestrator;
 
   // Test data
@@ -193,11 +193,15 @@ describe('PipelineOrchestrator', () => {
 
     mockSettingsService = null;
 
-    mockTransitionFeatureFn = vi.fn().mockResolvedValue({ feature: testFeature, changed: true });
+    mockTransitionFeatureFn = vi
+      .fn<TransitionFeatureFn>()
+      .mockResolvedValue({ feature: testFeature, changed: true });
     mockLoadContextFilesFn = vi.fn().mockResolvedValue({ contextPrompt: 'test context' });
-    mockBuildFeaturePromptFn = vi.fn().mockReturnValue('Feature prompt content');
-    mockExecuteFeatureFn = vi.fn().mockResolvedValue(undefined);
-    mockRunAgentFn = vi.fn().mockResolvedValue(undefined);
+    mockBuildFeaturePromptFn = vi
+      .fn<BuildFeaturePromptFn>()
+      .mockReturnValue('Feature prompt content');
+    mockExecuteFeatureFn = vi.fn<ExecuteFeatureFn>().mockResolvedValue(undefined);
+    mockRunAgentFn = vi.fn<RunAgentFn>().mockResolvedValue(undefined);
 
     // Default mocks for secureFs
     vi.mocked(secureFs.readFile).mockResolvedValue('Previous context');
@@ -351,7 +355,7 @@ describe('PipelineOrchestrator', () => {
     });
 
     it('should return config null when no pipeline config exists', async () => {
-      vi.mocked(pipelineService.getPipelineConfig).mockResolvedValue(null);
+      vi.mocked(pipelineService.getPipelineConfig).mockResolvedValue({ version: 1, steps: [] });
 
       const result = await orchestrator.detectPipelineStatus(
         '/test/project',

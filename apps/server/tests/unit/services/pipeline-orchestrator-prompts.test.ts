@@ -6,6 +6,7 @@ describe('PipelineOrchestrator Prompts', () => {
   const mockFeature: Feature = {
     id: 'feature-123',
     title: 'Test Feature',
+    category: 'test',
     description: 'A test feature',
     status: 'in_progress',
     createdAt: new Date().toISOString(),

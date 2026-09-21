@@ -5,9 +5,6 @@ import type { SettingsService } from '../../../src/services/settings-service.js'
 import type { EventHistoryService } from '../../../src/services/event-history-service.js';
 import type { FeatureLoader } from '../../../src/services/feature-loader.js';
 
-// Mock global fetch for ntfy tests
-const originalFetch = global.fetch;
-
 /**
  * Create a mock EventEmitter for testing
  */
@@ -89,12 +86,12 @@ describe('EventHookService', () => {
     mockFeatureLoader = createMockFeatureLoader();
     // Set up mock fetch for ntfy tests
     mockFetch = vi.fn();
-    global.fetch = mockFetch;
+    vi.stubGlobal('fetch', mockFetch);
   });
 
   afterEach(() => {
     service.destroy();
-    global.fetch = originalFetch;
+    vi.unstubAllGlobals();
   });
 
   describe('initialize', () => {

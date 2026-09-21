@@ -8,11 +8,23 @@
  * - Interrupted feature detection and batch resumption
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { RecoveryService, DEFAULT_EXECUTION_STATE } from '@/services/recovery-service.js';
+import {
+  RecoveryService,
+  DEFAULT_EXECUTION_STATE,
+  type ExecuteFeatureFn,
+  type LoadFeatureFn,
+  type DetectPipelineStatusFn,
+  type ResumePipelineFn,
+  type IsFeatureRunningFn,
+  type AcquireRunningFeatureFn,
+  type ReleaseRunningFeatureFn,
+} from '@/services/recovery-service.js';
+import type { PipelineStatusInfo } from '@/services/pipeline-orchestrator.js';
+import type { TransitionFeatureFn } from '@/services/feature-record.js';
 import { FeatureRecord } from '@/services/feature-record.js';
 import { FeatureLoader } from '@/services/feature-loader.js';
 import { TypedEventBus } from '@/services/typed-event-bus.js';
@@ -35,7 +47,9 @@ vi.mock('@automaker/utils', async (importOriginal) => {
       error: vi.fn(),
       debug: vi.fn(),
     }),
-    readJsonWithRecovery: vi.fn().mockResolvedValue({ data: null, wasRecovered: false }),
+    readJsonWithRecovery: vi
+      .fn()
+      .mockResolvedValue({ data: null, recovered: false, source: 'default' }),
     logRecoveryWarning: vi.fn(),
     DEFAULT_BACKUP_COUNT: 5,
   };
@@ -101,14 +115,14 @@ describe('recovery-service.ts', () => {
   const mockSettingsService = null;
 
   // Callback mocks - initialize empty, set up in beforeEach
-  let mockExecuteFeature: ReturnType<typeof vi.fn>;
-  let mockLoadFeature: ReturnType<typeof vi.fn>;
-  let mockDetectPipelineStatus: ReturnType<typeof vi.fn>;
-  let mockResumePipeline: ReturnType<typeof vi.fn>;
-  let mockIsFeatureRunning: ReturnType<typeof vi.fn>;
-  let mockAcquireRunningFeature: ReturnType<typeof vi.fn>;
-  let mockReleaseRunningFeature: ReturnType<typeof vi.fn>;
-  let mockFeatureRecord: { transition: ReturnType<typeof vi.fn> };
+  let mockExecuteFeature: Mock<ExecuteFeatureFn>;
+  let mockLoadFeature: Mock<LoadFeatureFn>;
+  let mockDetectPipelineStatus: Mock<DetectPipelineStatusFn>;
+  let mockResumePipeline: Mock<ResumePipelineFn>;
+  let mockIsFeatureRunning: Mock<IsFeatureRunningFn>;
+  let mockAcquireRunningFeature: Mock<AcquireRunningFeatureFn>;
+  let mockReleaseRunningFeature: Mock<ReleaseRunningFeatureFn>;
+  let mockFeatureRecord: { transition: Mock<TransitionFeatureFn> };
 
   let service: RecoveryService;
 
@@ -127,9 +141,9 @@ describe('recovery-service.ts', () => {
     vi.mocked(secureFs.readdir).mockResolvedValue([]);
 
     // Reset all callback mocks with default implementations
-    mockExecuteFeature = vi.fn().mockResolvedValue(undefined);
-    mockLoadFeature = vi.fn().mockResolvedValue(null);
-    mockDetectPipelineStatus = vi.fn().mockResolvedValue({
+    mockExecuteFeature = vi.fn<ExecuteFeatureFn>().mockResolvedValue(undefined);
+    mockLoadFeature = vi.fn<LoadFeatureFn>().mockResolvedValue(null);
+    mockDetectPipelineStatus = vi.fn<DetectPipelineStatusFn>().mockResolvedValue({
       isPipeline: false,
       stepId: null,
       stepIndex: -1,
@@ -137,15 +151,26 @@ describe('recovery-service.ts', () => {
       step: null,
       config: null,
     });
-    mockResumePipeline = vi.fn().mockResolvedValue(undefined);
-    mockIsFeatureRunning = vi.fn().mockReturnValue(false);
-    mockAcquireRunningFeature = vi.fn().mockImplementation(({ featureId }) => ({
-      featureId,
-      abortController: new AbortController(),
-    }));
-    mockReleaseRunningFeature = vi.fn();
+    mockResumePipeline = vi.fn<ResumePipelineFn>().mockResolvedValue(undefined);
+    mockIsFeatureRunning = vi.fn<IsFeatureRunningFn>().mockReturnValue(false);
+    mockAcquireRunningFeature = vi
+      .fn<AcquireRunningFeatureFn>()
+      .mockImplementation(({ featureId, projectPath, isAutoMode }) => ({
+        featureId,
+        projectPath,
+        worktreePath: null,
+        branchName: null,
+        abortController: new AbortController(),
+        isAutoMode,
+        startTime: Date.now(),
+        leaseCount: 1,
+      }));
+    mockReleaseRunningFeature = vi.fn<ReleaseRunningFeatureFn>();
     mockFeatureRecord = {
-      transition: vi.fn().mockResolvedValue({ feature: {} as Feature, changed: true }),
+      transition: vi.fn<TransitionFeatureFn>().mockResolvedValue({
+        feature: { id: 'feature-1', category: 'test', description: '' },
+        changed: true,
+      }),
     };
 
     service = new RecoveryService(
@@ -332,6 +357,7 @@ describe('recovery-service.ts', () => {
     const mockFeature: Feature = {
       id: 'feature-1',
       title: 'Test Feature',
+      category: 'test',
       description: 'A test feature',
       status: 'in_progress',
     };
@@ -361,7 +387,7 @@ describe('recovery-service.ts', () => {
     });
 
     it('delegates to resumePipeline for pipeline features', async () => {
-      const pipelineInfo = {
+      const pipelineInfo: PipelineStatusInfo = {
         isPipeline: true,
         stepId: 'test',
         stepIndex: 1,
@@ -369,9 +395,11 @@ describe('recovery-service.ts', () => {
         step: {
           id: 'test',
           name: 'Test Step',
-          command: 'npm test',
-          type: 'test' as const,
           order: 1,
+          instructions: 'Run the test suite',
+          colorClass: 'blue',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
         },
         config: null,
       };
@@ -505,9 +533,7 @@ describe('recovery-service.ts', () => {
     beforeEach(async () => {
       const actualUtils =
         await vi.importActual<typeof import('@automaker/utils')>('@automaker/utils');
-      vi.mocked(utils.readJsonWithRecovery).mockImplementation(
-        actualUtils.readJsonWithRecovery as unknown as (...args: unknown[]) => Promise<unknown>
-      );
+      vi.mocked(utils.readJsonWithRecovery).mockImplementation(actualUtils.readJsonWithRecovery);
 
       projectPath = await fs.mkdtemp(path.join(os.tmpdir(), 'recovery-resume-'));
       const record = new FeatureRecord(new TypedEventBus(mockEventBus as any), new FeatureLoader());
@@ -539,6 +565,7 @@ describe('recovery-service.ts', () => {
         JSON.stringify({
           id: 'feature-1',
           title: 'Interrupted Feature',
+          category: 'test',
           description: 'A feature',
           status: 'interrupted',
         }),
@@ -548,6 +575,7 @@ describe('recovery-service.ts', () => {
       mockLoadFeature.mockResolvedValue({
         id: 'feature-1',
         title: 'Interrupted Feature',
+        category: 'test',
         description: 'A feature',
         status: 'interrupted',
       });
@@ -569,16 +597,19 @@ describe('recovery-service.ts', () => {
       vi.mocked(utils.readJsonWithRecovery)
         .mockResolvedValueOnce({
           data: { id: 'feature-1', title: 'Feature 1', status: 'in_progress' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         })
         .mockResolvedValueOnce({
           data: { id: 'feature-2', title: 'Feature 2', status: 'backlog' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         });
 
       mockLoadFeature.mockResolvedValue({
         id: 'feature-1',
         title: 'Feature 1',
+        category: 'test',
         status: 'in_progress',
         description: 'Test',
       });
@@ -599,12 +630,14 @@ describe('recovery-service.ts', () => {
       ]);
       vi.mocked(utils.readJsonWithRecovery).mockResolvedValueOnce({
         data: { id: 'feature-1', title: 'Feature 1', status: 'interrupted' },
-        wasRecovered: false,
+        recovered: false,
+        source: 'main',
       });
 
       mockLoadFeature.mockResolvedValue({
         id: 'feature-1',
         title: 'Feature 1',
+        category: 'test',
         status: 'interrupted',
         description: 'Test',
       });
@@ -625,12 +658,14 @@ describe('recovery-service.ts', () => {
       ]);
       vi.mocked(utils.readJsonWithRecovery).mockResolvedValueOnce({
         data: { id: 'feature-1', title: 'Feature 1', status: 'pipeline_test' },
-        wasRecovered: false,
+        recovered: false,
+        source: 'main',
       });
 
       mockLoadFeature.mockResolvedValue({
         id: 'feature-1',
         title: 'Feature 1',
+        category: 'test',
         status: 'pipeline_test',
         description: 'Test',
       });
@@ -671,27 +706,32 @@ describe('recovery-service.ts', () => {
       vi.mocked(utils.readJsonWithRecovery)
         .mockResolvedValueOnce({
           data: { id: 'feature-1', title: 'Feature 1', status: 'ready' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         })
         .mockResolvedValueOnce({
           data: { id: 'feature-2', title: 'Feature 2', status: 'backlog' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         })
         .mockResolvedValueOnce({
           data: { id: 'feature-3', title: 'Feature 3', status: 'backlog' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         });
 
       mockLoadFeature
         .mockResolvedValueOnce({
           id: 'feature-1',
           title: 'Feature 1',
+          category: 'test',
           status: 'ready',
           description: 'Test',
         })
         .mockResolvedValueOnce({
           id: 'feature-2',
           title: 'Feature 2',
+          category: 'test',
           status: 'backlog',
           description: 'Test',
         });
@@ -725,12 +765,14 @@ describe('recovery-service.ts', () => {
       ]);
       vi.mocked(utils.readJsonWithRecovery).mockResolvedValueOnce({
         data: { id: 'feature-1', title: 'Feature 1', status: 'ready' },
-        wasRecovered: false,
+        recovered: false,
+        source: 'main',
       });
 
       mockLoadFeature.mockResolvedValue({
         id: 'feature-1',
         title: 'Feature 1',
+        category: 'test',
         status: 'ready',
         description: 'Test',
       });
@@ -749,11 +791,13 @@ describe('recovery-service.ts', () => {
       vi.mocked(utils.readJsonWithRecovery)
         .mockResolvedValueOnce({
           data: { id: 'feature-with', title: 'With Context', status: 'in_progress' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         })
         .mockResolvedValueOnce({
           data: { id: 'feature-without', title: 'Without Context', status: 'in_progress' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         });
 
       // First feature has context, second doesn't
@@ -765,12 +809,14 @@ describe('recovery-service.ts', () => {
         .mockResolvedValueOnce({
           id: 'feature-with',
           title: 'With Context',
+          category: 'test',
           status: 'in_progress',
           description: 'Test',
         })
         .mockResolvedValueOnce({
           id: 'feature-without',
           title: 'Without Context',
+          category: 'test',
           status: 'in_progress',
           description: 'Test',
         });
@@ -794,12 +840,14 @@ describe('recovery-service.ts', () => {
       ]);
       vi.mocked(utils.readJsonWithRecovery).mockResolvedValueOnce({
         data: { id: 'feature-1', title: 'Feature 1', status: 'in_progress' },
-        wasRecovered: false,
+        recovered: false,
+        source: 'main',
       });
 
       mockLoadFeature.mockResolvedValue({
         id: 'feature-1',
         title: 'Feature 1',
+        category: 'test',
         status: 'in_progress',
         description: 'Test',
       });
@@ -821,7 +869,8 @@ describe('recovery-service.ts', () => {
       ]);
       vi.mocked(utils.readJsonWithRecovery).mockResolvedValueOnce({
         data: { id: 'feature-1', title: 'Feature 1', status: 'in_progress' },
-        wasRecovered: false,
+        recovered: false,
+        source: 'main',
       });
 
       mockIsFeatureRunning.mockReturnValue(true);
@@ -853,17 +902,20 @@ describe('recovery-service.ts', () => {
       vi.mocked(utils.readJsonWithRecovery)
         .mockResolvedValueOnce({
           data: { id: 'feature-fail', title: 'Fail', status: 'in_progress' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         })
         .mockResolvedValueOnce({
           data: { id: 'feature-success', title: 'Success', status: 'in_progress' },
-          wasRecovered: false,
+          recovered: false,
+          source: 'main',
         });
 
       // First feature throws during resume, second succeeds
       mockLoadFeature.mockRejectedValueOnce(new Error('Resume failed')).mockResolvedValueOnce({
         id: 'feature-success',
         title: 'Success',
+        category: 'test',
         status: 'in_progress',
         description: 'Test',
       });
@@ -880,7 +932,8 @@ describe('recovery-service.ts', () => {
       ]);
       vi.mocked(utils.readJsonWithRecovery).mockResolvedValueOnce({
         data: { id: 'feature-1', title: 'Feature 1', status: 'completed' },
-        wasRecovered: false,
+        recovered: false,
+        source: 'main',
       });
 
       await service.resumeInterruptedFeatures('/test/project');

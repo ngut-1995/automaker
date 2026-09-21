@@ -63,6 +63,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
     id: 'pipeline-feature-1',
     name: 'Pipeline Feature',
     title: 'Pipeline Feature Title',
+    category: 'test',
     description: 'A feature going through pipeline steps',
     status: 'pipeline_step1',
     createdAt: '2024-01-01T00:00:00Z',

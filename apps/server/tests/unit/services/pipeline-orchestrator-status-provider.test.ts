@@ -9,7 +9,7 @@
  * object passed to runAgentFn in both executePipeline and executeTestStep.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import type { Feature, PipelineStep } from '@automaker/types';
 import {
   PipelineOrchestrator,
@@ -81,7 +81,7 @@ vi.mock('@automaker/model-resolver', () => ({
 }));
 
 describe('PipelineOrchestrator - status and providerId coexistence', () => {
-  let mockRunAgentFn: RunAgentFn;
+  let mockRunAgentFn: Mock<RunAgentFn>;
   let orchestrator: PipelineOrchestrator;
 
   const testSteps: PipelineStep[] = [
@@ -125,7 +125,7 @@ describe('PipelineOrchestrator - status and providerId coexistence', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRunAgentFn = vi.fn().mockResolvedValue(undefined);
+    mockRunAgentFn = vi.fn<RunAgentFn>().mockResolvedValue(undefined);
 
     vi.mocked(secureFs.readFile).mockResolvedValue('Previous context');
     vi.mocked(secureFs.access).mockResolvedValue(undefined);

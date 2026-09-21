@@ -63,14 +63,14 @@ describe('TypedEventBus', () => {
     });
 
     it('should handle various event types', () => {
-      eventBus.emit('feature:updated', { id: '1' });
-      eventBus.emit('agent:streaming', { chunk: 'data' });
-      eventBus.emit('error', { message: 'error' });
+      eventBus.emit('feature:progress', { id: '1' });
+      eventBus.emit('agent:stream', { chunk: 'data' });
+      eventBus.emit('auto-mode:error', { message: 'error' });
 
       expect(mockEmitter.emitCalls).toHaveLength(3);
-      expect(mockEmitter.emitCalls[0].type).toBe('feature:updated');
-      expect(mockEmitter.emitCalls[1].type).toBe('agent:streaming');
-      expect(mockEmitter.emitCalls[2].type).toBe('error');
+      expect(mockEmitter.emitCalls[0].type).toBe('feature:progress');
+      expect(mockEmitter.emitCalls[1].type).toBe('agent:stream');
+      expect(mockEmitter.emitCalls[2].type).toBe('auto-mode:error');
     });
   });
 
@@ -163,11 +163,11 @@ describe('TypedEventBus', () => {
       });
     });
 
-    it('should allow custom event types (string extensibility)', () => {
-      eventBus.emitAutoModeEvent('custom_event_type', { custom: 'data' });
+    it('should emit an auto-mode event type from the shared vocabulary', () => {
+      eventBus.emitAutoModeEvent('auto_mode_progress', { custom: 'data' });
 
       const payload = mockEmitter.emitCalls[0].payload as Record<string, unknown>;
-      expect(payload.type).toBe('custom_event_type');
+      expect(payload.type).toBe('auto_mode_progress');
     });
   });
 
@@ -215,12 +215,12 @@ describe('TypedEventBus', () => {
       const callback = vi.fn();
       const unsubscribe = eventBus.subscribe(callback);
 
-      eventBus.emit('event1', {});
+      eventBus.emit('feature:started', {});
       expect(callback).toHaveBeenCalledTimes(1);
 
       unsubscribe();
 
-      eventBus.emit('event2', {});
+      eventBus.emit('feature:completed', {});
       expect(callback).toHaveBeenCalledTimes(1); // Still 1, not called again
     });
   });
@@ -235,10 +235,10 @@ describe('TypedEventBus', () => {
       const emitter = eventBus.getUnderlyingEmitter();
 
       // Verify we can use it directly
-      emitter.emit('direct:event', { direct: true });
+      emitter.emit('feature:created', { direct: true });
 
       expect(mockEmitter.emitCalls).toHaveLength(1);
-      expect(mockEmitter.emitCalls[0].type).toBe('direct:event');
+      expect(mockEmitter.emitCalls[0].type).toBe('feature:created');
     });
   });
 

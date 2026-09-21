@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { AutoModeServiceFacade } from '@/services/auto-mode/facade.js';
-import type { Feature } from '@automaker/types';
+import type { Feature, FeatureStatus } from '@automaker/types';
 
 describe('AutoModeServiceFacade', () => {
   describe('isFeatureEligibleForAutoMode', () => {
@@ -105,7 +105,7 @@ describe('AutoModeServiceFacade', () => {
     });
 
     it('should include various pipeline_* step IDs as eligible', () => {
-      const statuses = [
+      const statuses: FeatureStatus[] = [
         'pipeline_step_abc_123',
         'pipeline_code_review',
         'pipeline_step1',

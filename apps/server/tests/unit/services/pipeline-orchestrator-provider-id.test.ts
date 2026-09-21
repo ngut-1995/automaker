@@ -4,7 +4,7 @@
  * executePipeline (step execution) and executeTestStep (test fix) contexts.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import type { Feature, PipelineStep } from '@automaker/types';
 import {
   PipelineOrchestrator,
@@ -90,11 +90,11 @@ describe('PipelineOrchestrator - providerId passthrough', () => {
   let mockTestRunnerService: TestRunnerService;
   let mockWorktreeResolver: WorktreeResolver;
   let mockConcurrencyManager: ConcurrencyManager;
-  let mockTransitionFeatureFn: TransitionFeatureFn;
-  let mockLoadContextFilesFn: vi.Mock;
-  let mockBuildFeaturePromptFn: BuildFeaturePromptFn;
-  let mockExecuteFeatureFn: ExecuteFeatureFn;
-  let mockRunAgentFn: RunAgentFn;
+  let mockTransitionFeatureFn: Mock<TransitionFeatureFn>;
+  let mockLoadContextFilesFn: Mock;
+  let mockBuildFeaturePromptFn: Mock<BuildFeaturePromptFn>;
+  let mockExecuteFeatureFn: Mock<ExecuteFeatureFn>;
+  let mockRunAgentFn: Mock<RunAgentFn>;
   let orchestrator: PipelineOrchestrator;
 
   const testSteps: PipelineStep[] = [
@@ -168,14 +168,16 @@ describe('PipelineOrchestrator - providerId passthrough', () => {
       getRunningFeature: vi.fn().mockReturnValue(undefined),
     } as unknown as ConcurrencyManager;
 
-    mockTransitionFeatureFn = vi.fn().mockResolvedValue({
+    mockTransitionFeatureFn = vi.fn<TransitionFeatureFn>().mockResolvedValue({
       feature: createFeatureWithProvider(),
       changed: true,
     });
     mockLoadContextFilesFn = vi.fn().mockResolvedValue({ contextPrompt: 'test context' });
-    mockBuildFeaturePromptFn = vi.fn().mockReturnValue('Feature prompt content');
-    mockExecuteFeatureFn = vi.fn().mockResolvedValue(undefined);
-    mockRunAgentFn = vi.fn().mockResolvedValue(undefined);
+    mockBuildFeaturePromptFn = vi
+      .fn<BuildFeaturePromptFn>()
+      .mockReturnValue('Feature prompt content');
+    mockExecuteFeatureFn = vi.fn<ExecuteFeatureFn>().mockResolvedValue(undefined);
+    mockRunAgentFn = vi.fn<RunAgentFn>().mockResolvedValue(undefined);
 
     vi.mocked(secureFs.readFile).mockResolvedValue('Previous context');
     vi.mocked(secureFs.access).mockResolvedValue(undefined);

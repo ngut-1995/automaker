@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
+import type { CursorCliConfigFile } from '@automaker/types';
 import {
   getGlobalConfigPath,
   getProjectConfigPath,
@@ -98,7 +99,7 @@ describe('cursor-config-service.ts', () => {
       vi.mocked(fs.mkdir).mockResolvedValue(undefined);
       vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
-      const config = { version: 1, permissions: { allow: ['*'], deny: [] } };
+      const config: CursorCliConfigFile = { version: 1, permissions: { allow: ['*'], deny: [] } };
       await writeGlobalConfig(config);
 
       expect(fs.mkdir).toHaveBeenCalledWith(expect.stringContaining('.cursor'), {
@@ -146,7 +147,10 @@ describe('cursor-config-service.ts', () => {
       vi.mocked(fs.mkdir).mockResolvedValue(undefined);
       vi.mocked(fs.writeFile).mockResolvedValue(undefined);
 
-      const config = { version: 1, permissions: { allow: ['read'], deny: ['write'] } };
+      const config: CursorCliConfigFile = {
+        version: 1,
+        permissions: { allow: ['read'], deny: ['write'] },
+      };
       await writeProjectConfig(testProjectPath, config);
 
       expect(fs.mkdir).toHaveBeenCalledWith(expect.stringContaining('.cursor'), {

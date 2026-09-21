@@ -134,7 +134,7 @@ describe('pipeline-service.ts', () => {
         ],
       };
 
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -151,7 +151,7 @@ describe('pipeline-service.ts', () => {
         steps: [],
       };
 
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -169,7 +169,7 @@ describe('pipeline-service.ts', () => {
         steps: [],
       };
 
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockRejectedValue(new Error('Write failed'));
       vi.mocked(secureFs.unlink).mockResolvedValue(undefined);
 
@@ -186,7 +186,7 @@ describe('pipeline-service.ts', () => {
       const error = new Error('File not found') as NodeJS.ErrnoException;
       error.code = 'ENOENT';
       vi.mocked(secureFs.readFile).mockRejectedValue(error);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -223,7 +223,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -268,7 +268,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -310,7 +310,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -358,7 +358,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -397,7 +397,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -458,7 +458,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -508,7 +508,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -550,7 +550,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 
@@ -611,7 +611,7 @@ describe('pipeline-service.ts', () => {
       };
 
       vi.mocked(secureFs.readFile).mockResolvedValue(JSON.stringify(existingConfig) as any);
-      vi.mocked(ensureAutomakerDir).mockResolvedValue(undefined);
+      vi.mocked(ensureAutomakerDir).mockResolvedValue(path.join(testProjectDir, '.automaker'));
       vi.mocked(secureFs.writeFile).mockResolvedValue(undefined);
       vi.mocked(secureFs.rename).mockResolvedValue(undefined);
 

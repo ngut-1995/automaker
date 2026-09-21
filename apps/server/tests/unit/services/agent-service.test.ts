@@ -42,6 +42,7 @@ describe('agent-service.ts', () => {
     // Mock loadContextFiles to return empty context by default
     vi.mocked(contextLoader.loadContextFiles).mockResolvedValue({
       files: [],
+      memoryFiles: [],
       formattedPrompt: '',
     });
   });

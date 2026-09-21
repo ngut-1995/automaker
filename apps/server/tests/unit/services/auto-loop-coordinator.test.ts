@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import {
   AutoLoopCoordinator,
   getWorktreeAutoLoopKey,
@@ -15,7 +15,7 @@ import {
 import type { TypedEventBus } from '../../../src/services/typed-event-bus.js';
 import type { ConcurrencyManager } from '../../../src/services/concurrency-manager.js';
 import type { SettingsService } from '../../../src/services/settings-service.js';
-import type { Feature } from '@automaker/types';
+import { DEFAULT_GLOBAL_SETTINGS, type Feature } from '@automaker/types';
 
 describe('auto-loop-coordinator.ts', () => {
   // Mock dependencies
@@ -24,7 +24,7 @@ describe('auto-loop-coordinator.ts', () => {
   let mockSettingsService: SettingsService | null;
 
   // Callback mocks
-  let mockExecuteFeature: ExecuteFeatureFn;
+  let mockExecuteFeature: Mock<ExecuteFeatureFn>;
   let mockLoadPendingFeatures: LoadPendingFeaturesFn;
   let mockLoadAllFeatures: LoadAllFeaturesFn;
   let mockSaveExecutionState: SaveExecutionStateFn;
@@ -65,7 +65,7 @@ describe('auto-loop-coordinator.ts', () => {
     } as unknown as SettingsService;
 
     // Callback mocks
-    mockExecuteFeature = vi.fn().mockResolvedValue(undefined);
+    mockExecuteFeature = vi.fn<ExecuteFeatureFn>().mockResolvedValue(undefined);
     mockLoadPendingFeatures = vi.fn().mockResolvedValue([]);
     mockLoadAllFeatures = vi.fn().mockResolvedValue([]);
     mockSaveExecutionState = vi.fn().mockResolvedValue(undefined);
@@ -164,10 +164,11 @@ describe('auto-loop-coordinator.ts', () => {
 
     it('uses worktree-specific maxConcurrency from settings', async () => {
       vi.mocked(mockSettingsService!.getGlobalSettings).mockResolvedValue({
+        ...DEFAULT_GLOBAL_SETTINGS,
         maxConcurrency: 5,
-        projects: [{ id: 'proj-1', path: '/test/project' }],
+        projects: [{ id: 'proj-1', name: 'proj-1', path: '/test/project' }],
         autoModeByWorktree: {
-          'proj-1::__main__': { maxConcurrency: 7 },
+          'proj-1::__main__': { maxConcurrency: 7, branchName: null },
         },
       });
 

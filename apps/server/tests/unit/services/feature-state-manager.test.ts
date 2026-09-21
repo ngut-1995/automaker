@@ -79,6 +79,7 @@ describe('FeatureStateManager', () => {
     id: 'feature-123',
     name: 'Test Feature',
     title: 'Test Feature Title',
+    category: 'test',
     description: 'A test feature',
     status: 'backlog',
     createdAt: '2024-01-01T00:00:00Z',
@@ -282,7 +283,7 @@ describe('FeatureStateManager', () => {
             version: 1,
             reviewedByUser: false,
             currentTaskId: 'task-1',
-            tasks: [{ id: 'task-1', title: 'Task 1', status: 'in_progress', description: '' }],
+            tasks: [{ id: 'task-1', status: 'in_progress', description: '' }],
           },
         };
         await seedFeature(feature);
@@ -651,11 +652,11 @@ describe('FeatureStateManager', () => {
       );
       // Ensure it didn't duplicate the separator or header
       expect(
-        savedFeature.summary.match(new RegExp(PIPELINE_SUMMARY_HEADER_PREFIX + 'Code Review', 'g'))
+        savedFeature.summary?.match(new RegExp(PIPELINE_SUMMARY_HEADER_PREFIX + 'Code Review', 'g'))
           ?.length
       ).toBe(1);
       expect(
-        savedFeature.summary.match(new RegExp(PIPELINE_SUMMARY_SEPARATOR.trim(), 'g'))?.length
+        savedFeature.summary?.match(new RegExp(PIPELINE_SUMMARY_SEPARATOR.trim(), 'g'))?.length
       ).toBe(1);
     });
 
@@ -837,8 +838,8 @@ describe('FeatureStateManager', () => {
           version: 1,
           reviewedByUser: true,
           tasks: [
-            { id: 'task-1', title: 'Task 1', status: 'pending', description: '' },
-            { id: 'task-2', title: 'Task 2', status: 'pending', description: '' },
+            { id: 'task-1', status: 'pending', description: '' },
+            { id: 'task-2', status: 'pending', description: '' },
           ],
         },
       };
@@ -873,7 +874,7 @@ describe('FeatureStateManager', () => {
           status: 'approved',
           version: 1,
           reviewedByUser: true,
-          tasks: [{ id: 'task-1', title: 'Task 1', status: 'pending', description: '' }],
+          tasks: [{ id: 'task-1', status: 'pending', description: '' }],
         },
       };
 
@@ -915,7 +916,7 @@ describe('FeatureStateManager', () => {
           status: 'approved',
           version: 1,
           reviewedByUser: true,
-          tasks: [{ id: 'task-1', title: 'Task 1', status: 'pending', description: '' }],
+          tasks: [{ id: 'task-1', status: 'pending', description: '' }],
         },
       };
 
@@ -976,7 +977,7 @@ describe('FeatureStateManager', () => {
           status: 'approved',
           version: 1,
           reviewedByUser: true,
-          tasks: [{ id: 'task-1', title: 'Task 1', status: 'pending', description: '' }],
+          tasks: [{ id: 'task-1', status: 'pending', description: '' }],
         },
       };
 
