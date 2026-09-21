@@ -1,11 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import type { Feature } from '@automaker/types';
 import { FeatureRecord, IllegalTransitionError } from '@/services/feature-record.js';
 import { TypedEventBus } from '@/services/typed-event-bus.js';
+import { FeatureLoader } from '@/services/feature-loader.js';
 import { createEventEmitter, type EventEmitter } from '@/lib/events.js';
+
+const { mockCreateNotification } = vi.hoisted(() => ({
+  mockCreateNotification: vi.fn(),
+}));
+
+vi.mock('@/services/notification-service.js', () => ({
+  getNotificationService: () => ({ createNotification: mockCreateNotification }),
+}));
 
 interface EmittedEvent {
   type?: string;
@@ -17,6 +26,7 @@ describe('FeatureRecord', () => {
   let projectPath: string;
   let events: EventEmitter;
   let emitted: EmittedEvent[];
+  let loader: FeatureLoader;
   let record: FeatureRecord;
 
   const featureJsonPath = (featureId: string): string =>
@@ -36,7 +46,9 @@ describe('FeatureRecord', () => {
         emitted.push(payload as EmittedEvent);
       }
     });
-    record = new FeatureRecord(new TypedEventBus(events));
+    loader = new FeatureLoader();
+    vi.spyOn(loader, 'syncFeatureToAppSpec').mockResolvedValue(true);
+    record = new FeatureRecord(new TypedEventBus(events), loader);
   });
 
   afterEach(async () => {
@@ -82,6 +94,66 @@ describe('FeatureRecord', () => {
 
     expect(result.changed).toBe(false);
     expect(emitted).toEqual([]);
+  });
+
+  it('creates exactly one notification and one app-spec sync when finishing as verified', async () => {
+    const feature = await record.create(projectPath, {
+      category: 'test',
+      description: 'Verified flow',
+      status: 'in_progress',
+    });
+
+    await record.transition(projectPath, feature.id, 'finish', { outcome: 'verified' });
+
+    expect(mockCreateNotification).toHaveBeenCalledTimes(1);
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'feature_verified',
+        featureId: feature.id,
+        projectPath,
+      })
+    );
+    expect(loader.syncFeatureToAppSpec).toHaveBeenCalledTimes(1);
+    expect(loader.syncFeatureToAppSpec).toHaveBeenCalledWith(
+      projectPath,
+      expect.objectContaining({ status: 'verified' })
+    );
+  });
+
+  it('creates exactly one notification and no app-spec sync when finishing as waiting_approval', async () => {
+    const feature = await record.create(projectPath, {
+      category: 'test',
+      description: 'Waiting approval flow',
+      status: 'in_progress',
+    });
+
+    await record.transition(projectPath, feature.id, 'finish', { outcome: 'waiting_approval' });
+
+    expect(mockCreateNotification).toHaveBeenCalledTimes(1);
+    expect(mockCreateNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'feature_waiting_approval',
+        featureId: feature.id,
+        projectPath,
+      })
+    );
+    expect(loader.syncFeatureToAppSpec).not.toHaveBeenCalled();
+  });
+
+  it('runs no side effects when the transition is a no-op', async () => {
+    const feature = await record.create(projectPath, {
+      category: 'test',
+      description: 'No-op finish',
+      status: 'waiting_approval',
+    });
+
+    const result = await record.transition(projectPath, feature.id, 'finish', {
+      outcome: 'waiting_approval',
+    });
+
+    expect(result.changed).toBe(false);
+    expect(mockCreateNotification).not.toHaveBeenCalled();
+    expect(loader.syncFeatureToAppSpec).not.toHaveBeenCalled();
   });
 
   it('sets justFinishedAt on waiting_approval and clears it afterwards', async () => {

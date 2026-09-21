@@ -177,7 +177,8 @@ export class AutoModeServiceFacade {
     const planApprovalService = new PlanApprovalService(
       eventBus,
       featureStateManager,
-      settingsService
+      settingsService,
+      featureRecord
     );
     const agentExecutor = new AgentExecutor(
       eventBus,
@@ -742,11 +743,9 @@ export class AutoModeServiceFacade {
           filename: p.split('/').pop() || p,
           mimeType: 'image/*',
         }));
-        await this.featureStateManager.updateFeatureStatus(
-          this.projectPath,
-          featureId,
-          feature.status || 'in_progress'
-        );
+        await this.featureLoader.update(this.projectPath, featureId, {
+          imagePaths: feature.imagePaths,
+        });
       }
 
       // Delegate to executeFeature with the built continuation prompt

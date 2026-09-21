@@ -29,7 +29,7 @@ export type FeatureTrigger =
  */
 export interface TransitionContext {
   /** For 'finish': which terminal-ish status to land on. Defaults to verified. */
-  outcome?: 'verified' | 'waiting_approval';
+  outcome?: 'verified' | 'waiting_approval' | 'completed';
   /** For 'fail': whether the pipeline finished before the failure. */
   pipelineCompleted?: boolean;
   /** For 'enterStep': the pipeline step id to enter. */
@@ -112,9 +112,14 @@ export function resolveTransition(
       return accept('in_progress');
 
     case 'finish': {
-      if (!isInProgressFeatureStatus(current) && current !== 'waiting_approval') {
+      if (
+        !isInProgressFeatureStatus(current) &&
+        current !== 'waiting_approval' &&
+        current !== 'verified' &&
+        current !== 'completed'
+      ) {
         return reject(
-          `'finish' is only legal from in_progress, a pipeline step, or waiting_approval (was '${current}')`
+          `'finish' is only legal from in_progress, a pipeline step, waiting_approval, verified or completed (was '${current}')`
         );
       }
       return accept(context.outcome ?? 'verified');

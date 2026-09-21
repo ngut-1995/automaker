@@ -4,17 +4,27 @@
 
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
-import type { Feature, FeatureStatus } from '@automaker/types';
+import type { Feature, FeatureStatus, FeatureTrigger, TransitionContext } from '@automaker/types';
 import type { EventEmitter } from '../../../lib/events.js';
+import type { FeatureTransitioner } from '../../../services/feature-record.js';
 import { getErrorMessage, logError } from '../common.js';
-import { createLogger } from '@automaker/utils';
 
-const logger = createLogger('features/update');
+// Statuses whose transition owns notification/spec-sync side effects
+const TRANSITION_SIDE_EFFECTS: Partial<
+  Record<FeatureStatus, { trigger: FeatureTrigger; context: TransitionContext }>
+> = {
+  waiting_approval: { trigger: 'finish', context: { outcome: 'waiting_approval' } },
+  verified: { trigger: 'finish', context: { outcome: 'verified' } },
+  completed: { trigger: 'finish', context: { outcome: 'completed' } },
+};
 
-// Statuses that should trigger syncing to app_spec.txt
-const SYNC_TRIGGER_STATUSES: FeatureStatus[] = ['verified', 'completed'];
+const COMPLETION_EVENT_STATUSES: FeatureStatus[] = ['verified', 'completed'];
 
-export function createUpdateHandler(featureLoader: FeatureLoader, events?: EventEmitter) {
+export function createUpdateHandler(
+  featureLoader: FeatureLoader,
+  events?: EventEmitter,
+  featureRecord?: FeatureTransitioner
+) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const {
@@ -49,39 +59,54 @@ export function createUpdateHandler(featureLoader: FeatureLoader, events?: Event
       }
       const previousStatus = currentFeature.status as FeatureStatus;
       const newStatus = updates.status as FeatureStatus | undefined;
+      const transition = newStatus ? TRANSITION_SIDE_EFFECTS[newStatus] : undefined;
+      const statusChanged = newStatus !== undefined && newStatus !== previousStatus;
 
-      const updated = await featureLoader.update(
-        projectPath,
-        featureId,
-        updates,
-        descriptionHistorySource,
-        enhancementMode,
-        preEnhancementDescription
-      );
+      let updated: Feature;
 
-      // Emit completion event and sync to app_spec.txt when status transitions to verified/completed
-      if (newStatus && SYNC_TRIGGER_STATUSES.includes(newStatus) && previousStatus !== newStatus) {
-        events?.emit('feature:completed', {
-          featureId,
-          featureName: updated.title,
-          projectPath,
-          passes: true,
-          message:
-            newStatus === 'verified' ? 'Feature verified manually' : 'Feature completed manually',
-          executionMode: 'manual',
-        });
-
-        try {
-          const synced = await featureLoader.syncFeatureToAppSpec(projectPath, updated);
-          if (synced) {
-            logger.info(
-              `Synced feature "${updated.title || updated.id}" to app_spec.txt on status change to ${newStatus}`
-            );
-          }
-        } catch (syncError) {
-          // Log the sync error but don't fail the update operation
-          logger.error(`Failed to sync feature to app_spec.txt:`, syncError);
+      if (transition && statusChanged && featureRecord) {
+        // The record owns the status write and its notification/spec-sync side effects.
+        const fieldUpdates = { ...updates };
+        delete fieldUpdates.status;
+        if (Object.keys(fieldUpdates).length > 0) {
+          await featureLoader.update(
+            projectPath,
+            featureId,
+            fieldUpdates,
+            descriptionHistorySource,
+            enhancementMode,
+            preEnhancementDescription
+          );
         }
+        updated = (
+          await featureRecord.transition(
+            projectPath,
+            featureId,
+            transition.trigger,
+            transition.context
+          )
+        ).feature;
+
+        if (COMPLETION_EVENT_STATUSES.includes(newStatus)) {
+          events?.emit('feature:completed', {
+            featureId,
+            featureName: updated.title,
+            projectPath,
+            passes: true,
+            message:
+              newStatus === 'verified' ? 'Feature verified manually' : 'Feature completed manually',
+            executionMode: 'manual',
+          });
+        }
+      } else {
+        updated = await featureLoader.update(
+          projectPath,
+          featureId,
+          updates,
+          descriptionHistorySource,
+          enhancementMode,
+          preEnhancementDescription
+        );
       }
 
       res.json({ success: true, feature: updated });

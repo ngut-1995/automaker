@@ -42,14 +42,10 @@ import { finalizeInProgressTasks } from './feature-plan-tasks.js';
 const logger = createLogger('FeatureStateManager');
 
 // Notification type constants
-const NOTIFICATION_TYPE_WAITING_APPROVAL = 'feature_waiting_approval';
-const NOTIFICATION_TYPE_VERIFIED = 'feature_verified';
 const NOTIFICATION_TYPE_FEATURE_ERROR = 'feature_error';
 const NOTIFICATION_TYPE_AUTO_MODE_ERROR = 'auto_mode_error';
 
 // Notification title constants
-const NOTIFICATION_TITLE_WAITING_APPROVAL = 'Feature Ready for Review';
-const NOTIFICATION_TITLE_VERIFIED = 'Feature Verified';
 const NOTIFICATION_TITLE_FEATURE_ERROR = 'Feature Failed';
 const NOTIFICATION_TITLE_AUTO_MODE_ERROR = 'Auto Mode Error';
 
@@ -193,43 +189,6 @@ export class FeatureStateManager {
         projectPath,
         status,
       });
-
-      // Create notifications for important status changes
-      // Wrapped in try-catch so failures don't block syncFeatureToAppSpec below
-      try {
-        const notificationService = getNotificationService();
-        const displayName = this.getFeatureDisplayName(feature, featureId);
-
-        if (status === 'waiting_approval') {
-          await notificationService.createNotification({
-            type: NOTIFICATION_TYPE_WAITING_APPROVAL,
-            title: displayName,
-            message: NOTIFICATION_TITLE_WAITING_APPROVAL,
-            featureId,
-            projectPath,
-          });
-        } else if (status === 'verified') {
-          await notificationService.createNotification({
-            type: NOTIFICATION_TYPE_VERIFIED,
-            title: displayName,
-            message: NOTIFICATION_TITLE_VERIFIED,
-            featureId,
-            projectPath,
-          });
-        }
-      } catch (notificationError) {
-        logger.warn(`Failed to create notification for feature ${featureId}:`, notificationError);
-      }
-
-      // Sync completed/verified features to app_spec.txt
-      if (status === 'verified' || status === 'completed') {
-        try {
-          await this.featureLoader.syncFeatureToAppSpec(projectPath, feature);
-        } catch (syncError) {
-          // Log but don't fail the status update if sync fails
-          logger.warn(`Failed to sync feature ${featureId} to app_spec.txt:`, syncError);
-        }
-      }
     } catch (error) {
       logger.error(`Failed to update feature status for ${featureId}:`, error);
     }
