@@ -9,7 +9,7 @@ import type { Feature, PipelineStep } from '@automaker/types';
 import {
   PipelineOrchestrator,
   type PipelineContext,
-  type UpdateFeatureStatusFn,
+  type TransitionFeatureFn,
   type BuildFeaturePromptFn,
   type ExecuteFeatureFn,
   type RunAgentFn,
@@ -90,7 +90,7 @@ describe('PipelineOrchestrator - providerId passthrough', () => {
   let mockTestRunnerService: TestRunnerService;
   let mockWorktreeResolver: WorktreeResolver;
   let mockConcurrencyManager: ConcurrencyManager;
-  let mockUpdateFeatureStatusFn: UpdateFeatureStatusFn;
+  let mockTransitionFeatureFn: TransitionFeatureFn;
   let mockLoadContextFilesFn: vi.Mock;
   let mockBuildFeaturePromptFn: BuildFeaturePromptFn;
   let mockExecuteFeatureFn: ExecuteFeatureFn;
@@ -169,7 +169,10 @@ describe('PipelineOrchestrator - providerId passthrough', () => {
       getRunningFeature: vi.fn().mockReturnValue(undefined),
     } as unknown as ConcurrencyManager;
 
-    mockUpdateFeatureStatusFn = vi.fn().mockResolvedValue(undefined);
+    mockTransitionFeatureFn = vi.fn().mockResolvedValue({
+      feature: createFeatureWithProvider(),
+      changed: true,
+    });
     mockLoadContextFilesFn = vi.fn().mockResolvedValue({ contextPrompt: 'test context' });
     mockBuildFeaturePromptFn = vi.fn().mockReturnValue('Feature prompt content');
     mockExecuteFeatureFn = vi.fn().mockResolvedValue(undefined);
@@ -197,7 +200,7 @@ describe('PipelineOrchestrator - providerId passthrough', () => {
       mockWorktreeResolver,
       mockConcurrencyManager,
       null,
-      mockUpdateFeatureStatusFn,
+      mockTransitionFeatureFn,
       mockLoadContextFilesFn,
       mockBuildFeaturePromptFn,
       mockExecuteFeatureFn,

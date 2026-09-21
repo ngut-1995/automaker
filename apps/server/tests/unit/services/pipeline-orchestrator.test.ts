@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Feature, PipelineStep, PipelineConfig } from '@automaker/types';
+import type { Feature, FeatureStatus, PipelineStep, PipelineConfig } from '@automaker/types';
 import {
   PipelineOrchestrator,
   type PipelineContext,
   type PipelineStatusInfo,
-  type UpdateFeatureStatusFn,
+  type TransitionFeatureFn,
   type BuildFeaturePromptFn,
   type ExecuteFeatureFn,
   type RunAgentFn,
@@ -90,7 +90,7 @@ describe('PipelineOrchestrator', () => {
   let mockWorktreeResolver: WorktreeResolver;
   let mockConcurrencyManager: ConcurrencyManager;
   let mockSettingsService: SettingsService | null;
-  let mockUpdateFeatureStatusFn: UpdateFeatureStatusFn;
+  let mockTransitionFeatureFn: TransitionFeatureFn;
   let mockLoadContextFilesFn: vi.Mock;
   let mockBuildFeaturePromptFn: BuildFeaturePromptFn;
   let mockExecuteFeatureFn: ExecuteFeatureFn;
@@ -185,7 +185,7 @@ describe('PipelineOrchestrator', () => {
 
     mockSettingsService = null;
 
-    mockUpdateFeatureStatusFn = vi.fn().mockResolvedValue(undefined);
+    mockTransitionFeatureFn = vi.fn().mockResolvedValue({ feature: testFeature, changed: true });
     mockLoadContextFilesFn = vi.fn().mockResolvedValue({ contextPrompt: 'test context' });
     mockBuildFeaturePromptFn = vi.fn().mockReturnValue('Feature prompt content');
     mockExecuteFeatureFn = vi.fn().mockResolvedValue(undefined);
@@ -218,7 +218,7 @@ describe('PipelineOrchestrator', () => {
       mockWorktreeResolver,
       mockConcurrencyManager,
       mockSettingsService,
-      mockUpdateFeatureStatusFn,
+      mockTransitionFeatureFn,
       mockLoadContextFilesFn,
       mockBuildFeaturePromptFn,
       mockExecuteFeatureFn,
@@ -244,7 +244,7 @@ describe('PipelineOrchestrator', () => {
         mockWorktreeResolver,
         mockConcurrencyManager,
         null,
-        mockUpdateFeatureStatusFn,
+        mockTransitionFeatureFn,
         mockLoadContextFilesFn,
         mockBuildFeaturePromptFn,
         mockExecuteFeatureFn,
@@ -521,10 +521,11 @@ describe('PipelineOrchestrator', () => {
       const context = createMergeContext();
       await orchestrator.attemptMerge(context);
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
         '/test/project',
         'feature-1',
-        'merge_conflict'
+        'mergeConflict',
+        undefined
       );
     });
 
@@ -641,10 +642,11 @@ describe('PipelineOrchestrator', () => {
 
       await orchestrator.resumePipeline('/test/project', testFeature, true, validPipelineInfo);
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
         '/test/project',
         'feature-1',
-        'in_progress'
+        'start',
+        undefined
       );
       expect(mockExecuteFeatureFn).toHaveBeenCalled();
     });
@@ -669,11 +671,9 @@ describe('PipelineOrchestrator', () => {
 
       await orchestrator.resumePipeline('/test/project', testFeature, true, invalidPipelineInfo);
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
       expect(mockEventBus.emitAutoModeEvent).toHaveBeenCalledWith(
         'auto_mode_feature_complete',
         expect.objectContaining({ message: expect.stringContaining('no longer exists') })
@@ -691,11 +691,9 @@ describe('PipelineOrchestrator', () => {
 
       await orchestrator.resumePipeline('/test/project', testFeature, true, invalidPipelineInfo);
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
-        '/test/project',
-        'feature-1',
-        'verified'
-      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith('/test/project', 'feature-1', 'finish', {
+        outcome: 'verified',
+      });
       const completeCalls = vi
         .mocked(mockEventBus.emitAutoModeEvent)
         .mock.calls.filter((call) => call[0] === 'auto_mode_feature_complete');
@@ -831,15 +829,17 @@ describe('PipelineOrchestrator', () => {
       const context = createPipelineContext();
       await orchestrator.executePipeline(context);
 
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
         '/test/project',
         'feature-1',
-        'pipeline_step-1'
+        'enterStep',
+        { stepId: 'step-1' }
       );
-      expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
         '/test/project',
         'feature-1',
-        'pipeline_step-2'
+        'enterStep',
+        { stepId: 'step-2' }
       );
     });
 
@@ -1072,10 +1072,11 @@ describe('PipelineOrchestrator', () => {
         await orchestrator.resumePipeline('/test/project', testFeature, true, pipelineInfo);
 
         // Should restart from beginning when no context
-        expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+        expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
           '/test/project',
           'feature-1',
-          'in_progress'
+          'start',
+          undefined
         );
         expect(mockExecuteFeatureFn).toHaveBeenCalled();
       });
@@ -1095,10 +1096,13 @@ describe('PipelineOrchestrator', () => {
         await orchestrator.resumePipeline('/test/project', testFeature, true, pipelineInfo);
 
         // Should complete feature when step no longer exists
-        expect(mockUpdateFeatureStatusFn).toHaveBeenCalledWith(
+        expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
           '/test/project',
           'feature-1',
-          'verified'
+          'finish',
+          {
+            outcome: 'verified',
+          }
         );
       });
 
@@ -1136,6 +1140,109 @@ describe('PipelineOrchestrator', () => {
           })
         );
       });
+    });
+  });
+
+  describe('record transitions', () => {
+    beforeEach(() => {
+      vi.mocked(performMerge).mockResolvedValue({ success: true });
+    });
+
+    const createMergeContext = (status: FeatureStatus): PipelineContext => ({
+      projectPath: '/test/project',
+      featureId: 'feature-1',
+      feature: { ...testFeature, status },
+      steps: testSteps,
+      workDir: '/test/project',
+      worktreePath: '/test/worktree',
+      branchName: 'feature/test-1',
+      abortController: new AbortController(),
+      autoLoadClaudeMd: true,
+      testAttempts: 0,
+      maxTestAttempts: 5,
+    });
+
+    const useStatefulRecord = (initial: FeatureStatus): { current: () => FeatureStatus } => {
+      let status = initial;
+      mockTransitionFeatureFn.mockImplementation(
+        async (_projectPath, _featureId, trigger, context) => {
+          if (trigger === 'enterStep') status = `pipeline_${context?.stepId}` as FeatureStatus;
+          else if (trigger === 'finish') status = context?.outcome ?? 'verified';
+          else if (trigger === 'mergeConflict') status = 'merge_conflict';
+          else if (trigger === 'start') status = 'in_progress';
+          else if (trigger === 'fail')
+            status = context?.pipelineCompleted ? 'waiting_approval' : 'backlog';
+          return { feature: { ...testFeature, status }, changed: true };
+        }
+      );
+      return { current: () => status };
+    };
+
+    it('enters a step through the record and persists pipeline_<stepId>', async () => {
+      const record = useStatefulRecord('in_progress');
+
+      await orchestrator.executePipeline(createMergeContext('in_progress'));
+
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
+        '/test/project',
+        'feature-1',
+        'enterStep',
+        { stepId: 'step-1' }
+      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
+        '/test/project',
+        'feature-1',
+        'enterStep',
+        { stepId: 'step-2' }
+      );
+      expect(record.current()).toBe('pipeline_step-2');
+    });
+
+    it('records a merge conflict through the record', async () => {
+      const record = useStatefulRecord('pipeline_step-2');
+      vi.mocked(performMerge).mockResolvedValue({
+        success: false,
+        hasConflicts: true,
+        error: 'Merge conflict',
+      });
+
+      await orchestrator.attemptMerge(createMergeContext('pipeline_step-2'));
+
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
+        '/test/project',
+        'feature-1',
+        'mergeConflict',
+        undefined
+      );
+      expect(record.current()).toBe('merge_conflict');
+    });
+
+    it('resumes from a conflict by re-entering the step and completing through the record', async () => {
+      const record = useStatefulRecord('merge_conflict');
+      vi.mocked(secureFs.access).mockResolvedValue(undefined);
+      vi.mocked(performMerge).mockResolvedValue({ success: true });
+
+      await orchestrator.resumeFromStep(
+        '/test/project',
+        { ...testFeature, status: 'merge_conflict' },
+        true,
+        0,
+        testConfig
+      );
+
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
+        '/test/project',
+        'feature-1',
+        'enterStep',
+        { stepId: 'step-1' }
+      );
+      expect(mockTransitionFeatureFn).toHaveBeenCalledWith(
+        '/test/project',
+        'feature-1',
+        'enterStep',
+        { stepId: 'step-2' }
+      );
+      expect(record.current()).toBe('verified');
     });
   });
 });

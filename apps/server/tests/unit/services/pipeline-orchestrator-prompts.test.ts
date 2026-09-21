@@ -24,7 +24,7 @@ describe('PipelineOrchestrator Prompts', () => {
       null as any, // worktreeResolver
       null as any, // concurrencyManager
       null as any, // settingsService
-      null as any, // updateFeatureStatusFn
+      null as any, // transitionFeatureFn
       null as any, // loadContextFilesFn
       mockBuildFeaturePrompt,
       null as any, // executeFeatureFn

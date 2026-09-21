@@ -5,6 +5,8 @@
 import path from 'path';
 import type {
   Feature,
+  FeatureTrigger,
+  TransitionContext,
   PipelineStep,
   PipelineConfig,
   FeatureStatusWithPipeline,
@@ -34,7 +36,7 @@ import type {
   PipelineStatusInfo,
   StepResult,
   MergeResult,
-  UpdateFeatureStatusFn,
+  TransitionFeatureFn,
   BuildFeaturePromptFn,
   ExecuteFeatureFn,
   RunAgentFn,
@@ -46,7 +48,7 @@ export type {
   PipelineStatusInfo,
   StepResult,
   MergeResult,
-  UpdateFeatureStatusFn,
+  TransitionFeatureFn,
   BuildFeaturePromptFn,
   ExecuteFeatureFn,
   RunAgentFn,
@@ -63,12 +65,31 @@ export class PipelineOrchestrator {
     private worktreeResolver: WorktreeResolver,
     private concurrencyManager: ConcurrencyManager,
     private settingsService: SettingsService | null,
-    private updateFeatureStatusFn: UpdateFeatureStatusFn,
+    private transitionFeatureFn: TransitionFeatureFn,
     private loadContextFilesFn: typeof loadContextFiles,
     private buildFeaturePromptFn: BuildFeaturePromptFn,
     private executeFeatureFn: ExecuteFeatureFn,
     private runAgentFn: RunAgentFn
   ) {}
+
+  private async applyTransition(
+    projectPath: string,
+    featureId: string,
+    trigger: FeatureTrigger,
+    context?: TransitionContext
+  ): Promise<void> {
+    try {
+      await this.transitionFeatureFn(projectPath, featureId, trigger, context);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'IllegalTransitionError') {
+        logger.debug(
+          `Skipped illegal transition '${trigger}' for feature ${featureId}: ${error.message}`
+        );
+        return;
+      }
+      throw error;
+    }
+  }
 
   async executePipeline(ctx: PipelineContext): Promise<void> {
     const {
@@ -99,7 +120,7 @@ export class PipelineOrchestrator {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       if (abortController.signal.aborted) throw new Error('Pipeline execution aborted');
-      await this.updateFeatureStatusFn(projectPath, featureId, `pipeline_${step.id}`);
+      await this.applyTransition(projectPath, featureId, 'enterStep', { stepId: step.id });
       this.eventBus.emitAutoModeEvent('auto_mode_progress', {
         featureId,
         branchName: feature.branchName ?? null,
@@ -241,7 +262,7 @@ export class PipelineOrchestrator {
 
     if (!hasContext) {
       logger.warn(`No context for feature ${featureId}, restarting pipeline`);
-      await this.updateFeatureStatusFn(projectPath, featureId, 'in_progress');
+      await this.applyTransition(projectPath, featureId, 'start');
       return this.executeFeatureFn(projectPath, featureId, useWorktrees, false, undefined, {
         _calledInternally: true,
       });
@@ -249,8 +270,8 @@ export class PipelineOrchestrator {
 
     if (pipelineInfo.stepIndex === -1) {
       logger.warn(`Step ${pipelineInfo.stepId} no longer exists, completing feature`);
-      const finalStatus = feature.skipTests ? 'waiting_approval' : 'verified';
-      await this.updateFeatureStatusFn(projectPath, featureId, finalStatus);
+      const outcome = feature.skipTests ? 'waiting_approval' : 'verified';
+      await this.applyTransition(projectPath, featureId, 'finish', { outcome });
       const runningEntryForStep = this.concurrencyManager.getRunningFeature(featureId);
       if (runningEntryForStep?.isAutoMode) {
         this.eventBus.emitAutoModeEvent('auto_mode_feature_complete', {
@@ -300,7 +321,9 @@ export class PipelineOrchestrator {
         feature.excludedPipelineSteps
       );
       if (!pipelineService.isPipelineStatus(nextStatus)) {
-        await this.updateFeatureStatusFn(projectPath, featureId, nextStatus);
+        await this.applyTransition(projectPath, featureId, 'finish', {
+          outcome: nextStatus === 'waiting_approval' ? 'waiting_approval' : 'verified',
+        });
         const runningEntryForExcluded = this.concurrencyManager.getRunningFeature(featureId);
         if (runningEntryForExcluded?.isAutoMode) {
           this.eventBus.emitAutoModeEvent('auto_mode_feature_complete', {
@@ -325,8 +348,8 @@ export class PipelineOrchestrator {
       .slice(startFromStepIndex)
       .filter((step) => !excludedStepIds.has(step.id));
     if (stepsToExecute.length === 0) {
-      const finalStatus = feature.skipTests ? 'waiting_approval' : 'verified';
-      await this.updateFeatureStatusFn(projectPath, featureId, finalStatus);
+      const outcome = feature.skipTests ? 'waiting_approval' : 'verified';
+      await this.applyTransition(projectPath, featureId, 'finish', { outcome });
       const runningEntryForAllExcluded = this.concurrencyManager.getRunningFeature(featureId);
       if (runningEntryForAllExcluded?.isAutoMode) {
         this.eventBus.emitAutoModeEvent('auto_mode_feature_complete', {
@@ -408,11 +431,11 @@ export class PipelineOrchestrator {
 
       // Re-fetch feature to check if executePipeline set a terminal status (e.g., merge_conflict)
       const reloadedFeature = await this.featureStateManager.loadFeature(projectPath, featureId);
-      const finalStatus = feature.skipTests ? 'waiting_approval' : 'verified';
+      const outcome = feature.skipTests ? 'waiting_approval' : 'verified';
 
       // Only update status if not already in a terminal state
       if (reloadedFeature && reloadedFeature.status !== 'merge_conflict') {
-        await this.updateFeatureStatusFn(projectPath, featureId, finalStatus);
+        await this.applyTransition(projectPath, featureId, 'finish', { outcome });
       }
       logger.info(`Pipeline resume completed for feature ${featureId}`);
       if (runningEntry.isAutoMode) {
@@ -443,7 +466,6 @@ export class PipelineOrchestrator {
       } else {
         // If pipeline steps completed successfully, don't send the feature back to backlog.
         // The pipeline work is done — set to waiting_approval so the user can review.
-        const fallbackStatus = pipelineCompleted ? 'waiting_approval' : 'backlog';
         if (pipelineCompleted) {
           logger.info(
             `[resumeFromStep] Feature ${featureId} failed after pipeline completed. ` +
@@ -454,7 +476,7 @@ export class PipelineOrchestrator {
         // Don't overwrite terminal states like 'merge_conflict' that were set during pipeline execution
         const currentFeature = await this.featureStateManager.loadFeature(projectPath, featureId);
         if (currentFeature?.status !== 'merge_conflict') {
-          await this.updateFeatureStatusFn(projectPath, featureId, fallbackStatus);
+          await this.applyTransition(projectPath, featureId, 'fail', { pipelineCompleted });
         }
         this.eventBus.emitAutoModeEvent('auto_mode_error', {
           featureId,
@@ -599,7 +621,7 @@ export class PipelineOrchestrator {
 
       if (!result.success) {
         if (result.hasConflicts) {
-          await this.updateFeatureStatusFn(projectPath, featureId, 'merge_conflict');
+          await this.applyTransition(projectPath, featureId, 'mergeConflict');
           this.eventBus.emitAutoModeEvent('pipeline_merge_conflict', {
             featureId,
             branchName,

@@ -2,7 +2,13 @@
  * Pipeline Types - Type definitions for PipelineOrchestrator
  */
 
-import type { Feature, FeatureStatus, PipelineStep, PipelineConfig } from '@automaker/types';
+import type {
+  Feature,
+  FeatureTrigger,
+  TransitionContext,
+  PipelineStep,
+  PipelineConfig,
+} from '@automaker/types';
 
 export interface PipelineContext {
   projectPath: string;
@@ -41,11 +47,12 @@ export interface MergeResult {
   error?: string;
 }
 
-export type UpdateFeatureStatusFn = (
+export type TransitionFeatureFn = (
   projectPath: string,
   featureId: string,
-  status: FeatureStatus
-) => Promise<void>;
+  trigger: FeatureTrigger,
+  context?: TransitionContext
+) => Promise<{ feature: Feature; changed: boolean }>;
 
 export type BuildFeaturePromptFn = (
   feature: Feature,
