@@ -2,6 +2,8 @@
  * Pipeline types for AutoMaker custom workflow steps
  */
 
+import type { FeatureStatus } from './feature.js';
+
 export interface PipelineStep {
   id: string;
   name: string;
@@ -30,16 +32,7 @@ export function isPipelineStatus(status: string | null | undefined): status is P
   return status.startsWith(prefix) && status.length > prefix.length;
 }
 
-export type FeatureStatusWithPipeline =
-  | 'backlog'
-  | 'merge_conflict'
-  | 'ready'
-  | 'in_progress'
-  | 'interrupted'
-  | 'waiting_approval'
-  | 'verified'
-  | 'completed'
-  | PipelineStatus;
+export type FeatureStatusWithPipeline = FeatureStatus;
 
 export const PIPELINE_SUMMARY_SEPARATOR = '\n\n---\n\n';
 export const PIPELINE_SUMMARY_HEADER_PREFIX = '### ';

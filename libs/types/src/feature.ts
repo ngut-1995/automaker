@@ -86,7 +86,7 @@ export interface Feature {
   description: string;
   passes?: boolean;
   priority?: number;
-  status?: string;
+  status?: FeatureStatus;
   dependencies?: string[];
   spec?: string;
   model?: string;
@@ -110,7 +110,19 @@ export interface Feature {
   [key: string]: unknown; // Keep catch-all for extensibility
 }
 
-export type FeatureStatus = 'pending' | 'running' | 'completed' | 'failed' | 'verified';
+export type FeatureStatus =
+  | 'backlog'
+  | 'ready'
+  | 'in_progress'
+  | 'interrupted'
+  | 'waiting_approval'
+  | 'verified'
+  | 'completed'
+  | 'merge_conflict'
+  | `pipeline_${string}`
+  | 'pending'
+  | 'running'
+  | 'failed';
 
 /**
  * Export format for a feature, used when exporting features to share or backup

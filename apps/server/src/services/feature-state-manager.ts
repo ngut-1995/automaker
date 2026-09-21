@@ -14,7 +14,13 @@
  */
 
 import path from 'path';
-import type { Feature, FeatureStatusWithPipeline, ParsedTask, PlanSpec } from '@automaker/types';
+import type {
+  Feature,
+  FeatureStatus,
+  FeatureStatusWithPipeline,
+  ParsedTask,
+  PlanSpec,
+} from '@automaker/types';
 import { isPipelineStatus } from '@automaker/types';
 import {
   atomicWriteJson,
@@ -132,7 +138,11 @@ export class FeatureStateManager {
    * @param featureId - ID of the feature to update
    * @param status - New status value
    */
-  async updateFeatureStatus(projectPath: string, featureId: string, status: string): Promise<void> {
+  async updateFeatureStatus(
+    projectPath: string,
+    featureId: string,
+    status: FeatureStatus
+  ): Promise<void> {
     const featureDir = getFeatureDir(projectPath, featureId);
     const featurePath = path.join(featureDir, 'feature.json');
 

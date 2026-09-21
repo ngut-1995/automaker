@@ -5,7 +5,13 @@
  * allowing the service to delegate to other services without circular dependencies.
  */
 
-import type { Feature, PlanningMode, ThinkingLevel, ReasoningEffort } from '@automaker/types';
+import type {
+  Feature,
+  FeatureStatus,
+  PlanningMode,
+  ThinkingLevel,
+  ReasoningEffort,
+} from '@automaker/types';
 import type { loadContextFiles } from '@automaker/utils';
 import type { PipelineContext } from './pipeline-orchestrator.js';
 
@@ -50,7 +56,7 @@ export type ExecutePipelineFn = (context: PipelineContext) => Promise<void>;
 export type UpdateFeatureStatusFn = (
   projectPath: string,
   featureId: string,
-  status: string
+  status: FeatureStatus
 ) => Promise<void>;
 
 /**
