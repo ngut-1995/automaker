@@ -3,13 +3,13 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
 
 const logger = createLogger('AutoMode');
 
-export function createRunFeatureHandler(autoModeService: AutoModeServiceCompat) {
+export function createRunFeatureHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureId, useWorktrees } = req.body as {
@@ -32,8 +32,8 @@ export function createRunFeatureHandler(autoModeService: AutoModeServiceCompat) 
 
       // Start execution in background
       // executeFeature derives workDir from feature.branchName
-      autoModeService
-        .executeFeature(projectPath, featureId, useWorktrees ?? false, false)
+      getFacade(projectPath)
+        .executeFeature(featureId, useWorktrees ?? false, false)
         .catch((error) => {
           logger.error(`Feature ${featureId} error:`, error);
         });

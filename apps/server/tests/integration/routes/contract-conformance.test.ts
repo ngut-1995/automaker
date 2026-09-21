@@ -128,10 +128,10 @@ describe('contract conformance', () => {
   });
 
   it('auto-mode mount', () => {
-    const handlers = createAutoModeHandlers({} as never);
+    const handlers = createAutoModeHandlers({} as never, {} as never);
     expectContractMount(AUTO_MODE_MOUNT, handlers);
     // The public factory builds the same router.
-    expect(registeredRoutes(createAutoModeRoutes({} as never)).length).toBe(
+    expect(registeredRoutes(createAutoModeRoutes({} as never, {} as never)).length).toBe(
       operationNamesForMount(AUTO_MODE_MOUNT).length
     );
   });
@@ -156,7 +156,7 @@ describe('contract conformance', () => {
   it('projects mount', () => {
     expectContractMount(
       PROJECTS_MOUNT,
-      createProjectsHandlers({} as never, {} as never, {} as never, {} as never)
+      createProjectsHandlers({} as never, {} as never, {} as never, {} as never, {} as never)
     );
   });
 
@@ -283,12 +283,12 @@ describe('contract conformance', () => {
   it('every contract mount has handlers and registers every entry', () => {
     const handlerFactories: Record<string, () => OperationHandlers> = {
       [FEATURES_MOUNT]: () => createFeaturesHandlers({} as never),
-      [AUTO_MODE_MOUNT]: () => createAutoModeHandlers({} as never),
+      [AUTO_MODE_MOUNT]: () => createAutoModeHandlers({} as never, {} as never),
       [RUNNING_AGENTS_MOUNT]: () => createRunningAgentsHandlers({} as never),
       [WORKTREE_MOUNT]: () => createWorktreeHandlers({} as never),
       [SETTINGS_MOUNT]: () => createSettingsHandlers({} as never),
       [PROJECTS_MOUNT]: () =>
-        createProjectsHandlers({} as never, {} as never, {} as never, {} as never),
+        createProjectsHandlers({} as never, {} as never, {} as never, {} as never, {} as never),
       [CONTEXT_MOUNT]: () => createContextHandlers(),
       [SPEC_REGENERATION_MOUNT]: () => createSpecRegenerationHandlers({} as never),
       [BACKLOG_PLAN_MOUNT]: () => createBacklogPlanHandlers({} as never),

@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import type { FeatureLoader } from '../../services/feature-loader.js';
-import type { AutoModeServiceCompat } from '../../services/auto-mode/index.js';
+import type { FacadeProvider, GlobalAutoModeService } from '../../services/auto-mode/index.js';
 import type { SettingsService } from '../../services/settings-service.js';
 import type { NotificationService } from '../../services/notification-service.js';
 import { registerContractOperations, type OperationHandlers } from '../contract.js';
@@ -17,14 +17,16 @@ export const PROJECTS_MOUNT = '/api/projects';
 
 export function createProjectsHandlers(
   featureLoader: FeatureLoader,
-  autoModeService: AutoModeServiceCompat,
+  global: GlobalAutoModeService,
+  getFacade: FacadeProvider,
   settingsService: SettingsService,
   notificationService: NotificationService
 ): OperationHandlers {
   return {
     'projects.getOverview': createOverviewHandler(
       featureLoader,
-      autoModeService,
+      global,
+      getFacade,
       settingsService,
       notificationService
     ),
@@ -33,13 +35,14 @@ export function createProjectsHandlers(
 
 export function createProjectsRoutes(
   featureLoader: FeatureLoader,
-  autoModeService: AutoModeServiceCompat,
+  global: GlobalAutoModeService,
+  getFacade: FacadeProvider,
   settingsService: SettingsService,
   notificationService: NotificationService
 ): Router {
   return registerContractOperations(
     Router(),
     PROJECTS_MOUNT,
-    createProjectsHandlers(featureLoader, autoModeService, settingsService, notificationService)
+    createProjectsHandlers(featureLoader, global, getFacade, settingsService, notificationService)
   );
 }

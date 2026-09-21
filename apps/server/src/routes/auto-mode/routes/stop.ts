@@ -3,13 +3,13 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
 
 const logger = createLogger('AutoMode');
 
-export function createStopHandler(autoModeService: AutoModeServiceCompat) {
+export function createStopHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, branchName } = req.body as {
@@ -31,8 +31,10 @@ export function createStopHandler(autoModeService: AutoModeServiceCompat) {
         ? `worktree ${normalizedBranchName}`
         : 'main worktree';
 
+      const facade = getFacade(projectPath);
+
       // Check if running
-      if (!autoModeService.isAutoLoopRunningForProject(projectPath, normalizedBranchName)) {
+      if (!facade.isAutoLoopRunning(normalizedBranchName)) {
         res.json({
           success: true,
           message: `Auto mode is not running for ${worktreeDesc}`,
@@ -43,10 +45,7 @@ export function createStopHandler(autoModeService: AutoModeServiceCompat) {
       }
 
       // Stop the auto loop for this project/worktree
-      const runningCount = await autoModeService.stopAutoLoopForProject(
-        projectPath,
-        normalizedBranchName
-      );
+      const runningCount = await facade.stopAutoLoop(normalizedBranchName);
 
       logger.info(
         `Stopped auto loop for ${worktreeDesc} in project: ${projectPath}, ${runningCount} features still running`

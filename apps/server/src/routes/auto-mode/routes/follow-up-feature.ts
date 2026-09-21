@@ -3,13 +3,13 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
 
 const logger = createLogger('AutoMode');
 
-export function createFollowUpFeatureHandler(autoModeService: AutoModeServiceCompat) {
+export function createFollowUpFeatureHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureId, prompt, imagePaths, useWorktrees } = req.body as {
@@ -32,8 +32,8 @@ export function createFollowUpFeatureHandler(autoModeService: AutoModeServiceCom
       // followUpFeature derives workDir from feature.branchName
       // Default to false to match run-feature/resume-feature behavior.
       // Worktrees should only be used when explicitly enabled by the user.
-      autoModeService
-        .followUpFeature(projectPath, featureId, prompt, imagePaths, useWorktrees ?? false)
+      getFacade(projectPath)
+        .followUpFeature(featureId, prompt, imagePaths, useWorktrees ?? false)
         .catch((error) => {
           logger.error(`[AutoMode] Follow up feature ${featureId} error:`, error);
         });

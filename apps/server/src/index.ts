@@ -497,13 +497,16 @@ app.use(
   '/api/features',
   createFeaturesRoutes(featureLoader, settingsService, events, autoModeService)
 );
-app.use('/api/auto-mode', createAutoModeRoutes(autoModeService));
+app.use(
+  '/api/auto-mode',
+  createAutoModeRoutes(globalAutoModeService, (p) => facadeCache.getFacade(p))
+);
 app.use('/api/enhance-prompt', createEnhancePromptRoutes(settingsService));
 app.use('/api/worktree', createWorktreeRoutes(events, settingsService, featureLoader));
 app.use('/api/git', createGitRoutes());
 app.use('/api/models', createModelsRoutes());
 app.use('/api/spec-regeneration', createSpecRegenerationRoutes(events, settingsService));
-app.use('/api/running-agents', createRunningAgentsRoutes(autoModeService));
+app.use('/api/running-agents', createRunningAgentsRoutes(globalAutoModeService));
 app.use('/api/workspace', createWorkspaceRoutes());
 app.use('/api/templates', createTemplatesRoutes());
 app.use('/api/terminal', createTerminalRoutes());
@@ -522,7 +525,13 @@ app.use('/api/notifications', createNotificationsRoutes(notificationService));
 app.use('/api/event-history', createEventHistoryRoutes(eventHistoryService, settingsService));
 app.use(
   '/api/projects',
-  createProjectsRoutes(featureLoader, autoModeService, settingsService, notificationService)
+  createProjectsRoutes(
+    featureLoader,
+    globalAutoModeService,
+    (p) => facadeCache.getFacade(p),
+    settingsService,
+    notificationService
+  )
 );
 
 // Create HTTP server

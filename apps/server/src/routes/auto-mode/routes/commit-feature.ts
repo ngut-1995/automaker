@@ -3,10 +3,10 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { getErrorMessage, logError } from '../common.js';
 
-export function createCommitFeatureHandler(autoModeService: AutoModeServiceCompat) {
+export function createCommitFeatureHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureId, worktreePath } = req.body as {
@@ -23,7 +23,7 @@ export function createCommitFeatureHandler(autoModeService: AutoModeServiceCompa
         return;
       }
 
-      const commitHash = await autoModeService.commitFeature(projectPath, featureId, worktreePath);
+      const commitHash = await getFacade(projectPath).commitFeature(featureId, worktreePath);
       res.json({ success: true, commitHash });
     } catch (error) {
       logError(error, 'Commit feature failed');

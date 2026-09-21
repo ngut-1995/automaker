@@ -10,7 +10,8 @@
 import type { Request, Response } from 'express';
 import type { FeatureLoader } from '../../../services/feature-loader.js';
 import type {
-  AutoModeServiceCompat,
+  FacadeProvider,
+  GlobalAutoModeService,
   RunningAgentInfo,
   ProjectAutoModeStatus,
 } from '../../../services/auto-mode/index.js';
@@ -140,7 +141,8 @@ function getLastActivityAt(features: Feature[]): string | undefined {
 
 export function createOverviewHandler(
   featureLoader: FeatureLoader,
-  autoModeService: AutoModeServiceCompat,
+  global: GlobalAutoModeService,
+  getFacade: FacadeProvider,
   settingsService: SettingsService,
   notificationService: NotificationService
 ) {
@@ -151,7 +153,7 @@ export function createOverviewHandler(
       const projectRefs: ProjectRef[] = settings.projects || [];
 
       // Get all running agents once to count live running features per project
-      const allRunningAgents: RunningAgentInfo[] = await autoModeService.getRunningAgents();
+      const allRunningAgents: RunningAgentInfo[] = await global.getRunningAgents();
 
       // Collect project statuses in parallel
       const projectStatusPromises = projectRefs.map(async (projectRef): Promise<ProjectStatus> => {
@@ -162,10 +164,9 @@ export function createOverviewHandler(
           const totalFeatures = features.length;
 
           // Get auto-mode status for this project (main worktree, branchName = null)
-          const autoModeStatus: ProjectAutoModeStatus = await autoModeService.getStatusForProject(
-            projectRef.path,
-            null
-          );
+          const autoModeStatus: ProjectAutoModeStatus = await getFacade(
+            projectRef.path
+          ).getStatusForProject(null);
           const isAutoModeRunning = autoModeStatus.isAutoLoopRunning;
 
           // Count live running features for this project (across all branches)

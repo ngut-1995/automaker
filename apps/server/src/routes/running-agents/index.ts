@@ -6,7 +6,7 @@
  */
 
 import { Router } from 'express';
-import type { AutoModeServiceCompat } from '../../services/auto-mode/index.js';
+import type { GlobalAutoModeService } from '../../services/auto-mode/index.js';
 import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createIndexHandler } from './routes/index.js';
 
@@ -15,20 +15,18 @@ export const RUNNING_AGENTS_MOUNT = '/api/running-agents';
 /**
  * Create running-agents operation handlers.
  *
- * @param autoModeService - AutoModeServiceCompat instance
+ * @param global - GlobalAutoModeService instance
  */
-export function createRunningAgentsHandlers(
-  autoModeService: AutoModeServiceCompat
-): OperationHandlers {
+export function createRunningAgentsHandlers(global: GlobalAutoModeService): OperationHandlers {
   return {
-    'runningAgents.getAll': createIndexHandler(autoModeService),
+    'runningAgents.getAll': createIndexHandler(global),
   };
 }
 
-export function createRunningAgentsRoutes(autoModeService: AutoModeServiceCompat): Router {
+export function createRunningAgentsRoutes(global: GlobalAutoModeService): Router {
   return registerContractOperations(
     Router(),
     RUNNING_AGENTS_MOUNT,
-    createRunningAgentsHandlers(autoModeService)
+    createRunningAgentsHandlers(global)
   );
 }

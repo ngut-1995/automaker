@@ -3,10 +3,10 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { getErrorMessage, logError } from '../common.js';
 
-export function createVerifyFeatureHandler(autoModeService: AutoModeServiceCompat) {
+export function createVerifyFeatureHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureId } = req.body as {
@@ -22,7 +22,7 @@ export function createVerifyFeatureHandler(autoModeService: AutoModeServiceCompa
         return;
       }
 
-      const passes = await autoModeService.verifyFeature(projectPath, featureId);
+      const passes = await getFacade(projectPath).verifyFeature(featureId);
       res.json({ success: true, passes });
     } catch (error) {
       logError(error, 'Verify feature failed');

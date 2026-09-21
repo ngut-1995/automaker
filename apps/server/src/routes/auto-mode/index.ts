@@ -4,12 +4,13 @@
  * Routes are registered from the shared operation contract; this file only maps
  * each operation to the handler that implements it.
  *
- * Uses AutoModeServiceCompat which provides the old interface while
- * delegating to GlobalAutoModeService and per-project facades.
+ * Handlers take what they actually need: global status/questions go to
+ * GlobalAutoModeService, while per-project execution goes through a facade
+ * provider owned by the composition root.
  */
 
 import { Router } from 'express';
-import type { AutoModeServiceCompat } from '../../services/auto-mode/index.js';
+import type { FacadeProvider, GlobalAutoModeService } from '../../services/auto-mode/index.js';
 import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createStopFeatureHandler } from './routes/stop-feature.js';
 import { createStatusHandler } from './routes/status.js';
@@ -31,31 +32,38 @@ export const AUTO_MODE_MOUNT = '/api/auto-mode';
 /**
  * Create auto-mode operation handlers.
  *
- * @param autoModeService - AutoModeServiceCompat instance
+ * @param global - GlobalAutoModeService for status and state reconciliation
+ * @param getFacade - Provider for the per-project facade
  */
-export function createAutoModeHandlers(autoModeService: AutoModeServiceCompat): OperationHandlers {
+export function createAutoModeHandlers(
+  global: GlobalAutoModeService,
+  getFacade: FacadeProvider
+): OperationHandlers {
   return {
-    'autoMode.start': createStartHandler(autoModeService),
-    'autoMode.stop': createStopHandler(autoModeService),
-    'autoMode.stopFeature': createStopFeatureHandler(autoModeService),
-    'autoMode.status': createStatusHandler(autoModeService),
-    'autoMode.runFeature': createRunFeatureHandler(autoModeService),
-    'autoMode.verifyFeature': createVerifyFeatureHandler(autoModeService),
-    'autoMode.resumeFeature': createResumeFeatureHandler(autoModeService),
-    'autoMode.contextExists': createContextExistsHandler(autoModeService),
-    'autoMode.analyzeProject': createAnalyzeProjectHandler(autoModeService),
-    'autoMode.followUpFeature': createFollowUpFeatureHandler(autoModeService),
-    'autoMode.commitFeature': createCommitFeatureHandler(autoModeService),
-    'autoMode.approvePlan': createApprovePlanHandler(autoModeService),
-    'autoMode.resumeInterrupted': createResumeInterruptedHandler(autoModeService),
-    'autoMode.reconcile': createReconcileHandler(autoModeService),
+    'autoMode.start': createStartHandler(getFacade),
+    'autoMode.stop': createStopHandler(getFacade),
+    'autoMode.stopFeature': createStopFeatureHandler(global, getFacade),
+    'autoMode.status': createStatusHandler(global, getFacade),
+    'autoMode.runFeature': createRunFeatureHandler(getFacade),
+    'autoMode.verifyFeature': createVerifyFeatureHandler(getFacade),
+    'autoMode.resumeFeature': createResumeFeatureHandler(getFacade),
+    'autoMode.contextExists': createContextExistsHandler(getFacade),
+    'autoMode.analyzeProject': createAnalyzeProjectHandler(getFacade),
+    'autoMode.followUpFeature': createFollowUpFeatureHandler(getFacade),
+    'autoMode.commitFeature': createCommitFeatureHandler(getFacade),
+    'autoMode.approvePlan': createApprovePlanHandler(getFacade),
+    'autoMode.resumeInterrupted': createResumeInterruptedHandler(getFacade),
+    'autoMode.reconcile': createReconcileHandler(global),
   };
 }
 
-export function createAutoModeRoutes(autoModeService: AutoModeServiceCompat): Router {
+export function createAutoModeRoutes(
+  global: GlobalAutoModeService,
+  getFacade: FacadeProvider
+): Router {
   return registerContractOperations(
     Router(),
     AUTO_MODE_MOUNT,
-    createAutoModeHandlers(autoModeService)
+    createAutoModeHandlers(global, getFacade)
   );
 }

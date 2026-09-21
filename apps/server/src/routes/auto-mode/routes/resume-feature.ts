@@ -3,13 +3,13 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
 
 const logger = createLogger('AutoMode');
 
-export function createResumeFeatureHandler(autoModeService: AutoModeServiceCompat) {
+export function createResumeFeatureHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureId, useWorktrees } = req.body as {
@@ -28,8 +28,8 @@ export function createResumeFeatureHandler(autoModeService: AutoModeServiceCompa
 
       // Start resume in background
       // Default to false - worktrees should only be used when explicitly enabled
-      autoModeService
-        .resumeFeature(projectPath, featureId, useWorktrees ?? false)
+      getFacade(projectPath)
+        .resumeFeature(featureId, useWorktrees ?? false)
         .catch((error) => {
           logger.error(`Resume feature ${featureId} error:`, error);
         });

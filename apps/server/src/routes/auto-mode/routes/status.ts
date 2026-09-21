@@ -6,13 +6,13 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider, GlobalAutoModeService } from '../../../services/auto-mode/index.js';
 import { getErrorMessage, logError } from '../common.js';
 
 /**
  * Create status handler.
  */
-export function createStatusHandler(autoModeService: AutoModeServiceCompat) {
+export function createStatusHandler(global: GlobalAutoModeService, getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, branchName } = req.body as {
@@ -25,10 +25,8 @@ export function createStatusHandler(autoModeService: AutoModeServiceCompat) {
         // Normalize branchName: undefined becomes null
         const normalizedBranchName = branchName ?? null;
 
-        const projectStatus = await autoModeService.getStatusForProject(
-          projectPath,
-          normalizedBranchName
-        );
+        const projectStatus =
+          await getFacade(projectPath).getStatusForProject(normalizedBranchName);
         res.json({
           success: true,
           isRunning: projectStatus.runningCount > 0,
@@ -43,9 +41,9 @@ export function createStatusHandler(autoModeService: AutoModeServiceCompat) {
       }
 
       // Global status for backward compatibility
-      const status = autoModeService.getStatus();
-      const activeProjects = autoModeService.getActiveAutoLoopProjects();
-      const activeWorktrees = autoModeService.getActiveAutoLoopWorktrees();
+      const status = global.getStatus();
+      const activeProjects = global.getActiveAutoLoopProjects();
+      const activeWorktrees = global.getActiveAutoLoopWorktrees();
       res.json({
         success: true,
         ...status,

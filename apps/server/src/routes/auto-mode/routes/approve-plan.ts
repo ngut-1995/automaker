@@ -3,13 +3,13 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
 
 const logger = createLogger('AutoMode');
 
-export function createApprovePlanHandler(autoModeService: AutoModeServiceCompat) {
+export function createApprovePlanHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { featureId, approved, editedPlan, feedback, projectPath } = req.body as {
@@ -55,8 +55,7 @@ export function createApprovePlanHandler(autoModeService: AutoModeServiceCompat)
       );
 
       // Resolve the pending approval (with recovery support)
-      const result = await autoModeService.resolvePlanApproval(
-        projectPath,
+      const result = await getFacade(projectPath).resolvePlanApproval(
         featureId,
         approved,
         editedPlan,

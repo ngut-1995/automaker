@@ -3,10 +3,10 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { getErrorMessage, logError } from '../common.js';
 
-export function createContextExistsHandler(autoModeService: AutoModeServiceCompat) {
+export function createContextExistsHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureId } = req.body as {
@@ -22,7 +22,7 @@ export function createContextExistsHandler(autoModeService: AutoModeServiceCompa
         return;
       }
 
-      const exists = await autoModeService.contextExists(projectPath, featureId);
+      const exists = await getFacade(projectPath).contextExists(featureId);
       res.json({ success: true, exists });
     } catch (error) {
       logError(error, 'Check context exists failed');

@@ -13,7 +13,7 @@
 
 import type { Request, Response } from 'express';
 import { createLogger } from '@automaker/utils';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { GlobalAutoModeService } from '../../../services/auto-mode/index.js';
 
 const logger = createLogger('ReconcileFeatures');
 
@@ -21,7 +21,7 @@ interface ReconcileRequest {
   projectPath: string;
 }
 
-export function createReconcileHandler(autoModeService: AutoModeServiceCompat) {
+export function createReconcileHandler(global: GlobalAutoModeService) {
   return async (req: Request, res: Response): Promise<void> => {
     const { projectPath } = req.body as ReconcileRequest;
 
@@ -33,7 +33,7 @@ export function createReconcileHandler(autoModeService: AutoModeServiceCompat) {
     logger.info(`Reconciling feature states for ${projectPath}`);
 
     try {
-      const reconciledCount = await autoModeService.reconcileFeatureStates(projectPath);
+      const reconciledCount = await global.reconcileFeatureStates(projectPath);
 
       res.json({
         success: true,

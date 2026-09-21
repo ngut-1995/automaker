@@ -3,13 +3,13 @@
  */
 
 import type { Request, Response } from 'express';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
 
 const logger = createLogger('AutoMode');
 
-export function createStartHandler(autoModeService: AutoModeServiceCompat) {
+export function createStartHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, branchName, maxConcurrency } = req.body as {
@@ -32,8 +32,10 @@ export function createStartHandler(autoModeService: AutoModeServiceCompat) {
         ? `worktree ${normalizedBranchName}`
         : 'main worktree';
 
+      const facade = getFacade(projectPath);
+
       // Check if already running
-      if (autoModeService.isAutoLoopRunningForProject(projectPath, normalizedBranchName)) {
+      if (facade.isAutoLoopRunning(normalizedBranchName)) {
         res.json({
           success: true,
           message: `Auto mode is already running for ${worktreeDesc}`,
@@ -44,8 +46,7 @@ export function createStartHandler(autoModeService: AutoModeServiceCompat) {
       }
 
       // Start the auto loop for this project/worktree
-      const resolvedMaxConcurrency = await autoModeService.startAutoLoopForProject(
-        projectPath,
+      const resolvedMaxConcurrency = await facade.startAutoLoop(
         normalizedBranchName,
         maxConcurrency
       );

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { createIndexHandler } from '@/routes/running-agents/routes/index.js';
-import type { AutoModeServiceCompat, RunningAgentInfo } from '@/services/auto-mode/index.js';
+import type { GlobalAutoModeService, RunningAgentInfo } from '@/services/auto-mode/index.js';
 import { createMockExpressContext } from '../../utils/mocks.js';
 
 describe('running-agents routes', () => {
-  let mockAutoModeService: Partial<AutoModeServiceCompat>;
+  let mockAutoModeService: Partial<GlobalAutoModeService>;
   let req: Request;
   let res: Response;
 
@@ -27,7 +27,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue([]);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert
@@ -67,7 +67,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert
@@ -96,7 +96,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert
@@ -113,7 +113,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockRejectedValue(error);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert
@@ -129,7 +129,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockRejectedValue('String error');
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert
@@ -156,7 +156,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert
@@ -195,7 +195,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert
@@ -242,7 +242,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
+      const handler = createIndexHandler(mockAutoModeService as GlobalAutoModeService);
       await handler(req, res);
 
       // Assert

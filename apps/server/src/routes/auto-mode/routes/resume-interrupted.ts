@@ -7,7 +7,7 @@
 
 import type { Request, Response } from 'express';
 import { createLogger } from '@automaker/utils';
-import type { AutoModeServiceCompat } from '../../../services/auto-mode/index.js';
+import type { FacadeProvider } from '../../../services/auto-mode/index.js';
 
 const logger = createLogger('ResumeInterrupted');
 
@@ -15,7 +15,7 @@ interface ResumeInterruptedRequest {
   projectPath: string;
 }
 
-export function createResumeInterruptedHandler(autoModeService: AutoModeServiceCompat) {
+export function createResumeInterruptedHandler(getFacade: FacadeProvider) {
   return async (req: Request, res: Response): Promise<void> => {
     const { projectPath } = req.body as ResumeInterruptedRequest;
 
@@ -27,7 +27,7 @@ export function createResumeInterruptedHandler(autoModeService: AutoModeServiceC
     logger.info(`Checking for interrupted features in ${projectPath}`);
 
     try {
-      await autoModeService.resumeInterruptedFeatures(projectPath);
+      await getFacade(projectPath).resumeInterruptedFeatures();
 
       res.json({
         success: true,
