@@ -405,6 +405,9 @@ export type { TerminalInfo } from './terminal.js';
 // Test runner types
 export type { TestRunnerInfo } from './test-runner.js';
 
+// Operation contract (the UI-server seam)
+export * from './operations.js';
+
 // Project overview types (multi-project dashboard)
 export type {
   ProjectHealthStatus,

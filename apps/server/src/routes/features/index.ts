@@ -1,5 +1,8 @@
 /**
  * Features routes - HTTP API for feature management
+ *
+ * Routes are registered from the shared operation contract; this file only maps
+ * each operation to the handler that implements it.
  */
 
 import { Router } from 'express';
@@ -7,7 +10,7 @@ import { FeatureLoader } from '../../services/feature-loader.js';
 import type { SettingsService } from '../../services/settings-service.js';
 import type { AutoModeServiceCompat } from '../../services/auto-mode/index.js';
 import type { EventEmitter } from '../../lib/events.js';
-import { validatePathParams } from '../../middleware/validate-paths.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createListHandler } from './routes/list.js';
 import { createGetHandler } from './routes/get.js';
 import { createCreateHandler } from './routes/create.js';
@@ -25,71 +28,46 @@ import {
   createOrphanedBulkResolveHandler,
 } from './routes/orphaned.js';
 
+export const FEATURES_MOUNT = '/api/features';
+
+export function createFeaturesHandlers(
+  featureLoader: FeatureLoader,
+  settingsService?: SettingsService,
+  events?: EventEmitter,
+  autoModeService?: AutoModeServiceCompat
+): OperationHandlers {
+  const listHandler = createListHandler(featureLoader, autoModeService);
+
+  return {
+    'features.list': listHandler,
+    'features.listPost': listHandler,
+    'features.get': createGetHandler(featureLoader),
+    'features.create': createCreateHandler(featureLoader, events),
+    'features.update': createUpdateHandler(featureLoader, events),
+    'features.bulkUpdate': createBulkUpdateHandler(featureLoader),
+    'features.bulkDelete': createBulkDeleteHandler(featureLoader),
+    'features.delete': createDeleteHandler(featureLoader),
+    'features.getAgentOutput': createAgentOutputHandler(featureLoader),
+    'features.rawOutput': createRawOutputHandler(featureLoader),
+    'features.generateTitle': createGenerateTitleHandler(settingsService),
+    'features.export': createExportHandler(featureLoader),
+    'features.import': createImportHandler(featureLoader),
+    'features.checkConflicts': createConflictCheckHandler(featureLoader),
+    'features.getOrphaned': createOrphanedListHandler(featureLoader, autoModeService),
+    'features.resolveOrphaned': createOrphanedResolveHandler(featureLoader, autoModeService),
+    'features.bulkResolveOrphaned': createOrphanedBulkResolveHandler(featureLoader),
+  };
+}
+
 export function createFeaturesRoutes(
   featureLoader: FeatureLoader,
   settingsService?: SettingsService,
   events?: EventEmitter,
   autoModeService?: AutoModeServiceCompat
 ): Router {
-  const router = Router();
-
-  router.post(
-    '/list',
-    validatePathParams('projectPath'),
-    createListHandler(featureLoader, autoModeService)
+  return registerContractOperations(
+    Router(),
+    FEATURES_MOUNT,
+    createFeaturesHandlers(featureLoader, settingsService, events, autoModeService)
   );
-  router.get(
-    '/list',
-    validatePathParams('projectPath'),
-    createListHandler(featureLoader, autoModeService)
-  );
-  router.post('/get', validatePathParams('projectPath'), createGetHandler(featureLoader));
-  router.post(
-    '/create',
-    validatePathParams('projectPath'),
-    createCreateHandler(featureLoader, events)
-  );
-  router.post(
-    '/update',
-    validatePathParams('projectPath'),
-    createUpdateHandler(featureLoader, events)
-  );
-  router.post(
-    '/bulk-update',
-    validatePathParams('projectPath'),
-    createBulkUpdateHandler(featureLoader)
-  );
-  router.post(
-    '/bulk-delete',
-    validatePathParams('projectPath'),
-    createBulkDeleteHandler(featureLoader)
-  );
-  router.post('/delete', validatePathParams('projectPath'), createDeleteHandler(featureLoader));
-  router.post('/agent-output', createAgentOutputHandler(featureLoader));
-  router.post('/raw-output', createRawOutputHandler(featureLoader));
-  router.post('/generate-title', createGenerateTitleHandler(settingsService));
-  router.post('/export', validatePathParams('projectPath'), createExportHandler(featureLoader));
-  router.post('/import', validatePathParams('projectPath'), createImportHandler(featureLoader));
-  router.post(
-    '/check-conflicts',
-    validatePathParams('projectPath'),
-    createConflictCheckHandler(featureLoader)
-  );
-  router.post(
-    '/orphaned',
-    validatePathParams('projectPath'),
-    createOrphanedListHandler(featureLoader, autoModeService)
-  );
-  router.post(
-    '/orphaned/resolve',
-    validatePathParams('projectPath'),
-    createOrphanedResolveHandler(featureLoader, autoModeService)
-  );
-  router.post(
-    '/orphaned/bulk-resolve',
-    validatePathParams('projectPath'),
-    createOrphanedBulkResolveHandler(featureLoader)
-  );
-
-  return router;
 }

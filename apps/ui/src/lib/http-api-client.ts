@@ -39,7 +39,12 @@ import type {
   IdeationStreamEvent,
   IdeationAnalysisEvent,
   Notification,
+  OperationName,
+  OperationDefinition,
+  RequestOf,
+  ResponseOf,
 } from '@automaker/types';
+import { OPERATIONS, operationPath } from '@automaker/types';
 import type { Message, SessionListItem } from '@/types/electron';
 import type {
   ClaudeUsageResponse,
@@ -59,6 +64,21 @@ import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 const logger = createLogger('HttpClient');
 const NO_STORE_CACHE_MODE: RequestCache = 'no-store';
+
+/**
+ * Append a request object to a path as a query string (used by GET operations).
+ * Undefined and null values are omitted.
+ */
+const appendQuery = (path: string, input: unknown): string => {
+  if (!input || typeof input !== 'object') return path;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (value === undefined || value === null) continue;
+    params.set(key, String(value));
+  }
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+};
 
 // Cached server URL (set during initialization in Electron mode)
 let cachedServerUrl: string | null = null;
@@ -1150,6 +1170,31 @@ export class HttpApiClient implements ElectronAPI {
     return response.json();
   }
 
+  /**
+   * The single transport method behind every contract-backed client call.
+   *
+   * It resolves the path from the contract and types the result by the
+   * operation's declared response shape, so a path can never drift from its
+   * route and a response-shape change surfaces at its call sites.
+   */
+  private async request<N extends OperationName>(
+    name: N,
+    input?: RequestOf<N>
+  ): Promise<ResponseOf<N>> {
+    const path = operationPath(name);
+    const definition: OperationDefinition<unknown, unknown> = OPERATIONS[name];
+    switch (definition.method) {
+      case 'GET':
+        return this.get<ResponseOf<N>>(appendQuery(path, input));
+      case 'PUT':
+        return this.put<ResponseOf<N>>(path, input);
+      case 'DELETE':
+        return this.httpDelete<ResponseOf<N>>(path, input);
+      default:
+        return this.post<ResponseOf<N>>(path, input);
+    }
+  }
+
   // Basic operations
   async ping(): Promise<string> {
     const result = await this.get<{ status: string }>('/api/health');
@@ -1945,95 +1990,40 @@ export class HttpApiClient implements ElectronAPI {
     }> => this.post('/api/zai/verify', { apiKey }),
   };
 
-  // Features API
+  // Features API — every method derives its path and response type from the contract.
   features: FeaturesAPI & {
     bulkUpdate: (
       projectPath: string,
       featureIds: string[],
       updates: Partial<Feature>
-    ) => Promise<{
-      success: boolean;
-      updatedCount?: number;
-      failedCount?: number;
-      results?: Array<{ featureId: string; success: boolean; error?: string }>;
-      features?: Feature[];
-      error?: string;
-    }>;
+    ) => Promise<ResponseOf<'features.bulkUpdate'>>;
     bulkDelete: (
       projectPath: string,
       featureIds: string[]
-    ) => Promise<{
-      success: boolean;
-      deletedCount?: number;
-      failedCount?: number;
-      results?: Array<{ featureId: string; success: boolean; error?: string }>;
-      error?: string;
-    }>;
+    ) => Promise<ResponseOf<'features.bulkDelete'>>;
+    getRawOutput: (
+      projectPath: string,
+      featureId: string
+    ) => Promise<ResponseOf<'features.rawOutput'>>;
     export: (
       projectPath: string,
-      options?: {
-        featureIds?: string[];
-        format?: 'json' | 'yaml';
-        includeHistory?: boolean;
-        includePlanSpec?: boolean;
-        category?: string;
-        status?: string;
-        prettyPrint?: boolean;
-        metadata?: Record<string, unknown>;
-      }
-    ) => Promise<{
-      success: boolean;
-      data?: string;
-      format?: 'json' | 'yaml';
-      contentType?: string;
-      filename?: string;
-      error?: string;
-    }>;
+      options?: Omit<RequestOf<'features.export'>, 'projectPath'>
+    ) => Promise<ResponseOf<'features.export'>>;
     import: (
       projectPath: string,
       data: string,
-      options?: {
-        overwrite?: boolean;
-        preserveBranchInfo?: boolean;
-        targetCategory?: string;
-      }
-    ) => Promise<{
-      success: boolean;
-      importedCount?: number;
-      failedCount?: number;
-      results?: Array<{
-        success: boolean;
-        featureId?: string;
-        importedAt: string;
-        warnings?: string[];
-        errors?: string[];
-        wasOverwritten?: boolean;
-      }>;
-      error?: string;
-    }>;
+      options?: Omit<RequestOf<'features.import'>, 'projectPath' | 'data'>
+    ) => Promise<ResponseOf<'features.import'>>;
     checkConflicts: (
       projectPath: string,
       data: string
-    ) => Promise<{
-      success: boolean;
-      hasConflicts?: boolean;
-      conflicts?: Array<{
-        featureId: string;
-        title?: string;
-        existingTitle?: string;
-        hasConflict: boolean;
-      }>;
-      totalFeatures?: number;
-      conflictCount?: number;
-      error?: string;
-    }>;
+    ) => Promise<ResponseOf<'features.checkConflicts'>>;
   } = {
-    getAll: (projectPath: string) =>
-      this.get(`/api/features/list?projectPath=${encodeURIComponent(projectPath)}`),
+    getAll: (projectPath: string) => this.request('features.list', { projectPath }),
     get: (projectPath: string, featureId: string) =>
-      this.post('/api/features/get', { projectPath, featureId }),
+      this.request('features.get', { projectPath, featureId }),
     create: (projectPath: string, feature: Feature) =>
-      this.post('/api/features/create', { projectPath, feature }),
+      this.request('features.create', { projectPath, feature }),
     update: (
       projectPath: string,
       featureId: string,
@@ -2042,7 +2032,7 @@ export class HttpApiClient implements ElectronAPI {
       enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer',
       preEnhancementDescription?: string
     ) =>
-      this.post('/api/features/update', {
+      this.request('features.update', {
         projectPath,
         featureId,
         updates,
@@ -2051,106 +2041,44 @@ export class HttpApiClient implements ElectronAPI {
         preEnhancementDescription,
       }),
     delete: (projectPath: string, featureId: string) =>
-      this.post('/api/features/delete', { projectPath, featureId }),
+      this.request('features.delete', { projectPath, featureId }),
     getAgentOutput: (projectPath: string, featureId: string) =>
-      this.post('/api/features/agent-output', { projectPath, featureId }),
+      this.request('features.getAgentOutput', { projectPath, featureId }),
+    getRawOutput: (projectPath: string, featureId: string) =>
+      this.request('features.rawOutput', { projectPath, featureId }),
     generateTitle: (description: string, projectPath?: string) =>
-      this.post('/api/features/generate-title', { description, projectPath }),
+      this.request('features.generateTitle', { description, projectPath }),
     bulkUpdate: (projectPath: string, featureIds: string[], updates: Partial<Feature>) =>
-      this.post('/api/features/bulk-update', { projectPath, featureIds, updates }),
+      this.request('features.bulkUpdate', { projectPath, featureIds, updates }),
     bulkDelete: (projectPath: string, featureIds: string[]) =>
-      this.post('/api/features/bulk-delete', { projectPath, featureIds }),
+      this.request('features.bulkDelete', { projectPath, featureIds }),
     export: (
       projectPath: string,
-      options?: {
-        featureIds?: string[];
-        format?: 'json' | 'yaml';
-        includeHistory?: boolean;
-        includePlanSpec?: boolean;
-        category?: string;
-        status?: string;
-        prettyPrint?: boolean;
-        metadata?: Record<string, unknown>;
-      }
-    ): Promise<{
-      success: boolean;
-      data?: string;
-      format?: 'json' | 'yaml';
-      contentType?: string;
-      filename?: string;
-      error?: string;
-    }> => this.post('/api/features/export', { projectPath, ...options }),
+      options?: Omit<RequestOf<'features.export'>, 'projectPath'>
+    ): Promise<ResponseOf<'features.export'>> =>
+      this.request('features.export', { projectPath, ...options }),
     import: (
       projectPath: string,
       data: string,
-      options?: {
-        overwrite?: boolean;
-        preserveBranchInfo?: boolean;
-        targetCategory?: string;
-      }
-    ): Promise<{
-      success: boolean;
-      importedCount?: number;
-      failedCount?: number;
-      results?: Array<{
-        success: boolean;
-        featureId?: string;
-        importedAt: string;
-        warnings?: string[];
-        errors?: string[];
-        wasOverwritten?: boolean;
-      }>;
-      error?: string;
-    }> => this.post('/api/features/import', { projectPath, data, ...options }),
-    checkConflicts: (
-      projectPath: string,
-      data: string
-    ): Promise<{
-      success: boolean;
-      hasConflicts?: boolean;
-      conflicts?: Array<{
-        featureId: string;
-        title?: string;
-        existingTitle?: string;
-        hasConflict: boolean;
-      }>;
-      totalFeatures?: number;
-      conflictCount?: number;
-      error?: string;
-    }> => this.post('/api/features/check-conflicts', { projectPath, data }),
-    getOrphaned: (
-      projectPath: string
-    ): Promise<{
-      success: boolean;
-      orphanedFeatures?: Array<{ feature: Feature; missingBranch: string }>;
-      error?: string;
-    }> => this.post('/api/features/orphaned', { projectPath }),
+      options?: Omit<RequestOf<'features.import'>, 'projectPath' | 'data'>
+    ): Promise<ResponseOf<'features.import'>> =>
+      this.request('features.import', { projectPath, data, ...options }),
+    checkConflicts: (projectPath: string, data: string) =>
+      this.request('features.checkConflicts', { projectPath, data }),
+    getOrphaned: (projectPath: string) => this.request('features.getOrphaned', { projectPath }),
     resolveOrphaned: (
       projectPath: string,
       featureId: string,
       action: 'delete' | 'create-worktree' | 'move-to-branch',
       targetBranch?: string | null
-    ): Promise<{
-      success: boolean;
-      action?: string;
-      worktreePath?: string;
-      branchName?: string;
-      error?: string;
-    }> =>
-      this.post('/api/features/orphaned/resolve', { projectPath, featureId, action, targetBranch }),
+    ) => this.request('features.resolveOrphaned', { projectPath, featureId, action, targetBranch }),
     bulkResolveOrphaned: (
       projectPath: string,
       featureIds: string[],
       action: 'delete' | 'create-worktree' | 'move-to-branch',
       targetBranch?: string | null
-    ): Promise<{
-      success: boolean;
-      resolvedCount?: number;
-      failedCount?: number;
-      results?: Array<{ featureId: string; success: boolean; action?: string; error?: string }>;
-      error?: string;
-    }> =>
-      this.post('/api/features/orphaned/bulk-resolve', {
+    ) =>
+      this.request('features.bulkResolveOrphaned', {
         projectPath,
         featureIds,
         action,
