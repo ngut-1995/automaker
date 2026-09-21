@@ -5,13 +5,13 @@ import {
   getBlockingDependencies,
   type DependencyResolutionResult,
 } from '@automaker/dependency-resolver';
-import type { Feature } from '@automaker/types';
+import type { Feature, FeatureStatus } from '@automaker/types';
 
 // Helper to create test features
 function createFeature(
   id: string,
   options: {
-    status?: string;
+    status?: FeatureStatus;
     priority?: number;
     dependencies?: string[];
     category?: string;

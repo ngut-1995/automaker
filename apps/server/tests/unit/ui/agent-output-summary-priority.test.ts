@@ -15,8 +15,8 @@
 
 import { describe, it, expect } from 'vitest';
 // Import the actual extractSummary function to ensure test behavior matches production
-import { extractSummary } from '../../../../ui/src/lib/log-parser.ts';
-import { getFirstNonEmptySummary } from '../../../../ui/src/lib/summary-selection.ts';
+import { extractSummary } from '../../../../ui/src/lib/log-parser';
+import { getFirstNonEmptySummary } from '../../../../ui/src/lib/summary-selection';
 
 /**
  * Simulates the summary priority logic from AgentOutputModal.

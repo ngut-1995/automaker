@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseAllPhaseSummaries, isAccumulatedSummary } from '../../../../ui/src/lib/log-parser.ts';
-import { getFirstNonEmptySummary } from '../../../../ui/src/lib/summary-selection.ts';
+import { parseAllPhaseSummaries, isAccumulatedSummary } from '../../../../ui/src/lib/log-parser';
+import { getFirstNonEmptySummary } from '../../../../ui/src/lib/summary-selection';
 
 /**
  * Mirrors summary source priority in agent-info-panel.tsx:

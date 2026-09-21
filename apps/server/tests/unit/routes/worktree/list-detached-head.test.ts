@@ -131,7 +131,12 @@ describe('worktree list - detached HEAD handling', () => {
     vi.mocked(isGitRepo).mockResolvedValue(true);
     vi.mocked(readAllWorktreeMetadata).mockResolvedValue(new Map());
     vi.mocked(isGhCliAvailable).mockResolvedValue(false);
-    vi.mocked(checkGitHubRemote).mockResolvedValue({ hasGitHubRemote: false });
+    vi.mocked(checkGitHubRemote).mockResolvedValue({
+      hasGitHubRemote: false,
+      remoteUrl: null,
+      owner: null,
+      repo: null,
+    });
     vi.mocked(normalizePath).mockImplementation((p: string) => p);
     vi.mocked(getErrorMessage).mockImplementation(
       (e: unknown) => (e as Error)?.message || 'Unknown error'
@@ -739,6 +744,7 @@ describe('worktree list - detached HEAD handling', () => {
       vi.mocked(isGhCliAvailable).mockResolvedValue(true);
       vi.mocked(checkGitHubRemote).mockResolvedValue({
         hasGitHubRemote: true,
+        remoteUrl: null,
         owner: 'org',
         repo: 'repo',
       });
@@ -840,6 +846,7 @@ describe('worktree list - detached HEAD handling', () => {
       vi.mocked(isGhCliAvailable).mockResolvedValue(true);
       vi.mocked(checkGitHubRemote).mockResolvedValue({
         hasGitHubRemote: true,
+        remoteUrl: null,
         owner: 'org',
         repo: 'repo',
       });

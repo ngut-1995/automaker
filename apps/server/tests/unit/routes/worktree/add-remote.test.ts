@@ -1,13 +1,28 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { createMockExpressContext } from '../../../utils/mocks.js';
+
+// The production handler calls promisify(execFile); util.promisify is mocked below
+// to return execFile unchanged, so the mock is typed as the promisified shape.
+const { mockExecFile } = vi.hoisted(() => ({
+  mockExecFile: vi.fn<
+    (
+      command: string,
+      args: string[],
+      options?: unknown
+    ) => Promise<{
+      stdout: string;
+      stderr: string;
+    }>
+  >(),
+}));
 
 // Mock child_process with importOriginal to keep other exports
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
   return {
     ...actual,
-    execFile: vi.fn(),
+    execFile: mockExecFile,
   };
 });
 
@@ -22,10 +37,6 @@ vi.mock('util', async (importOriginal) => {
 
 // Import handler after mocks are set up
 import { createAddRemoteHandler } from '@/routes/worktree/routes/add-remote.js';
-import { execFile } from 'child_process';
-
-// Get the mocked execFile
-const mockExecFile = execFile as Mock;
 
 /**
  * Helper to create a standard mock implementation for git commands

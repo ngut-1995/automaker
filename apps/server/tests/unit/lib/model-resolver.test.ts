@@ -24,17 +24,20 @@ describe('model-resolver.ts', () => {
 
   describe('resolveModelString', () => {
     it("should resolve 'haiku' alias to its canonical ID", () => {
-      const result = resolveModelString('haiku');
+      const legacyAlias: string = 'haiku';
+      const result = resolveModelString(legacyAlias);
       expect(result).toBe(CLAUDE_MODEL_MAP.haiku);
     });
 
     it("should resolve 'sonnet' alias to its canonical ID", () => {
-      const result = resolveModelString('sonnet');
+      const legacyAlias: string = 'sonnet';
+      const result = resolveModelString(legacyAlias);
       expect(result).toBe(CLAUDE_MODEL_MAP.sonnet);
     });
 
     it("should resolve 'opus' alias to its canonical ID", () => {
-      const result = resolveModelString('opus');
+      const legacyAlias: string = 'opus';
+      const result = resolveModelString(legacyAlias);
       expect(result).toBe(CLAUDE_MODEL_MAP.opus);
       expect(consoleSpy.log).toHaveBeenCalledWith(
         expect.stringContaining('Migrated legacy ID: "opus" -> "claude-opus"')

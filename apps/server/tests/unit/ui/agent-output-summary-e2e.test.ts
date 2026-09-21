@@ -170,6 +170,7 @@ describe('Agent Output Summary E2E Flow', () => {
     id: 'e2e-feature-1',
     name: 'E2E Feature',
     title: 'E2E Feature Title',
+    category: 'test',
     description: 'A feature going through complete pipeline',
     status: 'pipeline_implementation',
     createdAt: '2024-01-01T00:00:00Z',

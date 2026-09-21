@@ -5,7 +5,7 @@ import {
   extractPhaseSummary,
   extractImplementationSummary,
   isAccumulatedSummary,
-} from '../../../../ui/src/lib/log-parser.ts';
+} from '../../../../ui/src/lib/log-parser';
 
 describe('log-parser mixed summary format compatibility', () => {
   const mixedSummary = [

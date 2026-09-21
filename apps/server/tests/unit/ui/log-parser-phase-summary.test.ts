@@ -95,7 +95,7 @@ function isAccumulatedSummary(summary: string | undefined): boolean {
 
   // Check for the presence of phase headers with separator
   const hasMultiplePhases =
-    summary.includes('\n\n---\n\n') && summary.match(/###\s+.+/g)?.length > 0;
+    summary.includes('\n\n---\n\n') && (summary.match(/###\s+.+/g)?.length ?? 0) > 0;
 
   return hasMultiplePhases;
 }

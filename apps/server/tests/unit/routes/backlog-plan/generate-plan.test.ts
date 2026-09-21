@@ -172,23 +172,8 @@ describe('generateBacklogPlan', () => {
       yield {
         type: 'result',
         subtype: 'success',
-        duration_ms: 10,
-        duration_api_ms: 10,
-        is_error: false,
-        num_turns: 1,
         result: validProviderResult,
         session_id: 'session-1',
-        total_cost_usd: 0,
-        usage: {
-          input_tokens: 10,
-          cache_creation_input_tokens: 0,
-          cache_read_input_tokens: 0,
-          output_tokens: 10,
-          server_tool_use: {
-            web_search_requests: 0,
-          },
-          service_tier: 'standard',
-        },
       };
       throw new Error('Claude Code process exited with code 1');
     }

@@ -5,8 +5,8 @@ import {
   isCancellationError,
   classifyError,
   getUserFriendlyErrorMessage,
-  type ErrorType,
 } from '@automaker/utils';
+import type { ErrorType } from '@automaker/types';
 
 describe('error-handler.ts', () => {
   describe('isAbortError', () => {

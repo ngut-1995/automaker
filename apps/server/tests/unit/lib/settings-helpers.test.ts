@@ -423,7 +423,10 @@ describe('settings-helpers.ts', () => {
         getGlobalSettings: vi.fn().mockResolvedValue({
           claudeCompatibleProviders: [mockProvider],
         }),
-        getCredentials: vi.fn().mockResolvedValue({ anthropicApiKey: 'test-key' }),
+        getCredentials: vi.fn().mockResolvedValue({
+          version: 1,
+          apiKeys: { anthropic: 'test-key', google: '', openai: '', zai: '' },
+        }),
       } as unknown as SettingsService;
 
       const result = await resolveProviderContext(
@@ -433,7 +436,7 @@ describe('settings-helpers.ts', () => {
       );
 
       expect(result.provider).toEqual(mockProvider);
-      expect(result.credentials).toEqual({ anthropicApiKey: 'test-key' });
+      expect(result.credentials?.apiKeys.anthropic).toBe('test-key');
     });
 
     it('should return undefined provider when explicit providerId not found', async () => {
@@ -610,7 +613,8 @@ describe('settings-helpers.ts', () => {
           claudeCompatibleProviders: [savedProvider],
         }),
         getCredentials: vi.fn().mockResolvedValue({
-          anthropicApiKey: 'saved-api-key',
+          version: 1,
+          apiKeys: { anthropic: 'saved-api-key', google: '', openai: '', zai: '' },
         }),
       } as unknown as SettingsService;
 
@@ -625,7 +629,7 @@ describe('settings-helpers.ts', () => {
       expect(result.provider).toEqual(savedProvider);
       expect(result.provider?.id).toBe('saved-provider-1');
       expect(result.provider?.models).toHaveLength(1);
-      expect(result.credentials?.anthropicApiKey).toBe('saved-api-key');
+      expect(result.credentials?.apiKeys.anthropic).toBe('saved-api-key');
       // Verify model mapping is resolved
       expect(result.resolvedModel).toContain('claude');
     });
@@ -694,7 +698,10 @@ describe('settings-helpers.ts', () => {
           getGlobalSettings: vi.fn().mockResolvedValue({
             claudeCompatibleProviders: [mockProvider],
           }),
-          getCredentials: vi.fn().mockResolvedValue({ anthropicApiKey: 'test-key' }),
+          getCredentials: vi.fn().mockResolvedValue({
+            version: 1,
+            apiKeys: { anthropic: 'test-key', google: '', openai: '', zai: '' },
+          }),
         } as unknown as SettingsService;
 
         const result = await resolveProviderContext(
@@ -705,7 +712,7 @@ describe('settings-helpers.ts', () => {
 
         // Provider should be found and used even though enabled is undefined
         expect(result.provider).toEqual(mockProvider);
-        expect(result.credentials?.anthropicApiKey).toBe('test-key');
+        expect(result.credentials?.apiKeys.anthropic).toBe('test-key');
         expect(result.resolvedModel).toContain('claude');
       });
 

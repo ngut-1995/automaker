@@ -177,10 +177,10 @@ describe('sdk-options.ts', () => {
 
       const options = createSuggestionsOptions({
         cwd: '/test/path',
-        outputFormat: { type: 'json' },
+        outputFormat: { type: 'json_schema', schema: { type: 'object' } },
       });
 
-      expect(options.outputFormat).toEqual({ type: 'json' });
+      expect(options.outputFormat).toEqual({ type: 'json_schema', schema: { type: 'object' } });
     });
   });
 

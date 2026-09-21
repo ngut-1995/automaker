@@ -3,7 +3,7 @@ import {
   computeIsDirty,
   updateTabWithContent as updateTabContent,
   markTabAsSaved as markTabSaved,
-} from '../../../../ui/src/components/views/file-editor-view/file-editor-dirty-utils.ts';
+} from '../../../../ui/src/components/views/file-editor-view/file-editor-dirty-utils';
 
 /**
  * Unit tests for the file editor store logic, focusing on the unsaved indicator fix.

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 import { createIndexHandler } from '@/routes/running-agents/routes/index.js';
-import type { AutoModeService } from '@/services/auto-mode-service.js';
+import type { AutoModeServiceCompat, RunningAgentInfo } from '@/services/auto-mode/index.js';
 import { createMockExpressContext } from '../../utils/mocks.js';
 
 describe('running-agents routes', () => {
-  let mockAutoModeService: Partial<AutoModeService>;
+  let mockAutoModeService: Partial<AutoModeServiceCompat>;
   let req: Request;
   let res: Response;
 
@@ -27,7 +27,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue([]);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
@@ -41,7 +41,7 @@ describe('running-agents routes', () => {
 
     it('should return running agents with all properties', async () => {
       // Arrange
-      const runningAgents = [
+      const runningAgents: RunningAgentInfo[] = [
         {
           featureId: 'feature-123',
           projectPath: '/home/user/project',
@@ -67,7 +67,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
@@ -96,7 +96,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
@@ -113,7 +113,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockRejectedValue(error);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
@@ -129,7 +129,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockRejectedValue('String error');
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
@@ -142,7 +142,7 @@ describe('running-agents routes', () => {
 
     it('should correctly count multiple running agents', async () => {
       // Arrange
-      const runningAgents = Array.from({ length: 10 }, (_, i) => ({
+      const runningAgents: RunningAgentInfo[] = Array.from({ length: 10 }, (_, i) => ({
         featureId: `feature-${i}`,
         projectPath: `/project-${i}`,
         projectName: `project-${i}`,
@@ -156,7 +156,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
@@ -169,7 +169,7 @@ describe('running-agents routes', () => {
 
     it('should include agents from different projects', async () => {
       // Arrange
-      const runningAgents = [
+      const runningAgents: RunningAgentInfo[] = [
         {
           featureId: 'feature-a',
           projectPath: '/workspace/project-alpha',
@@ -195,7 +195,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
@@ -206,7 +206,7 @@ describe('running-agents routes', () => {
 
     it('should include model and provider information for running agents', async () => {
       // Arrange
-      const runningAgents = [
+      const runningAgents: RunningAgentInfo[] = [
         {
           featureId: 'feature-claude',
           projectPath: '/project',
@@ -242,7 +242,7 @@ describe('running-agents routes', () => {
       vi.mocked(mockAutoModeService.getRunningAgents!).mockResolvedValue(runningAgents);
 
       // Act
-      const handler = createIndexHandler(mockAutoModeService as AutoModeService);
+      const handler = createIndexHandler(mockAutoModeService as AutoModeServiceCompat);
       await handler(req, res);
 
       // Assert
