@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach, type Mock } from 'vitest';
 import { PlanApprovalService } from '@/services/plan-approval-service.js';
 import type { TypedEventBus } from '@/services/typed-event-bus.js';
 import type { FeatureStateManager } from '@/services/feature-state-manager.js';
@@ -9,6 +9,7 @@ describe('PlanApprovalService', () => {
   let service: PlanApprovalService;
   let mockEventBus: TypedEventBus;
   let mockFeatureStateManager: FeatureStateManager;
+  let mockFeatureRecord: { transition: Mock };
   let mockSettingsService: SettingsService | null;
 
   beforeEach(() => {
@@ -27,11 +28,18 @@ describe('PlanApprovalService', () => {
       updateFeaturePlanSpec: vi.fn(),
     } as unknown as FeatureStateManager;
 
+    mockFeatureRecord = { transition: vi.fn() };
+
     mockSettingsService = {
       getProjectSettings: vi.fn().mockResolvedValue({}),
     } as unknown as SettingsService;
 
-    service = new PlanApprovalService(mockEventBus, mockFeatureStateManager, mockSettingsService);
+    service = new PlanApprovalService(
+      mockEventBus,
+      mockFeatureStateManager,
+      mockSettingsService,
+      mockFeatureRecord
+    );
   });
 
   afterEach(() => {
@@ -93,7 +101,8 @@ describe('PlanApprovalService', () => {
       const serviceNoSettings = new PlanApprovalService(
         mockEventBus,
         mockFeatureStateManager,
-        null
+        null,
+        mockFeatureRecord
       );
 
       const approvalPromise = serviceNoSettings.waitForApproval('feature-1', '/project');
@@ -305,11 +314,11 @@ describe('PlanApprovalService', () => {
         })
       );
 
-      // Should update feature status to backlog
-      expect(mockFeatureStateManager.updateFeatureStatus).toHaveBeenCalledWith(
+      // Should return the feature to backlog through the record
+      expect(mockFeatureRecord.transition).toHaveBeenCalledWith(
         '/project',
         'feature-1',
-        'backlog'
+        'returnToBacklog'
       );
 
       // Should emit plan_rejected event

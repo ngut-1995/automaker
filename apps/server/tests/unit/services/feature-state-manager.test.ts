@@ -271,7 +271,7 @@ describe('FeatureStateManager', () => {
       expect(savedFeature.justFinishedAt).toBeDefined();
     });
 
-    it('should create notification for waiting_approval status', async () => {
+    it('should not create notifications itself (the record owns notifications)', async () => {
       const mockNotificationService = { createNotification: vi.fn() };
       (getNotificationService as Mock).mockReturnValue(mockNotificationService);
       (readJsonWithRecovery as Mock).mockResolvedValue({
@@ -281,93 +281,12 @@ describe('FeatureStateManager', () => {
       });
 
       await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
+      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
 
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_waiting_approval',
-          featureId: 'feature-123',
-        })
-      );
+      expect(mockNotificationService.createNotification).not.toHaveBeenCalled();
     });
 
-    it('should use feature.title as notification title for waiting_approval status', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
-      const featureWithTitle: Feature = {
-        ...mockFeature,
-        title: 'My Awesome Feature Title',
-        name: 'old-name-property', // name property exists but should not be used
-      };
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithTitle,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
-
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_waiting_approval',
-          title: 'My Awesome Feature Title',
-          message: 'Feature Ready for Review',
-        })
-      );
-    });
-
-    it('should fallback to featureId as notification title when feature.title is undefined in waiting_approval notification', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
-      const featureWithoutTitle: Feature = {
-        ...mockFeature,
-        title: undefined,
-        name: 'old-name-property',
-      };
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithoutTitle,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
-
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_waiting_approval',
-          title: 'feature-123',
-          message: 'Feature Ready for Review',
-        })
-      );
-    });
-
-    it('should handle empty string title by using featureId as notification title in waiting_approval notification', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
-      const featureWithEmptyTitle: Feature = {
-        ...mockFeature,
-        title: '',
-        name: 'old-name-property',
-      };
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithEmptyTitle,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'waiting_approval');
-
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_waiting_approval',
-          title: 'feature-123',
-          message: 'Feature Ready for Review',
-        })
-      );
-    });
-
-    it('should create notification for verified status', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
+    it('should not sync to app_spec itself (the record owns the sync)', async () => {
       (readJsonWithRecovery as Mock).mockResolvedValue({
         data: { ...mockFeature },
         recovered: false,
@@ -375,129 +294,9 @@ describe('FeatureStateManager', () => {
       });
 
       await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_verified',
-          featureId: 'feature-123',
-        })
-      );
-    });
-
-    it('should use feature.title as notification title for verified status', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
-      const featureWithTitle: Feature = {
-        ...mockFeature,
-        title: 'My Awesome Feature Title',
-        name: 'old-name-property', // name property exists but should not be used
-      };
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithTitle,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_verified',
-          title: 'My Awesome Feature Title',
-          message: 'Feature Verified',
-        })
-      );
-    });
-
-    it('should fallback to featureId as notification title when feature.title is undefined in verified notification', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
-      const featureWithoutTitle: Feature = {
-        ...mockFeature,
-        title: undefined,
-        name: 'old-name-property',
-      };
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithoutTitle,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_verified',
-          title: 'feature-123',
-          message: 'Feature Verified',
-        })
-      );
-    });
-
-    it('should handle empty string title by using featureId as notification title in verified notification', async () => {
-      const mockNotificationService = { createNotification: vi.fn() };
-      (getNotificationService as Mock).mockReturnValue(mockNotificationService);
-      const featureWithEmptyTitle: Feature = {
-        ...mockFeature,
-        title: '',
-        name: 'old-name-property',
-      };
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: featureWithEmptyTitle,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-
-      expect(mockNotificationService.createNotification).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'feature_verified',
-          title: 'feature-123',
-          message: 'Feature Verified',
-        })
-      );
-    });
-
-    it('should sync to app_spec for completed status', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-
       await manager.updateFeatureStatus('/project', 'feature-123', 'completed');
 
-      expect(mockFeatureLoader.syncFeatureToAppSpec).toHaveBeenCalledWith(
-        '/project',
-        expect.objectContaining({ status: 'completed' })
-      );
-    });
-
-    it('should sync to app_spec for verified status', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.updateFeatureStatus('/project', 'feature-123', 'verified');
-
-      expect(mockFeatureLoader.syncFeatureToAppSpec).toHaveBeenCalled();
-    });
-
-    it('should not fail if sync to app_spec fails', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature },
-        recovered: false,
-        source: 'main',
-      });
-      (mockFeatureLoader.syncFeatureToAppSpec as Mock).mockRejectedValue(new Error('Sync failed'));
-
-      // Should not throw
-      await expect(
-        manager.updateFeatureStatus('/project', 'feature-123', 'completed')
-      ).resolves.not.toThrow();
+      expect(mockFeatureLoader.syncFeatureToAppSpec).not.toHaveBeenCalled();
     });
 
     it('should handle feature not found gracefully', async () => {

@@ -10,6 +10,7 @@
 import { createLogger } from '@automaker/utils';
 import type { TypedEventBus } from './typed-event-bus.js';
 import type { FeatureStateManager } from './feature-state-manager.js';
+import type { FeatureTransitioner } from './feature-record.js';
 import type { SettingsService } from './settings-service.js';
 
 const logger = createLogger('PlanApprovalService');
@@ -54,16 +55,19 @@ export class PlanApprovalService {
   private pendingApprovals = new Map<string, PendingApproval>();
   private eventBus: TypedEventBus;
   private featureStateManager: FeatureStateManager;
+  private featureRecord: FeatureTransitioner;
   private settingsService: SettingsService | null;
 
   constructor(
     eventBus: TypedEventBus,
     featureStateManager: FeatureStateManager,
-    settingsService: SettingsService | null
+    settingsService: SettingsService | null,
+    featureRecord: FeatureTransitioner
   ) {
     this.eventBus = eventBus;
     this.featureStateManager = featureStateManager;
     this.settingsService = settingsService;
+    this.featureRecord = featureRecord;
   }
 
   /** Generate project-scoped key to prevent collisions across projects */
@@ -200,10 +204,10 @@ export class PlanApprovalService {
               reviewedByUser: true,
             });
 
-            await this.featureStateManager.updateFeatureStatus(
+            await this.featureRecord.transition(
               projectPathFromClient,
               featureId,
-              'backlog'
+              'returnToBacklog'
             );
 
             this.eventBus.emitAutoModeEvent('plan_rejected', {

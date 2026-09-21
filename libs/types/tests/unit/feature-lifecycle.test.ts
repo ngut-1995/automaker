@@ -44,6 +44,21 @@ describe('resolveTransition', () => {
       }
     });
 
+    it('finishes a verified or completed feature into a new outcome', () => {
+      expect(resolve('verified', 'finish', { outcome: 'completed' })).toEqual({
+        ok: true,
+        status: 'completed',
+      });
+      expect(resolve('completed', 'finish', { outcome: 'verified' })).toEqual({
+        ok: true,
+        status: 'verified',
+      });
+      expect(resolve('verified', 'finish', { outcome: 'waiting_approval' })).toEqual({
+        ok: true,
+        status: 'waiting_approval',
+      });
+    });
+
     it('fails from in_progress and pipeline steps', () => {
       expect(resolve('in_progress', 'fail')).toEqual({ ok: true, status: 'backlog' });
       expect(resolve('pipeline_test', 'fail')).toEqual({ ok: true, status: 'backlog' });
@@ -112,6 +127,10 @@ describe('resolveTransition', () => {
       expect(resolve('in_progress', 'finish', { outcome: 'verified' })).toEqual({
         ok: true,
         status: 'verified',
+      });
+      expect(resolve('verified', 'finish', { outcome: 'completed' })).toEqual({
+        ok: true,
+        status: 'completed',
       });
     });
 

@@ -44,7 +44,7 @@ export function createFeaturesHandlers(
     'features.listPost': listHandler,
     'features.get': createGetHandler(featureLoader),
     'features.create': createCreateHandler(featureLoader, events),
-    'features.update': createUpdateHandler(featureLoader, events),
+    'features.update': createUpdateHandler(featureLoader, events, featureRecord),
     'features.bulkUpdate': createBulkUpdateHandler(featureLoader),
     'features.bulkDelete': createBulkDeleteHandler(featureLoader),
     'features.delete': createDeleteHandler(featureLoader),
