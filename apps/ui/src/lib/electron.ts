@@ -911,6 +911,7 @@ export interface ElectronAPI {
     }>;
     stop: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
     clear: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
+    setModel: (sessionId: string, model: string) => Promise<{ success: boolean; error?: string }>;
     queueList: (sessionId: string) => Promise<{
       success: boolean;
       queue?: Array<{
@@ -992,7 +993,24 @@ export interface ElectronAPI {
     }>;
   };
   zai?: {
+    getStatus: () => Promise<{
+      success: boolean;
+      available: boolean;
+      message?: string;
+      hasApiKey?: boolean;
+      hasEnvApiKey?: boolean;
+      error?: string;
+    }>;
     getUsage: () => Promise<ZaiUsageResponse>;
+    configure: (
+      apiToken?: string,
+      apiHost?: string
+    ) => Promise<{
+      success: boolean;
+      message?: string;
+      isAvailable?: boolean;
+      error?: string;
+    }>;
     verify: (apiKey: string) => Promise<{
       success: boolean;
       authenticated: boolean;
@@ -1002,6 +1020,16 @@ export interface ElectronAPI {
   };
   gemini?: {
     getUsage: () => Promise<GeminiUsageResponse>;
+    getStatus: () => Promise<{
+      success: boolean;
+      installed?: boolean;
+      version?: string | null;
+      path?: string | null;
+      authenticated?: boolean;
+      authMethod?: string;
+      hasCredentialsFile?: boolean;
+      error?: string;
+    }>;
   };
   settings?: {
     getStatus: () => Promise<{
@@ -1500,6 +1528,34 @@ interface SetupAPI {
     };
     loginCommand?: string;
     installCommand?: string;
+    error?: string;
+  }>;
+  authCopilot?: () => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  deauthCopilot?: () => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }>;
+  getCopilotModels?: (refresh?: boolean) => Promise<{
+    success: boolean;
+    models?: ModelDefinition[];
+    count?: number;
+    cached?: boolean;
+    error?: string;
+  }>;
+  refreshCopilotModels?: () => Promise<{
+    success: boolean;
+    models?: ModelDefinition[];
+    count?: number;
+    error?: string;
+  }>;
+  clearCopilotCache?: () => Promise<{
+    success: boolean;
+    message?: string;
     error?: string;
   }>;
   onInstallProgress?: (

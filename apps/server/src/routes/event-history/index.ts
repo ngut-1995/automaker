@@ -9,60 +9,50 @@
  * - Replaying events to test hooks
  *
  * Mounted at /api/event-history in the main server.
+ *
+ * Routes are registered from the shared operation contract; this file only maps
+ * each operation to the handler that implements it.
  */
 
 import { Router } from 'express';
 import type { EventHistoryService } from '../../services/event-history-service.js';
 import type { SettingsService } from '../../services/settings-service.js';
-import { validatePathParams } from '../../middleware/validate-paths.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createListHandler } from './routes/list.js';
 import { createGetHandler } from './routes/get.js';
 import { createDeleteHandler } from './routes/delete.js';
 import { createClearHandler } from './routes/clear.js';
 import { createReplayHandler } from './routes/replay.js';
 
+export const EVENT_HISTORY_MOUNT = '/api/event-history';
+
+/** Create event history operation handlers. */
+export function createEventHistoryHandlers(
+  eventHistoryService: EventHistoryService,
+  settingsService: SettingsService
+): OperationHandlers {
+  return {
+    'eventHistory.list': createListHandler(eventHistoryService),
+    'eventHistory.get': createGetHandler(eventHistoryService),
+    'eventHistory.delete': createDeleteHandler(eventHistoryService),
+    'eventHistory.clear': createClearHandler(eventHistoryService),
+    'eventHistory.replay': createReplayHandler(eventHistoryService, settingsService),
+  };
+}
+
 /**
- * Create event history router with all endpoints
- *
- * Endpoints:
- * - POST /list - List events with optional filtering
- * - POST /get - Get a single event by ID
- * - POST /delete - Delete an event by ID
- * - POST /clear - Clear all events for a project
- * - POST /replay - Replay an event to trigger hooks
+ * Create event history router with all endpoints.
  *
  * @param eventHistoryService - Instance of EventHistoryService
  * @param settingsService - Instance of SettingsService (for replay)
- * @returns Express Router configured with all event history endpoints
  */
 export function createEventHistoryRoutes(
   eventHistoryService: EventHistoryService,
   settingsService: SettingsService
 ): Router {
-  const router = Router();
-
-  // List events with filtering
-  router.post('/list', validatePathParams('projectPath'), createListHandler(eventHistoryService));
-
-  // Get single event
-  router.post('/get', validatePathParams('projectPath'), createGetHandler(eventHistoryService));
-
-  // Delete event
-  router.post(
-    '/delete',
-    validatePathParams('projectPath'),
-    createDeleteHandler(eventHistoryService)
+  return registerContractOperations(
+    Router(),
+    EVENT_HISTORY_MOUNT,
+    createEventHistoryHandlers(eventHistoryService, settingsService)
   );
-
-  // Clear all events
-  router.post('/clear', validatePathParams('projectPath'), createClearHandler(eventHistoryService));
-
-  // Replay event
-  router.post(
-    '/replay',
-    validatePathParams('projectPath'),
-    createReplayHandler(eventHistoryService, settingsService)
-  );
-
-  return router;
 }

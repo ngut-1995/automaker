@@ -44,6 +44,22 @@ import { createFsHandlers, FS_MOUNT } from '@/routes/fs/index.js';
 import { createTerminalHandlers, TERMINAL_MOUNT } from '@/routes/terminal/index.js';
 import { createWorkspaceHandlers, WORKSPACE_MOUNT } from '@/routes/workspace/index.js';
 import { createMCPHandlers, MCP_MOUNT } from '@/routes/mcp/index.js';
+import { createHealthHandlers, HEALTH_MOUNT } from '@/routes/health/index.js';
+import { createAuthHandlers, AUTH_MOUNT } from '@/routes/auth/index.js';
+import { createSessionsHandlers, SESSIONS_MOUNT } from '@/routes/sessions/index.js';
+import { createAgentHandlers, AGENT_MOUNT } from '@/routes/agent/index.js';
+import { createNotificationsHandlers, NOTIFICATIONS_MOUNT } from '@/routes/notifications/index.js';
+import { createEventHistoryHandlers, EVENT_HISTORY_MOUNT } from '@/routes/event-history/index.js';
+import { createPipelineHandlers, PIPELINE_MOUNT } from '@/routes/pipeline/index.js';
+import {
+  createEnhancePromptHandlers,
+  ENHANCE_PROMPT_MOUNT,
+} from '@/routes/enhance-prompt/index.js';
+import { createClaudeHandlers, CLAUDE_MOUNT } from '@/routes/claude/index.js';
+import { createCodexHandlers, CODEX_MOUNT } from '@/routes/codex/index.js';
+import { createZaiHandlers, ZAI_MOUNT } from '@/routes/zai/index.js';
+import { createGeminiHandlers, GEMINI_MOUNT } from '@/routes/gemini/index.js';
+import { createSetupHandlers, SETUP_MOUNT } from '@/routes/setup/index.js';
 import { registerContractOperations, missingContractHandlers } from '@/routes/contract.js';
 import type { OperationHandlers } from '@/routes/contract.js';
 
@@ -188,5 +204,57 @@ describe('contract conformance', () => {
 
   it('mcp mount', () => {
     expectContractMount(MCP_MOUNT, createMCPHandlers({} as never));
+  });
+
+  it('health mount', () => {
+    expectContractMount(HEALTH_MOUNT, createHealthHandlers());
+  });
+
+  it('auth mount', () => {
+    expectContractMount(AUTH_MOUNT, createAuthHandlers());
+  });
+
+  it('sessions mount', () => {
+    expectContractMount(SESSIONS_MOUNT, createSessionsHandlers({} as never));
+  });
+
+  it('agent mount', () => {
+    expectContractMount(AGENT_MOUNT, createAgentHandlers({} as never));
+  });
+
+  it('notifications mount', () => {
+    expectContractMount(NOTIFICATIONS_MOUNT, createNotificationsHandlers({} as never));
+  });
+
+  it('event-history mount', () => {
+    expectContractMount(EVENT_HISTORY_MOUNT, createEventHistoryHandlers({} as never, {} as never));
+  });
+
+  it('pipeline mount', () => {
+    expectContractMount(PIPELINE_MOUNT, createPipelineHandlers({} as never));
+  });
+
+  it('enhance-prompt mount', () => {
+    expectContractMount(ENHANCE_PROMPT_MOUNT, createEnhancePromptHandlers());
+  });
+
+  it('claude mount', () => {
+    expectContractMount(CLAUDE_MOUNT, createClaudeHandlers({} as never));
+  });
+
+  it('codex mount', () => {
+    expectContractMount(CODEX_MOUNT, createCodexHandlers({} as never, {} as never));
+  });
+
+  it('zai mount', () => {
+    expectContractMount(ZAI_MOUNT, createZaiHandlers({} as never, {} as never));
+  });
+
+  it('gemini mount', () => {
+    expectContractMount(GEMINI_MOUNT, createGeminiHandlers({} as never));
+  });
+
+  it('setup mount', () => {
+    expectContractMount(SETUP_MOUNT, createSetupHandlers());
   });
 });

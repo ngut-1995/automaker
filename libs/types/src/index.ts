@@ -405,6 +405,9 @@ export type { TerminalInfo } from './terminal.js';
 // Test runner types
 export type { TestRunnerInfo } from './test-runner.js';
 
+// Provider usage types (Claude, Codex, z.ai, Gemini)
+export * from './usage.js';
+
 // Operation contract (the UI-server seam)
 export * from './operations.js';
 

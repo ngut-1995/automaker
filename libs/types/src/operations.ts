@@ -18,7 +18,7 @@ import type { EventType } from './event.js';
 import type { Feature } from './feature.js';
 import type { MergeStateInfo } from './worktree.js';
 import type { MultiProjectOverview } from './project-overview.js';
-import type { AgentDefinition, ReasoningEffort } from './provider.js';
+import type { AgentDefinition, ModelDefinition, ReasoningEffort } from './provider.js';
 import type {
   Credentials,
   GlobalSettings,
@@ -44,6 +44,21 @@ import type {
 } from './ideation.js';
 import type { GitHubComment, LinkedPRInfo, StoredValidation } from './issue-validation.js';
 import type { ModelId } from './model.js';
+import type { AgentSession, SessionListItem } from './session.js';
+import type { Notification } from './notification.js';
+import type {
+  EventHistoryFilter,
+  EventReplayResult,
+  StoredEvent,
+  StoredEventSummary,
+} from './event-history.js';
+import type { PipelineConfig, PipelineStep } from './pipeline.js';
+import type {
+  ClaudeUsageResponse,
+  CodexUsageResponse,
+  GeminiUsage,
+  ZaiUsageResponse,
+} from './usage.js';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -2545,6 +2560,958 @@ export interface McpListToolsResponse {
   error?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Health mount (/api/health)
+// ---------------------------------------------------------------------------
+
+export type HealthCheckRequest = Record<string, never>;
+export interface HealthCheckResponse {
+  status: string;
+  timestamp: string;
+  version: string;
+}
+
+export type HealthEnvironmentRequest = Record<string, never>;
+export interface HealthEnvironmentResponse {
+  isContainerized: boolean;
+  skipSandboxWarning?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Auth mount (/api/auth)
+// ---------------------------------------------------------------------------
+
+export type AuthStatusRequest = Record<string, never>;
+export interface AuthStatusResponse {
+  success: boolean;
+  authenticated: boolean;
+  required: boolean;
+  error?: string;
+}
+
+export interface AuthLoginRequest {
+  apiKey: string;
+}
+export interface AuthLoginResponse {
+  success: boolean;
+  message?: string;
+  token?: string;
+  error?: string;
+  retryAfter?: number;
+}
+
+export type AuthTokenRequest = Record<string, never>;
+export interface AuthTokenResponse {
+  success: boolean;
+  token?: string;
+  expiresIn?: number;
+  error?: string;
+}
+
+export type AuthLogoutRequest = Record<string, never>;
+export interface AuthLogoutResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Sessions mount (/api/sessions)
+// ---------------------------------------------------------------------------
+
+export interface SessionsListRequest {
+  includeArchived?: boolean;
+}
+export interface SessionsListResponse {
+  success: boolean;
+  sessions?: SessionListItem[];
+  error?: string;
+}
+
+export interface SessionsCreateRequest {
+  name: string;
+  projectPath?: string;
+  workingDirectory?: string;
+  model?: string;
+}
+export interface SessionsCreateResponse {
+  success: boolean;
+  session?: AgentSession;
+  sessionId?: string;
+  error?: string;
+}
+
+export interface SessionsUpdateRequest {
+  sessionId: string;
+  name?: string;
+  tags?: string[];
+  model?: string;
+}
+export interface SessionsUpdateResponse {
+  success: boolean;
+  session?: AgentSession;
+  error?: string;
+}
+
+export interface SessionsArchiveRequest {
+  sessionId: string;
+}
+export interface SessionsArchiveResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SessionsUnarchiveRequest {
+  sessionId: string;
+}
+export interface SessionsUnarchiveResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SessionsDeleteRequest {
+  sessionId: string;
+}
+export interface SessionsDeleteResponse {
+  success: boolean;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Agent mount (/api/agent)
+// ---------------------------------------------------------------------------
+
+/** Image attachment shape carried on an agent message. */
+export interface AgentMessageImage {
+  id?: string;
+  data: string;
+  mimeType: string;
+  filename: string;
+  size?: number;
+}
+
+export interface AgentMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  isError?: boolean;
+  images?: AgentMessageImage[];
+}
+
+export interface AgentQueuedPrompt {
+  id: string;
+  message: string;
+  imagePaths?: string[];
+  model?: string;
+  thinkingLevel?: string;
+  addedAt: string;
+}
+
+export interface AgentStartRequest {
+  sessionId: string;
+  workingDirectory?: string;
+}
+export interface AgentStartResponse {
+  success: boolean;
+  messages?: AgentMessage[];
+  sessionId?: string;
+  error?: string;
+}
+
+export interface AgentSendRequest {
+  sessionId: string;
+  message: string;
+  workingDirectory?: string;
+  imagePaths?: string[];
+  model?: string;
+  thinkingLevel?: string;
+}
+export interface AgentSendResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AgentHistoryRequest {
+  sessionId: string;
+}
+export interface AgentHistoryResponse {
+  success: boolean;
+  messages?: AgentMessage[];
+  isRunning?: boolean;
+  error?: string;
+}
+
+export interface AgentStopRequest {
+  sessionId: string;
+}
+export interface AgentStopResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AgentClearRequest {
+  sessionId: string;
+}
+export interface AgentClearResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AgentModelRequest {
+  sessionId: string;
+  model: string;
+}
+export interface AgentModelResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AgentQueueAddRequest {
+  sessionId: string;
+  message: string;
+  imagePaths?: string[];
+  model?: string;
+  thinkingLevel?: string;
+}
+export interface AgentQueueAddResponse {
+  success: boolean;
+  queuedPrompt?: AgentQueuedPrompt;
+  error?: string;
+}
+
+export interface AgentQueueListRequest {
+  sessionId: string;
+}
+export interface AgentQueueListResponse {
+  success: boolean;
+  queue?: AgentQueuedPrompt[];
+  error?: string;
+}
+
+export interface AgentQueueRemoveRequest {
+  sessionId: string;
+  promptId: string;
+}
+export interface AgentQueueRemoveResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AgentQueueClearRequest {
+  sessionId: string;
+}
+export interface AgentQueueClearResponse {
+  success: boolean;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Notifications mount (/api/notifications)
+// ---------------------------------------------------------------------------
+
+export interface NotificationsListRequest {
+  projectPath: string;
+}
+export interface NotificationsListResponse {
+  success: boolean;
+  notifications?: Notification[];
+  error?: string;
+}
+
+export interface NotificationsUnreadCountRequest {
+  projectPath: string;
+}
+export interface NotificationsUnreadCountResponse {
+  success: boolean;
+  count?: number;
+  error?: string;
+}
+
+export interface NotificationsMarkReadRequest {
+  projectPath: string;
+  notificationId?: string;
+}
+export interface NotificationsMarkReadResponse {
+  success: boolean;
+  notification?: Notification;
+  count?: number;
+  error?: string;
+}
+
+export interface NotificationsDismissRequest {
+  projectPath: string;
+  notificationId?: string;
+}
+export interface NotificationsDismissResponse {
+  success: boolean;
+  dismissed?: boolean;
+  count?: number;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Event History mount (/api/event-history)
+// ---------------------------------------------------------------------------
+
+export interface EventHistoryListRequest {
+  projectPath: string;
+  filter?: EventHistoryFilter;
+}
+export interface EventHistoryListResponse {
+  success: boolean;
+  events?: StoredEventSummary[];
+  total?: number;
+  error?: string;
+}
+
+export interface EventHistoryGetRequest {
+  projectPath: string;
+  eventId: string;
+}
+export interface EventHistoryGetResponse {
+  success: boolean;
+  event?: StoredEvent;
+  error?: string;
+}
+
+export interface EventHistoryDeleteRequest {
+  projectPath: string;
+  eventId: string;
+}
+export interface EventHistoryDeleteResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface EventHistoryClearRequest {
+  projectPath: string;
+}
+export interface EventHistoryClearResponse {
+  success: boolean;
+  cleared?: number;
+  error?: string;
+}
+
+export interface EventHistoryReplayRequest {
+  projectPath: string;
+  eventId: string;
+  hookIds?: string[];
+}
+export interface EventHistoryReplayResponse {
+  success: boolean;
+  result?: EventReplayResult;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline mount (/api/pipeline)
+// ---------------------------------------------------------------------------
+
+export interface PipelineGetConfigRequest {
+  projectPath: string;
+}
+export interface PipelineGetConfigResponse {
+  success: boolean;
+  config?: PipelineConfig;
+  error?: string;
+}
+
+export interface PipelineSaveConfigRequest {
+  projectPath: string;
+  config: PipelineConfig;
+}
+export interface PipelineSaveConfigResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface PipelineStepInput {
+  name: string;
+  order: number;
+  instructions: string;
+  colorClass: string;
+}
+
+export interface PipelineAddStepRequest {
+  projectPath: string;
+  step: PipelineStepInput;
+}
+export interface PipelineAddStepResponse {
+  success: boolean;
+  step?: PipelineStep;
+  error?: string;
+}
+
+export interface PipelineUpdateStepRequest {
+  projectPath: string;
+  stepId: string;
+  updates: Partial<PipelineStepInput>;
+}
+export interface PipelineUpdateStepResponse {
+  success: boolean;
+  step?: PipelineStep;
+  error?: string;
+}
+
+export interface PipelineDeleteStepRequest {
+  projectPath: string;
+  stepId: string;
+}
+export interface PipelineDeleteStepResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface PipelineReorderStepsRequest {
+  projectPath: string;
+  stepIds: string[];
+}
+export interface PipelineReorderStepsResponse {
+  success: boolean;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Enhance Prompt mount (/api/enhance-prompt)
+// ---------------------------------------------------------------------------
+
+export interface EnhancePromptRequest {
+  originalText: string;
+  enhancementMode: string;
+  model?: string;
+  thinkingLevel?: string;
+  projectPath?: string;
+}
+export interface EnhancePromptResponse {
+  success: boolean;
+  enhancedText?: string;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Claude usage mount (/api/claude)
+// ---------------------------------------------------------------------------
+
+export type ClaudeGetUsageRequest = Record<string, never>;
+export type ClaudeGetUsageResponse = ClaudeUsageResponse;
+
+// ---------------------------------------------------------------------------
+// Codex usage mount (/api/codex)
+// ---------------------------------------------------------------------------
+
+export type CodexGetUsageRequest = Record<string, never>;
+export type CodexGetUsageResponse = CodexUsageResponse;
+
+export interface CodexModelInfo {
+  id: string;
+  label: string;
+  description: string;
+  hasThinking: boolean;
+  supportsVision: boolean;
+  tier: 'premium' | 'standard' | 'basic';
+  isDefault: boolean;
+}
+
+export interface CodexGetModelsRequest {
+  refresh?: boolean;
+}
+export interface CodexGetModelsResponse {
+  success: boolean;
+  models?: CodexModelInfo[];
+  cachedAt?: number;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// z.ai usage mount (/api/zai)
+// ---------------------------------------------------------------------------
+
+export type ZaiGetStatusRequest = Record<string, never>;
+export interface ZaiGetStatusResponse {
+  success: boolean;
+  available: boolean;
+  message?: string;
+  hasApiKey?: boolean;
+  hasEnvApiKey?: boolean;
+  error?: string;
+}
+
+export type ZaiGetUsageRequest = Record<string, never>;
+export type ZaiGetUsageResponse = ZaiUsageResponse;
+
+export interface ZaiConfigureRequest {
+  apiToken?: string;
+  apiHost?: string;
+}
+export interface ZaiConfigureResponse {
+  success: boolean;
+  message?: string;
+  isAvailable?: boolean;
+  error?: string;
+}
+
+export interface ZaiVerifyRequest {
+  apiKey: string;
+}
+export interface ZaiVerifyResponse {
+  success: boolean;
+  authenticated: boolean;
+  message?: string;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Gemini usage mount (/api/gemini)
+// ---------------------------------------------------------------------------
+
+export type GeminiGetUsageRequest = Record<string, never>;
+export type GeminiGetUsageResponse = GeminiUsage;
+
+export type GeminiGetStatusRequest = Record<string, never>;
+export interface GeminiGetStatusResponse {
+  success: boolean;
+  installed?: boolean;
+  version?: string | null;
+  path?: string | null;
+  authenticated?: boolean;
+  authMethod?: string;
+  hasCredentialsFile?: boolean;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Setup mount (/api/setup)
+// ---------------------------------------------------------------------------
+
+/** Generic success/message payload shared by install, auth-connect and cache ops. */
+export interface SetupSuccessMessageResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+/** Payload for CLI auth operations that may open a terminal. */
+export interface SetupAuthCommandResponse {
+  success: boolean;
+  token?: string;
+  requiresManualAuth?: boolean;
+  terminalOpened?: boolean;
+  command?: string;
+  message?: string;
+  error?: string;
+  output?: string;
+}
+
+/** Payload for CLI deauth operations. */
+export interface SetupDeauthResponse {
+  success: boolean;
+  requiresManualDeauth?: boolean;
+  command?: string;
+  message?: string;
+  error?: string;
+}
+
+export type SetupClaudeStatusRequest = Record<string, never>;
+export interface SetupClaudeAuthStatus {
+  authenticated: boolean;
+  method: string;
+  hasCredentialsFile?: boolean;
+  hasToken?: boolean;
+  hasStoredOAuthToken?: boolean;
+  hasStoredApiKey?: boolean;
+  hasEnvApiKey?: boolean;
+  hasEnvOAuthToken?: boolean;
+  hasCliAuth?: boolean;
+  hasRecentActivity?: boolean;
+}
+export interface SetupClaudeStatusResponse {
+  success: boolean;
+  status?: string;
+  installed?: boolean;
+  method?: string;
+  version?: string;
+  path?: string;
+  auth?: SetupClaudeAuthStatus;
+  error?: string;
+}
+
+export type SetupInstallClaudeRequest = Record<string, never>;
+export type SetupInstallClaudeResponse = SetupSuccessMessageResponse;
+
+export type SetupAuthClaudeRequest = Record<string, never>;
+export type SetupAuthClaudeResponse = SetupAuthCommandResponse;
+
+export type SetupDeauthClaudeRequest = Record<string, never>;
+export type SetupDeauthClaudeResponse = SetupDeauthResponse;
+
+export interface SetupStoreApiKeyRequest {
+  provider: string;
+  apiKey: string;
+}
+export interface SetupStoreApiKeyResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface SetupDeleteApiKeyRequest {
+  provider: string;
+}
+export interface SetupDeleteApiKeyResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export type SetupApiKeysRequest = Record<string, never>;
+export interface SetupApiKeysResponse {
+  success: boolean;
+  hasAnthropicKey: boolean;
+  hasGoogleKey: boolean;
+  hasOpenaiKey: boolean;
+}
+
+export type SetupPlatformRequest = Record<string, never>;
+export interface SetupPlatformResponse {
+  success: boolean;
+  platform: string;
+  arch: string;
+  homeDir: string;
+  isWindows: boolean;
+  isMac: boolean;
+  isLinux: boolean;
+}
+
+export interface SetupVerifyClaudeAuthRequest {
+  authMethod?: 'cli' | 'api_key';
+  apiKey?: string;
+}
+export interface SetupVerifyClaudeAuthResponse {
+  success: boolean;
+  authenticated: boolean;
+  authType?: 'oauth' | 'api_key' | 'cli';
+  error?: string;
+}
+
+export interface SetupVerifyCodexAuthRequest {
+  authMethod: 'cli' | 'api_key';
+  apiKey?: string;
+}
+export interface SetupVerifyCodexAuthResponse {
+  success: boolean;
+  authenticated: boolean;
+  error?: string;
+}
+
+export type SetupGhStatusRequest = Record<string, never>;
+export interface SetupGhStatusResponse {
+  success: boolean;
+  installed: boolean;
+  authenticated: boolean;
+  version: string | null;
+  path: string | null;
+  user: string | null;
+  error?: string;
+}
+
+export type SetupCursorStatusRequest = Record<string, never>;
+export interface SetupCursorStatusResponse {
+  success: boolean;
+  installed?: boolean;
+  version?: string | null;
+  path?: string | null;
+  auth?: {
+    authenticated: boolean;
+    method: string;
+  };
+  installCommand?: string;
+  loginCommand?: string;
+  error?: string;
+}
+
+export type SetupAuthCursorRequest = Record<string, never>;
+export type SetupAuthCursorResponse = SetupAuthCommandResponse;
+
+export type SetupDeauthCursorRequest = Record<string, never>;
+export type SetupDeauthCursorResponse = SetupDeauthResponse;
+
+export type SetupCodexStatusRequest = Record<string, never>;
+export interface SetupCodexAuthStatus {
+  authenticated: boolean;
+  method: string;
+  hasAuthFile?: boolean;
+  hasOAuthToken?: boolean;
+  hasApiKey?: boolean;
+  hasStoredApiKey?: boolean;
+  hasEnvApiKey?: boolean;
+}
+export interface SetupCodexStatusResponse {
+  success: boolean;
+  status?: string;
+  installed?: boolean;
+  method?: string;
+  version?: string;
+  path?: string;
+  auth?: SetupCodexAuthStatus;
+  error?: string;
+}
+
+export type SetupInstallCodexRequest = Record<string, never>;
+export type SetupInstallCodexResponse = SetupSuccessMessageResponse;
+
+export type SetupAuthCodexRequest = Record<string, never>;
+export type SetupAuthCodexResponse = SetupAuthCommandResponse;
+
+export type SetupDeauthCodexRequest = Record<string, never>;
+export type SetupDeauthCodexResponse = SetupDeauthResponse;
+
+export type SetupOpencodeStatusRequest = Record<string, never>;
+export interface SetupInstallCommands {
+  macos?: string;
+  linux?: string;
+  npm?: string;
+  windows?: string;
+}
+export interface SetupOpencodeStatusResponse {
+  success: boolean;
+  status?: string;
+  installed?: boolean;
+  method?: string;
+  version?: string;
+  path?: string;
+  recommendation?: string;
+  installCommands?: SetupInstallCommands;
+  auth?: SetupCodexAuthStatus;
+  error?: string;
+}
+
+export type SetupAuthOpencodeRequest = Record<string, never>;
+export type SetupAuthOpencodeResponse = SetupAuthCommandResponse;
+
+export type SetupDeauthOpencodeRequest = Record<string, never>;
+export type SetupDeauthOpencodeResponse = SetupDeauthResponse;
+
+export type SetupGeminiStatusRequest = Record<string, never>;
+export interface SetupGeminiStatusResponse {
+  success: boolean;
+  status?: string;
+  installed?: boolean;
+  method?: string;
+  version?: string;
+  path?: string;
+  recommendation?: string;
+  installCommands?: SetupInstallCommands;
+  auth?: {
+    authenticated: boolean;
+    method: string;
+    hasApiKey?: boolean;
+    hasEnvApiKey?: boolean;
+    error?: string;
+  };
+  loginCommand?: string;
+  installCommand?: string;
+  error?: string;
+}
+
+export type SetupAuthGeminiRequest = Record<string, never>;
+export type SetupAuthGeminiResponse = SetupAuthCommandResponse;
+
+export type SetupDeauthGeminiRequest = Record<string, never>;
+export type SetupDeauthGeminiResponse = SetupDeauthResponse;
+
+export type SetupCopilotStatusRequest = Record<string, never>;
+export interface SetupCopilotStatusResponse {
+  success: boolean;
+  status?: string;
+  installed?: boolean;
+  method?: string;
+  version?: string;
+  path?: string;
+  recommendation?: string;
+  auth?: {
+    authenticated: boolean;
+    method: string;
+    login?: string;
+    host?: string;
+    error?: string;
+  };
+  loginCommand?: string;
+  installCommand?: string;
+  error?: string;
+}
+
+export type SetupAuthCopilotRequest = Record<string, never>;
+export type SetupAuthCopilotResponse = SetupSuccessMessageResponse;
+
+export type SetupDeauthCopilotRequest = Record<string, never>;
+export type SetupDeauthCopilotResponse = SetupSuccessMessageResponse;
+
+export interface SetupGetCopilotModelsRequest {
+  refresh?: boolean;
+}
+export interface SetupCopilotModelsResponse {
+  success: boolean;
+  models?: ModelDefinition[];
+  count?: number;
+  cached?: boolean;
+  error?: string;
+}
+export type SetupRefreshCopilotModelsRequest = Record<string, never>;
+export type SetupRefreshCopilotModelsResponse = Omit<SetupCopilotModelsResponse, 'cached'>;
+export type SetupClearCopilotCacheRequest = Record<string, never>;
+export type SetupClearCopilotCacheResponse = SetupSuccessMessageResponse;
+
+export interface SetupGetOpencodeModelsRequest {
+  refresh?: boolean;
+}
+export interface SetupOpencodeModelInfo {
+  id: string;
+  name: string;
+  modelString: string;
+  provider: string;
+  description: string;
+  supportsTools: boolean;
+  supportsVision: boolean;
+  tier: string;
+  default?: boolean;
+}
+export interface SetupOpencodeModelsResponse {
+  success: boolean;
+  models?: SetupOpencodeModelInfo[];
+  count?: number;
+  cached?: boolean;
+  error?: string;
+}
+export type SetupRefreshOpencodeModelsRequest = Record<string, never>;
+export type SetupRefreshOpencodeModelsResponse = Omit<SetupOpencodeModelsResponse, 'cached'>;
+
+export type SetupGetOpencodeProvidersRequest = Record<string, never>;
+export interface SetupOpencodeProviderInfo {
+  id: string;
+  name: string;
+  authenticated: boolean;
+  authMethod?: 'oauth' | 'api_key';
+}
+export interface SetupOpencodeProvidersResponse {
+  success: boolean;
+  providers?: SetupOpencodeProviderInfo[];
+  authenticated?: SetupOpencodeProviderInfo[];
+  error?: string;
+}
+
+export type SetupClearOpencodeCacheRequest = Record<string, never>;
+export type SetupClearOpencodeCacheResponse = SetupSuccessMessageResponse;
+
+export interface SetupGetCursorConfigRequest {
+  projectPath: string;
+}
+export interface SetupCursorConfigShape {
+  defaultModel?: string;
+  models?: string[];
+  mcpServers?: string[];
+  rules?: string[];
+}
+export interface SetupCursorModelOption {
+  id: string;
+  label: string;
+  description: string;
+  hasThinking: boolean;
+  tier: 'free' | 'pro';
+}
+export interface SetupGetCursorConfigResponse {
+  success: boolean;
+  config?: SetupCursorConfigShape;
+  availableModels?: SetupCursorModelOption[];
+  error?: string;
+}
+
+export interface SetupSetCursorDefaultModelRequest {
+  projectPath: string;
+  model: string;
+}
+export interface SetupSetCursorDefaultModelResponse {
+  success: boolean;
+  model?: string;
+  error?: string;
+}
+
+export interface SetupSetCursorModelsRequest {
+  projectPath: string;
+  models: string[];
+}
+export interface SetupSetCursorModelsResponse {
+  success: boolean;
+  models?: string[];
+  error?: string;
+}
+
+export interface SetupGetCursorPermissionsRequest {
+  projectPath?: string;
+}
+export interface SetupCursorPermissionsShape {
+  allow: string[];
+  deny: string[];
+}
+export interface SetupCursorPermissionProfileInfo {
+  id: string;
+  name: string;
+  description: string;
+  permissions: SetupCursorPermissionsShape;
+}
+export interface SetupGetCursorPermissionsResponse {
+  success: boolean;
+  globalPermissions?: SetupCursorPermissionsShape | null;
+  projectPermissions?: SetupCursorPermissionsShape | null;
+  effectivePermissions?: SetupCursorPermissionsShape | null;
+  activeProfile?: 'strict' | 'development' | 'custom' | null;
+  hasProjectConfig?: boolean;
+  availableProfiles?: SetupCursorPermissionProfileInfo[];
+  error?: string;
+}
+
+export interface SetupApplyCursorPermissionProfileRequest {
+  profileId: 'strict' | 'development';
+  scope: 'global' | 'project';
+  projectPath?: string;
+}
+export interface SetupApplyCursorPermissionProfileResponse {
+  success: boolean;
+  message?: string;
+  scope?: string;
+  profileId?: string;
+  error?: string;
+}
+
+export interface SetupSetCursorCustomPermissionsRequest {
+  projectPath: string;
+  permissions: SetupCursorPermissionsShape;
+}
+export interface SetupSetCursorCustomPermissionsResponse {
+  success: boolean;
+  message?: string;
+  permissions?: SetupCursorPermissionsShape;
+  error?: string;
+}
+
+export interface SetupDeleteCursorProjectPermissionsRequest {
+  projectPath: string;
+}
+export interface SetupDeleteCursorProjectPermissionsResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface SetupGetCursorExampleConfigRequest {
+  profileId?: 'strict' | 'development';
+}
+export interface SetupGetCursorExampleConfigResponse {
+  success: boolean;
+  profileId?: string;
+  config?: string;
+  error?: string;
+}
+
 /**
  * The registry. Add one entry per operation, named `<namespace>.<method>` where
  * the namespace matches the client's API namespace.
@@ -3917,6 +4884,647 @@ export const OPERATIONS = {
     path: '/tools',
     request: null as unknown as McpListToolsRequest,
     response: null as unknown as McpListToolsResponse,
+  },
+  'health.check': {
+    method: 'GET',
+    mount: '/api/health',
+    path: '/',
+    request: null as unknown as HealthCheckRequest,
+    response: null as unknown as HealthCheckResponse,
+  },
+  'health.environment': {
+    method: 'GET',
+    mount: '/api/health',
+    path: '/environment',
+    request: null as unknown as HealthEnvironmentRequest,
+    response: null as unknown as HealthEnvironmentResponse,
+  },
+  'auth.status': {
+    method: 'GET',
+    mount: '/api/auth',
+    path: '/status',
+    request: null as unknown as AuthStatusRequest,
+    response: null as unknown as AuthStatusResponse,
+  },
+  'auth.login': {
+    method: 'POST',
+    mount: '/api/auth',
+    path: '/login',
+    request: null as unknown as AuthLoginRequest,
+    response: null as unknown as AuthLoginResponse,
+  },
+  'auth.token': {
+    method: 'GET',
+    mount: '/api/auth',
+    path: '/token',
+    request: null as unknown as AuthTokenRequest,
+    response: null as unknown as AuthTokenResponse,
+  },
+  'auth.logout': {
+    method: 'POST',
+    mount: '/api/auth',
+    path: '/logout',
+    request: null as unknown as AuthLogoutRequest,
+    response: null as unknown as AuthLogoutResponse,
+  },
+  'sessions.list': {
+    method: 'GET',
+    mount: '/api/sessions',
+    path: '/',
+    request: null as unknown as SessionsListRequest,
+    response: null as unknown as SessionsListResponse,
+  },
+  'sessions.create': {
+    method: 'POST',
+    mount: '/api/sessions',
+    path: '/',
+    request: null as unknown as SessionsCreateRequest,
+    response: null as unknown as SessionsCreateResponse,
+  },
+  'sessions.update': {
+    method: 'PUT',
+    mount: '/api/sessions',
+    path: '/:sessionId',
+    request: null as unknown as SessionsUpdateRequest,
+    response: null as unknown as SessionsUpdateResponse,
+  },
+  'sessions.archive': {
+    method: 'POST',
+    mount: '/api/sessions',
+    path: '/:sessionId/archive',
+    request: null as unknown as SessionsArchiveRequest,
+    response: null as unknown as SessionsArchiveResponse,
+  },
+  'sessions.unarchive': {
+    method: 'POST',
+    mount: '/api/sessions',
+    path: '/:sessionId/unarchive',
+    request: null as unknown as SessionsUnarchiveRequest,
+    response: null as unknown as SessionsUnarchiveResponse,
+  },
+  'sessions.delete': {
+    method: 'DELETE',
+    mount: '/api/sessions',
+    path: '/:sessionId',
+    request: null as unknown as SessionsDeleteRequest,
+    response: null as unknown as SessionsDeleteResponse,
+  },
+  'agent.start': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/start',
+    request: null as unknown as AgentStartRequest,
+    response: null as unknown as AgentStartResponse,
+    pathParams: ['workingDirectory?'],
+  },
+  'agent.send': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/send',
+    request: null as unknown as AgentSendRequest,
+    response: null as unknown as AgentSendResponse,
+    pathParams: ['workingDirectory?', 'imagePaths[]'],
+  },
+  'agent.getHistory': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/history',
+    request: null as unknown as AgentHistoryRequest,
+    response: null as unknown as AgentHistoryResponse,
+  },
+  'agent.stop': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/stop',
+    request: null as unknown as AgentStopRequest,
+    response: null as unknown as AgentStopResponse,
+  },
+  'agent.clear': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/clear',
+    request: null as unknown as AgentClearRequest,
+    response: null as unknown as AgentClearResponse,
+  },
+  'agent.model': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/model',
+    request: null as unknown as AgentModelRequest,
+    response: null as unknown as AgentModelResponse,
+  },
+  'agent.queueAdd': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/queue/add',
+    request: null as unknown as AgentQueueAddRequest,
+    response: null as unknown as AgentQueueAddResponse,
+    pathParams: ['imagePaths[]'],
+  },
+  'agent.queueList': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/queue/list',
+    request: null as unknown as AgentQueueListRequest,
+    response: null as unknown as AgentQueueListResponse,
+  },
+  'agent.queueRemove': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/queue/remove',
+    request: null as unknown as AgentQueueRemoveRequest,
+    response: null as unknown as AgentQueueRemoveResponse,
+  },
+  'agent.queueClear': {
+    method: 'POST',
+    mount: '/api/agent',
+    path: '/queue/clear',
+    request: null as unknown as AgentQueueClearRequest,
+    response: null as unknown as AgentQueueClearResponse,
+  },
+  'notifications.list': {
+    method: 'POST',
+    mount: '/api/notifications',
+    path: '/list',
+    request: null as unknown as NotificationsListRequest,
+    response: null as unknown as NotificationsListResponse,
+    pathParams: ['projectPath'],
+  },
+  'notifications.unreadCount': {
+    method: 'POST',
+    mount: '/api/notifications',
+    path: '/unread-count',
+    request: null as unknown as NotificationsUnreadCountRequest,
+    response: null as unknown as NotificationsUnreadCountResponse,
+    pathParams: ['projectPath'],
+  },
+  'notifications.markRead': {
+    method: 'POST',
+    mount: '/api/notifications',
+    path: '/mark-read',
+    request: null as unknown as NotificationsMarkReadRequest,
+    response: null as unknown as NotificationsMarkReadResponse,
+    pathParams: ['projectPath'],
+  },
+  'notifications.dismiss': {
+    method: 'POST',
+    mount: '/api/notifications',
+    path: '/dismiss',
+    request: null as unknown as NotificationsDismissRequest,
+    response: null as unknown as NotificationsDismissResponse,
+    pathParams: ['projectPath'],
+  },
+  'eventHistory.list': {
+    method: 'POST',
+    mount: '/api/event-history',
+    path: '/list',
+    request: null as unknown as EventHistoryListRequest,
+    response: null as unknown as EventHistoryListResponse,
+    pathParams: ['projectPath'],
+  },
+  'eventHistory.get': {
+    method: 'POST',
+    mount: '/api/event-history',
+    path: '/get',
+    request: null as unknown as EventHistoryGetRequest,
+    response: null as unknown as EventHistoryGetResponse,
+    pathParams: ['projectPath'],
+  },
+  'eventHistory.delete': {
+    method: 'POST',
+    mount: '/api/event-history',
+    path: '/delete',
+    request: null as unknown as EventHistoryDeleteRequest,
+    response: null as unknown as EventHistoryDeleteResponse,
+    pathParams: ['projectPath'],
+  },
+  'eventHistory.clear': {
+    method: 'POST',
+    mount: '/api/event-history',
+    path: '/clear',
+    request: null as unknown as EventHistoryClearRequest,
+    response: null as unknown as EventHistoryClearResponse,
+    pathParams: ['projectPath'],
+  },
+  'eventHistory.replay': {
+    method: 'POST',
+    mount: '/api/event-history',
+    path: '/replay',
+    request: null as unknown as EventHistoryReplayRequest,
+    response: null as unknown as EventHistoryReplayResponse,
+    pathParams: ['projectPath'],
+  },
+  'pipeline.getConfig': {
+    method: 'POST',
+    mount: '/api/pipeline',
+    path: '/config',
+    request: null as unknown as PipelineGetConfigRequest,
+    response: null as unknown as PipelineGetConfigResponse,
+    pathParams: ['projectPath'],
+  },
+  'pipeline.saveConfig': {
+    method: 'POST',
+    mount: '/api/pipeline',
+    path: '/config/save',
+    request: null as unknown as PipelineSaveConfigRequest,
+    response: null as unknown as PipelineSaveConfigResponse,
+    pathParams: ['projectPath'],
+  },
+  'pipeline.addStep': {
+    method: 'POST',
+    mount: '/api/pipeline',
+    path: '/steps/add',
+    request: null as unknown as PipelineAddStepRequest,
+    response: null as unknown as PipelineAddStepResponse,
+    pathParams: ['projectPath'],
+  },
+  'pipeline.updateStep': {
+    method: 'POST',
+    mount: '/api/pipeline',
+    path: '/steps/update',
+    request: null as unknown as PipelineUpdateStepRequest,
+    response: null as unknown as PipelineUpdateStepResponse,
+    pathParams: ['projectPath'],
+  },
+  'pipeline.deleteStep': {
+    method: 'POST',
+    mount: '/api/pipeline',
+    path: '/steps/delete',
+    request: null as unknown as PipelineDeleteStepRequest,
+    response: null as unknown as PipelineDeleteStepResponse,
+    pathParams: ['projectPath'],
+  },
+  'pipeline.reorderSteps': {
+    method: 'POST',
+    mount: '/api/pipeline',
+    path: '/steps/reorder',
+    request: null as unknown as PipelineReorderStepsRequest,
+    response: null as unknown as PipelineReorderStepsResponse,
+    pathParams: ['projectPath'],
+  },
+  'enhancePrompt.enhance': {
+    method: 'POST',
+    mount: '/api/enhance-prompt',
+    path: '/',
+    request: null as unknown as EnhancePromptRequest,
+    response: null as unknown as EnhancePromptResponse,
+  },
+  'claude.getUsage': {
+    method: 'GET',
+    mount: '/api/claude',
+    path: '/usage',
+    request: null as unknown as ClaudeGetUsageRequest,
+    response: null as unknown as ClaudeGetUsageResponse,
+  },
+  'codex.getUsage': {
+    method: 'GET',
+    mount: '/api/codex',
+    path: '/usage',
+    request: null as unknown as CodexGetUsageRequest,
+    response: null as unknown as CodexGetUsageResponse,
+  },
+  'codex.getModels': {
+    method: 'GET',
+    mount: '/api/codex',
+    path: '/models',
+    request: null as unknown as CodexGetModelsRequest,
+    response: null as unknown as CodexGetModelsResponse,
+  },
+  'zai.getStatus': {
+    method: 'GET',
+    mount: '/api/zai',
+    path: '/status',
+    request: null as unknown as ZaiGetStatusRequest,
+    response: null as unknown as ZaiGetStatusResponse,
+  },
+  'zai.getUsage': {
+    method: 'GET',
+    mount: '/api/zai',
+    path: '/usage',
+    request: null as unknown as ZaiGetUsageRequest,
+    response: null as unknown as ZaiGetUsageResponse,
+  },
+  'zai.configure': {
+    method: 'POST',
+    mount: '/api/zai',
+    path: '/configure',
+    request: null as unknown as ZaiConfigureRequest,
+    response: null as unknown as ZaiConfigureResponse,
+  },
+  'zai.verify': {
+    method: 'POST',
+    mount: '/api/zai',
+    path: '/verify',
+    request: null as unknown as ZaiVerifyRequest,
+    response: null as unknown as ZaiVerifyResponse,
+  },
+  'gemini.getUsage': {
+    method: 'GET',
+    mount: '/api/gemini',
+    path: '/usage',
+    request: null as unknown as GeminiGetUsageRequest,
+    response: null as unknown as GeminiGetUsageResponse,
+  },
+  'gemini.getStatus': {
+    method: 'GET',
+    mount: '/api/gemini',
+    path: '/status',
+    request: null as unknown as GeminiGetStatusRequest,
+    response: null as unknown as GeminiGetStatusResponse,
+  },
+  'setup.getClaudeStatus': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/claude-status',
+    request: null as unknown as SetupClaudeStatusRequest,
+    response: null as unknown as SetupClaudeStatusResponse,
+  },
+  'setup.installClaude': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/install-claude',
+    request: null as unknown as SetupInstallClaudeRequest,
+    response: null as unknown as SetupInstallClaudeResponse,
+  },
+  'setup.authClaude': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/auth-claude',
+    request: null as unknown as SetupAuthClaudeRequest,
+    response: null as unknown as SetupAuthClaudeResponse,
+  },
+  'setup.deauthClaude': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/deauth-claude',
+    request: null as unknown as SetupDeauthClaudeRequest,
+    response: null as unknown as SetupDeauthClaudeResponse,
+  },
+  'setup.storeApiKey': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/store-api-key',
+    request: null as unknown as SetupStoreApiKeyRequest,
+    response: null as unknown as SetupStoreApiKeyResponse,
+  },
+  'setup.deleteApiKey': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/delete-api-key',
+    request: null as unknown as SetupDeleteApiKeyRequest,
+    response: null as unknown as SetupDeleteApiKeyResponse,
+  },
+  'setup.getApiKeys': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/api-keys',
+    request: null as unknown as SetupApiKeysRequest,
+    response: null as unknown as SetupApiKeysResponse,
+  },
+  'setup.getPlatform': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/platform',
+    request: null as unknown as SetupPlatformRequest,
+    response: null as unknown as SetupPlatformResponse,
+  },
+  'setup.verifyClaudeAuth': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/verify-claude-auth',
+    request: null as unknown as SetupVerifyClaudeAuthRequest,
+    response: null as unknown as SetupVerifyClaudeAuthResponse,
+  },
+  'setup.verifyCodexAuth': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/verify-codex-auth',
+    request: null as unknown as SetupVerifyCodexAuthRequest,
+    response: null as unknown as SetupVerifyCodexAuthResponse,
+  },
+  'setup.getGhStatus': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/gh-status',
+    request: null as unknown as SetupGhStatusRequest,
+    response: null as unknown as SetupGhStatusResponse,
+  },
+  'setup.getCursorStatus': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/cursor-status',
+    request: null as unknown as SetupCursorStatusRequest,
+    response: null as unknown as SetupCursorStatusResponse,
+  },
+  'setup.authCursor': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/auth-cursor',
+    request: null as unknown as SetupAuthCursorRequest,
+    response: null as unknown as SetupAuthCursorResponse,
+  },
+  'setup.deauthCursor': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/deauth-cursor',
+    request: null as unknown as SetupDeauthCursorRequest,
+    response: null as unknown as SetupDeauthCursorResponse,
+  },
+  'setup.getCodexStatus': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/codex-status',
+    request: null as unknown as SetupCodexStatusRequest,
+    response: null as unknown as SetupCodexStatusResponse,
+  },
+  'setup.installCodex': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/install-codex',
+    request: null as unknown as SetupInstallCodexRequest,
+    response: null as unknown as SetupInstallCodexResponse,
+  },
+  'setup.authCodex': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/auth-codex',
+    request: null as unknown as SetupAuthCodexRequest,
+    response: null as unknown as SetupAuthCodexResponse,
+  },
+  'setup.deauthCodex': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/deauth-codex',
+    request: null as unknown as SetupDeauthCodexRequest,
+    response: null as unknown as SetupDeauthCodexResponse,
+  },
+  'setup.getOpencodeStatus': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/opencode-status',
+    request: null as unknown as SetupOpencodeStatusRequest,
+    response: null as unknown as SetupOpencodeStatusResponse,
+  },
+  'setup.authOpencode': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/auth-opencode',
+    request: null as unknown as SetupAuthOpencodeRequest,
+    response: null as unknown as SetupAuthOpencodeResponse,
+  },
+  'setup.deauthOpencode': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/deauth-opencode',
+    request: null as unknown as SetupDeauthOpencodeRequest,
+    response: null as unknown as SetupDeauthOpencodeResponse,
+  },
+  'setup.getGeminiStatus': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/gemini-status',
+    request: null as unknown as SetupGeminiStatusRequest,
+    response: null as unknown as SetupGeminiStatusResponse,
+  },
+  'setup.authGemini': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/auth-gemini',
+    request: null as unknown as SetupAuthGeminiRequest,
+    response: null as unknown as SetupAuthGeminiResponse,
+  },
+  'setup.deauthGemini': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/deauth-gemini',
+    request: null as unknown as SetupDeauthGeminiRequest,
+    response: null as unknown as SetupDeauthGeminiResponse,
+  },
+  'setup.getCopilotStatus': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/copilot-status',
+    request: null as unknown as SetupCopilotStatusRequest,
+    response: null as unknown as SetupCopilotStatusResponse,
+  },
+  'setup.authCopilot': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/auth-copilot',
+    request: null as unknown as SetupAuthCopilotRequest,
+    response: null as unknown as SetupAuthCopilotResponse,
+  },
+  'setup.deauthCopilot': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/deauth-copilot',
+    request: null as unknown as SetupDeauthCopilotRequest,
+    response: null as unknown as SetupDeauthCopilotResponse,
+  },
+  'setup.getCopilotModels': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/copilot/models',
+    request: null as unknown as SetupGetCopilotModelsRequest,
+    response: null as unknown as SetupCopilotModelsResponse,
+  },
+  'setup.refreshCopilotModels': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/copilot/models/refresh',
+    request: null as unknown as SetupRefreshCopilotModelsRequest,
+    response: null as unknown as SetupRefreshCopilotModelsResponse,
+  },
+  'setup.clearCopilotCache': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/copilot/cache/clear',
+    request: null as unknown as SetupClearCopilotCacheRequest,
+    response: null as unknown as SetupClearCopilotCacheResponse,
+  },
+  'setup.getOpencodeModels': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/opencode/models',
+    request: null as unknown as SetupGetOpencodeModelsRequest,
+    response: null as unknown as SetupOpencodeModelsResponse,
+  },
+  'setup.refreshOpencodeModels': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/opencode/models/refresh',
+    request: null as unknown as SetupRefreshOpencodeModelsRequest,
+    response: null as unknown as SetupRefreshOpencodeModelsResponse,
+  },
+  'setup.getOpencodeProviders': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/opencode/providers',
+    request: null as unknown as SetupGetOpencodeProvidersRequest,
+    response: null as unknown as SetupOpencodeProvidersResponse,
+  },
+  'setup.clearOpencodeCache': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/opencode/cache/clear',
+    request: null as unknown as SetupClearOpencodeCacheRequest,
+    response: null as unknown as SetupClearOpencodeCacheResponse,
+  },
+  'setup.getCursorConfig': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/cursor-config',
+    request: null as unknown as SetupGetCursorConfigRequest,
+    response: null as unknown as SetupGetCursorConfigResponse,
+  },
+  'setup.setCursorDefaultModel': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/cursor-config/default-model',
+    request: null as unknown as SetupSetCursorDefaultModelRequest,
+    response: null as unknown as SetupSetCursorDefaultModelResponse,
+  },
+  'setup.setCursorModels': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/cursor-config/models',
+    request: null as unknown as SetupSetCursorModelsRequest,
+    response: null as unknown as SetupSetCursorModelsResponse,
+  },
+  'setup.getCursorPermissions': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/cursor-permissions',
+    request: null as unknown as SetupGetCursorPermissionsRequest,
+    response: null as unknown as SetupGetCursorPermissionsResponse,
+  },
+  'setup.applyCursorPermissionProfile': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/cursor-permissions/profile',
+    request: null as unknown as SetupApplyCursorPermissionProfileRequest,
+    response: null as unknown as SetupApplyCursorPermissionProfileResponse,
+  },
+  'setup.setCursorCustomPermissions': {
+    method: 'POST',
+    mount: '/api/setup',
+    path: '/cursor-permissions/custom',
+    request: null as unknown as SetupSetCursorCustomPermissionsRequest,
+    response: null as unknown as SetupSetCursorCustomPermissionsResponse,
+  },
+  'setup.deleteCursorProjectPermissions': {
+    method: 'DELETE',
+    mount: '/api/setup',
+    path: '/cursor-permissions',
+    request: null as unknown as SetupDeleteCursorProjectPermissionsRequest,
+    response: null as unknown as SetupDeleteCursorProjectPermissionsResponse,
+  },
+  'setup.getCursorExampleConfig': {
+    method: 'GET',
+    mount: '/api/setup',
+    path: '/cursor-permissions/example',
+    request: null as unknown as SetupGetCursorExampleConfigRequest,
+    response: null as unknown as SetupGetCursorExampleConfigResponse,
   },
 } as const satisfies Record<string, OperationDefinition<unknown, unknown>>;
 

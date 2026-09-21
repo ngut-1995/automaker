@@ -2,30 +2,15 @@ import { Router, Request, Response } from 'express';
 import { ZaiUsageService } from '../../services/zai-usage-service.js';
 import type { SettingsService } from '../../services/settings-service.js';
 import { createLogger } from '@automaker/utils';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 
 const logger = createLogger('Zai');
 
-export function createZaiRoutes(
-  usageService: ZaiUsageService,
-  settingsService: SettingsService
-): Router {
-  const router = Router();
+export const ZAI_MOUNT = '/api/zai';
 
-  // Initialize z.ai API token from credentials on startup
-  (async () => {
-    try {
-      const credentials = await settingsService.getCredentials();
-      if (credentials.apiKeys?.zai) {
-        usageService.setApiToken(credentials.apiKeys.zai);
-        logger.info('[init] Loaded z.ai API key from credentials');
-      }
-    } catch (error) {
-      logger.error('[init] Failed to load z.ai API key from credentials:', error);
-    }
-  })();
-
-  // Get current usage (fetches from z.ai API)
-  router.get('/usage', async (_req: Request, res: Response) => {
+/** GET /usage - Get current usage (fetches from z.ai API). */
+function createUsageHandler(usageService: ZaiUsageService) {
+  return async (_req: Request, res: Response): Promise<void> => {
     try {
       // Check if z.ai API is configured
       const isAvailable = usageService.isAvailable();
@@ -58,10 +43,12 @@ export function createZaiRoutes(
         res.status(500).json({ error: message });
       }
     }
-  });
+  };
+}
 
-  // Configure API token (for settings page)
-  router.post('/configure', async (req: Request, res: Response) => {
+/** POST /configure - Configure API token (for settings page). */
+function createConfigureHandler(usageService: ZaiUsageService, settingsService: SettingsService) {
+  return async (req: Request, res: Response): Promise<void> => {
     try {
       const { apiToken, apiHost } = req.body;
 
@@ -116,10 +103,12 @@ export function createZaiRoutes(
       logger.error('Error configuring z.ai:', error);
       res.status(500).json({ error: message });
     }
-  });
+  };
+}
 
-  // Verify API key without storing it (for testing in settings)
-  router.post('/verify', async (req: Request, res: Response) => {
+/** POST /verify - Verify API key without storing it (for testing in settings). */
+function createVerifyHandler(usageService: ZaiUsageService) {
+  return async (req: Request, res: Response): Promise<void> => {
     try {
       const { apiKey } = req.body;
       const result = await usageService.verifyApiKey(apiKey);
@@ -133,10 +122,12 @@ export function createZaiRoutes(
         error: `Network error: ${message}`,
       });
     }
-  });
+  };
+}
 
-  // Check if z.ai is available
-  router.get('/status', async (_req: Request, res: Response) => {
+/** GET /status - Check if z.ai is available. */
+function createStatusHandler(usageService: ZaiUsageService) {
+  return async (_req: Request, res: Response): Promise<void> => {
     try {
       const isAvailable = usageService.isAvailable();
       const hasEnvApiKey = Boolean(process.env.Z_AI_API_KEY);
@@ -153,7 +144,41 @@ export function createZaiRoutes(
       const message = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ success: false, error: message });
     }
-  });
+  };
+}
 
-  return router;
+export function createZaiHandlers(
+  usageService: ZaiUsageService,
+  settingsService: SettingsService
+): OperationHandlers {
+  return {
+    'zai.getStatus': createStatusHandler(usageService),
+    'zai.getUsage': createUsageHandler(usageService),
+    'zai.configure': createConfigureHandler(usageService, settingsService),
+    'zai.verify': createVerifyHandler(usageService),
+  };
+}
+
+export function createZaiRoutes(
+  usageService: ZaiUsageService,
+  settingsService: SettingsService
+): Router {
+  // Initialize z.ai API token from credentials on startup
+  (async () => {
+    try {
+      const credentials = await settingsService.getCredentials();
+      if (credentials.apiKeys?.zai) {
+        usageService.setApiToken(credentials.apiKeys.zai);
+        logger.info('[init] Loaded z.ai API key from credentials');
+      }
+    } catch (error) {
+      logger.error('[init] Failed to load z.ai API key from credentials:', error);
+    }
+  })();
+
+  return registerContractOperations(
+    Router(),
+    ZAI_MOUNT,
+    createZaiHandlers(usageService, settingsService)
+  );
 }

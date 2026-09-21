@@ -3,17 +3,15 @@ import { GeminiProvider } from '../../providers/gemini-provider.js';
 import { GeminiUsageService } from '../../services/gemini-usage-service.js';
 import { createLogger } from '@automaker/utils';
 import type { EventEmitter } from '../../lib/events.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 
 const logger = createLogger('Gemini');
 
-export function createGeminiRoutes(
-  usageService: GeminiUsageService,
-  _events: EventEmitter
-): Router {
-  const router = Router();
+export const GEMINI_MOUNT = '/api/gemini';
 
-  // Get current usage/quota data from Google Cloud API
-  router.get('/usage', async (_req: Request, res: Response) => {
+/** GET /usage - Get current usage/quota data from Google Cloud API. */
+function createUsageHandler(usageService: GeminiUsageService) {
+  return async (_req: Request, res: Response): Promise<void> => {
     try {
       const usageData = await usageService.fetchUsageData();
 
@@ -32,10 +30,12 @@ export function createGeminiRoutes(
         error: `Failed to fetch Gemini usage: ${message}`,
       });
     }
-  });
+  };
+}
 
-  // Check if Gemini is available
-  router.get('/status', async (_req: Request, res: Response) => {
+/** GET /status - Check if Gemini is available. */
+function createStatusHandler() {
+  return async (_req: Request, res: Response): Promise<void> => {
     try {
       const provider = new GeminiProvider();
       const status = await provider.detectInstallation();
@@ -60,7 +60,19 @@ export function createGeminiRoutes(
       const message = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ success: false, error: message });
     }
-  });
+  };
+}
 
-  return router;
+export function createGeminiHandlers(usageService: GeminiUsageService): OperationHandlers {
+  return {
+    'gemini.getUsage': createUsageHandler(usageService),
+    'gemini.getStatus': createStatusHandler(),
+  };
+}
+
+export function createGeminiRoutes(
+  usageService: GeminiUsageService,
+  _events: EventEmitter
+): Router {
+  return registerContractOperations(Router(), GEMINI_MOUNT, createGeminiHandlers(usageService));
 }

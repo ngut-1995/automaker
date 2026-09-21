@@ -126,6 +126,14 @@ export interface AgentAPI {
     error?: string;
   }>;
 
+  setModel: (
+    sessionId: string,
+    model: string
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
+
   onStream: (callback: (event: StreamEvent) => void) => () => void;
 }
 

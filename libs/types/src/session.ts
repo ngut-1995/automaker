@@ -16,7 +16,8 @@ export interface AgentSession {
 }
 
 export interface SessionListItem extends AgentSession {
-  preview?: string; // Last message preview
+  preview: string; // Last message preview
+  tags: string[];
 }
 
 export interface CreateSessionParams {

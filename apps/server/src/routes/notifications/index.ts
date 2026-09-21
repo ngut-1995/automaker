@@ -9,54 +9,42 @@
  *
  * All endpoints use handler factories that receive the NotificationService instance.
  * Mounted at /api/notifications in the main server.
+ *
+ * Routes are registered from the shared operation contract; this file only maps
+ * each operation to the handler that implements it.
  */
 
 import { Router } from 'express';
 import type { NotificationService } from '../../services/notification-service.js';
-import { validatePathParams } from '../../middleware/validate-paths.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createListHandler } from './routes/list.js';
 import { createUnreadCountHandler } from './routes/unread-count.js';
 import { createMarkReadHandler } from './routes/mark-read.js';
 import { createDismissHandler } from './routes/dismiss.js';
 
+export const NOTIFICATIONS_MOUNT = '/api/notifications';
+
+/** Create notifications operation handlers. */
+export function createNotificationsHandlers(
+  notificationService: NotificationService
+): OperationHandlers {
+  return {
+    'notifications.list': createListHandler(notificationService),
+    'notifications.unreadCount': createUnreadCountHandler(notificationService),
+    'notifications.markRead': createMarkReadHandler(notificationService),
+    'notifications.dismiss': createDismissHandler(notificationService),
+  };
+}
+
 /**
- * Create notifications router with all endpoints
- *
- * Endpoints:
- * - POST /list - List all notifications for a project
- * - POST /unread-count - Get unread notification count
- * - POST /mark-read - Mark notification(s) as read
- * - POST /dismiss - Dismiss notification(s)
+ * Create notifications router with all endpoints.
  *
  * @param notificationService - Instance of NotificationService
- * @returns Express Router configured with all notification endpoints
  */
 export function createNotificationsRoutes(notificationService: NotificationService): Router {
-  const router = Router();
-
-  // List notifications
-  router.post('/list', validatePathParams('projectPath'), createListHandler(notificationService));
-
-  // Get unread count
-  router.post(
-    '/unread-count',
-    validatePathParams('projectPath'),
-    createUnreadCountHandler(notificationService)
+  return registerContractOperations(
+    Router(),
+    NOTIFICATIONS_MOUNT,
+    createNotificationsHandlers(notificationService)
   );
-
-  // Mark as read (single or all)
-  router.post(
-    '/mark-read',
-    validatePathParams('projectPath'),
-    createMarkReadHandler(notificationService)
-  );
-
-  // Dismiss (single or all)
-  router.post(
-    '/dismiss',
-    validatePathParams('projectPath'),
-    createDismissHandler(notificationService)
-  );
-
-  return router;
 }

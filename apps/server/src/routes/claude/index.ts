@@ -1,14 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { ClaudeUsageService } from '../../services/claude-usage-service.js';
 import { createLogger } from '@automaker/utils';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 
 const logger = createLogger('Claude');
 
-export function createClaudeRoutes(service: ClaudeUsageService): Router {
-  const router = Router();
+export const CLAUDE_MOUNT = '/api/claude';
 
-  // Get current usage (fetches from Claude CLI)
-  router.get('/usage', async (req: Request, res: Response) => {
+/**
+ * GET /usage
+ *
+ * Get current usage (fetches from Claude CLI).
+ */
+function createUsageHandler(service: ClaudeUsageService) {
+  return async (_req: Request, res: Response): Promise<void> => {
     try {
       // Check if Claude CLI is available first
       const isAvailable = await service.isAvailable();
@@ -51,7 +56,15 @@ export function createClaudeRoutes(service: ClaudeUsageService): Router {
         res.status(500).json({ error: message });
       }
     }
-  });
+  };
+}
 
-  return router;
+export function createClaudeHandlers(service: ClaudeUsageService): OperationHandlers {
+  return {
+    'claude.getUsage': createUsageHandler(service),
+  };
+}
+
+export function createClaudeRoutes(service: ClaudeUsageService): Router {
+  return registerContractOperations(Router(), CLAUDE_MOUNT, createClaudeHandlers(service));
 }

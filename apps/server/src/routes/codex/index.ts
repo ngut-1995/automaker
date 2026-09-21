@@ -2,17 +2,19 @@ import { Router, Request, Response } from 'express';
 import { CodexUsageService } from '../../services/codex-usage-service.js';
 import { CodexModelCacheService } from '../../services/codex-model-cache-service.js';
 import { createLogger } from '@automaker/utils';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 
 const logger = createLogger('Codex');
 
-export function createCodexRoutes(
-  usageService: CodexUsageService,
-  modelCacheService: CodexModelCacheService
-): Router {
-  const router = Router();
+export const CODEX_MOUNT = '/api/codex';
 
-  // Get current usage (attempts to fetch from Codex CLI)
-  router.get('/usage', async (_req: Request, res: Response) => {
+/**
+ * GET /usage
+ *
+ * Get current usage (attempts to fetch from Codex CLI).
+ */
+function createUsageHandler(usageService: CodexUsageService) {
+  return async (_req: Request, res: Response): Promise<void> => {
     try {
       // Check if Codex CLI is available first
       const isAvailable = await usageService.isAvailable();
@@ -54,10 +56,16 @@ export function createCodexRoutes(
         res.status(500).json({ error: message });
       }
     }
-  });
+  };
+}
 
-  // Get available Codex models (cached)
-  router.get('/models', async (req: Request, res: Response) => {
+/**
+ * GET /models
+ *
+ * Get available Codex models (cached).
+ */
+function createModelsHandler(modelCacheService: CodexModelCacheService) {
+  return async (req: Request, res: Response): Promise<void> => {
     try {
       const forceRefresh = req.query.refresh === 'true';
       const { models, cachedAt } = await modelCacheService.getModelsWithMetadata(forceRefresh);
@@ -84,7 +92,26 @@ export function createCodexRoutes(
         error: message,
       });
     }
-  });
+  };
+}
 
-  return router;
+export function createCodexHandlers(
+  usageService: CodexUsageService,
+  modelCacheService: CodexModelCacheService
+): OperationHandlers {
+  return {
+    'codex.getUsage': createUsageHandler(usageService),
+    'codex.getModels': createModelsHandler(modelCacheService),
+  };
+}
+
+export function createCodexRoutes(
+  usageService: CodexUsageService,
+  modelCacheService: CodexModelCacheService
+): Router {
+  return registerContractOperations(
+    Router(),
+    CODEX_MOUNT,
+    createCodexHandlers(usageService, modelCacheService)
+  );
 }

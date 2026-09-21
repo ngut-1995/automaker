@@ -2,28 +2,34 @@
  * Health check routes
  *
  * NOTE: Only the basic health check (/) and environment check are unauthenticated.
- * The /detailed endpoint requires authentication.
+ * The /detailed endpoint requires authentication and is registered directly on the
+ * app, outside this contract mount.
+ *
+ * Routes are registered from the shared operation contract; this file only maps
+ * each operation to the handler that implements it.
  */
 
 import { Router } from 'express';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createIndexHandler } from './routes/index.js';
 import { createEnvironmentHandler } from './routes/environment.js';
 
+export const HEALTH_MOUNT = '/api/health';
+
+/** Create unauthenticated health operation handlers. */
+export function createHealthHandlers(): OperationHandlers {
+  return {
+    'health.check': createIndexHandler(),
+    'health.environment': createEnvironmentHandler(),
+  };
+}
+
 /**
- * Create unauthenticated health routes (basic check only)
- * Used by load balancers and container orchestration
+ * Create unauthenticated health routes (basic check + environment).
+ * Used by load balancers and container orchestration.
  */
 export function createHealthRoutes(): Router {
-  const router = Router();
-
-  // Basic health check - no sensitive info
-  router.get('/', createIndexHandler());
-
-  // Environment info including containerization status
-  // This is unauthenticated so the UI can check on startup
-  router.get('/environment', createEnvironmentHandler());
-
-  return router;
+  return registerContractOperations(Router(), HEALTH_MOUNT, createHealthHandlers());
 }
 
 // Re-export detailed handler for use in authenticated routes

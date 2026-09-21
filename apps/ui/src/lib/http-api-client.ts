@@ -53,7 +53,13 @@ import type {
   ZaiUsageResponse,
 } from '@/store/app-store';
 import type { WorktreeAPI, GitAPI } from '@/types/electron';
-import type { ModelId, ThinkingLevel, ReasoningEffort, Feature } from '@automaker/types';
+import type {
+  ModelId,
+  ModelDefinition,
+  ThinkingLevel,
+  ReasoningEffort,
+  Feature,
+} from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
 const logger = createLogger('HttpClient');
@@ -1217,15 +1223,37 @@ export class HttpApiClient implements ElectronAPI {
       case 'PUT':
         return this.put<ResponseOf<N>>(resolvedPath, input, options?.signal);
       case 'DELETE':
-        return this.httpDelete<ResponseOf<N>>(resolvedPath, input, options?.signal);
+        // Some DELETE operations take query args (e.g. cursor permissions);
+        // path params are stripped so they are not repeated.
+        return this.httpDelete<ResponseOf<N>>(
+          appendQuery(resolvedPath, queryInputWithoutPathParams(path, input)),
+          input,
+          options?.signal
+        );
       default:
         return this.post<ResponseOf<N>>(resolvedPath, input, options?.signal);
     }
   }
 
+  // Health API — derived from the contract.
+  health = {
+    check: () => this.request('health.check'),
+    environment: () => this.request('health.environment'),
+  };
+
+  // Auth API — derived from the contract. Existing login/logout helpers use a
+  // raw fetch (bypass to be migrated in #57); these are the contract-backed
+  // equivalents.
+  auth = {
+    status: () => this.request('auth.status'),
+    login: (apiKey: string) => this.request('auth.login', { apiKey }),
+    token: () => this.request('auth.token'),
+    logout: () => this.request('auth.logout'),
+  };
+
   // Basic operations
   async ping(): Promise<string> {
-    const result = await this.get<{ status: string }>('/api/health');
+    const result = await this.health.check();
     return result.status === 'ok' ? 'pong' : 'error';
   }
 
@@ -1479,13 +1507,13 @@ export class HttpApiClient implements ElectronAPI {
         hasRecentActivity?: boolean;
       };
       error?: string;
-    }> => this.get('/api/setup/claude-status'),
+    }> => this.request('setup.getClaudeStatus'),
 
     installClaude: (): Promise<{
       success: boolean;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/install-claude'),
+    }> => this.request('setup.installClaude'),
 
     authClaude: (): Promise<{
       success: boolean;
@@ -1496,7 +1524,7 @@ export class HttpApiClient implements ElectronAPI {
       error?: string;
       message?: string;
       output?: string;
-    }> => this.post('/api/setup/auth-claude'),
+    }> => this.request('setup.authClaude'),
 
     deauthClaude: (): Promise<{
       success: boolean;
@@ -1504,7 +1532,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/deauth-claude'),
+    }> => this.request('setup.deauthClaude'),
 
     storeApiKey: (
       provider: string,
@@ -1512,7 +1540,7 @@ export class HttpApiClient implements ElectronAPI {
     ): Promise<{
       success: boolean;
       error?: string;
-    }> => this.post('/api/setup/store-api-key', { provider, apiKey }),
+    }> => this.request('setup.storeApiKey', { provider, apiKey }),
 
     deleteApiKey: (
       provider: string
@@ -1520,14 +1548,14 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       error?: string;
       message?: string;
-    }> => this.post('/api/setup/delete-api-key', { provider }),
+    }> => this.request('setup.deleteApiKey', { provider }),
 
     getApiKeys: (): Promise<{
       success: boolean;
       hasAnthropicKey: boolean;
       hasGoogleKey: boolean;
       hasOpenaiKey: boolean;
-    }> => this.get('/api/setup/api-keys'),
+    }> => this.request('setup.getApiKeys'),
 
     getPlatform: (): Promise<{
       success: boolean;
@@ -1537,7 +1565,7 @@ export class HttpApiClient implements ElectronAPI {
       isWindows: boolean;
       isMac: boolean;
       isLinux: boolean;
-    }> => this.get('/api/setup/platform'),
+    }> => this.request('setup.getPlatform'),
 
     verifyClaudeAuth: (
       authMethod?: 'cli' | 'api_key',
@@ -1547,7 +1575,7 @@ export class HttpApiClient implements ElectronAPI {
       authenticated: boolean;
       authType?: 'oauth' | 'api_key' | 'cli';
       error?: string;
-    }> => this.post('/api/setup/verify-claude-auth', { authMethod, apiKey }),
+    }> => this.request('setup.verifyClaudeAuth', { authMethod, apiKey }),
 
     getGhStatus: (): Promise<{
       success: boolean;
@@ -1557,7 +1585,7 @@ export class HttpApiClient implements ElectronAPI {
       path: string | null;
       user: string | null;
       error?: string;
-    }> => this.get('/api/setup/gh-status'),
+    }> => this.request('setup.getGhStatus'),
 
     // Cursor CLI methods
     getCursorStatus: (): Promise<{
@@ -1572,7 +1600,7 @@ export class HttpApiClient implements ElectronAPI {
       installCommand?: string;
       loginCommand?: string;
       error?: string;
-    }> => this.get('/api/setup/cursor-status'),
+    }> => this.request('setup.getCursorStatus'),
 
     authCursor: (): Promise<{
       success: boolean;
@@ -1582,7 +1610,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       output?: string;
-    }> => this.post('/api/setup/auth-cursor'),
+    }> => this.request('setup.authCursor'),
 
     deauthCursor: (): Promise<{
       success: boolean;
@@ -1590,7 +1618,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/deauth-cursor'),
+    }> => this.request('setup.deauthCursor'),
 
     authOpencode: (): Promise<{
       success: boolean;
@@ -1600,7 +1628,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       output?: string;
-    }> => this.post('/api/setup/auth-opencode'),
+    }> => this.request('setup.authOpencode'),
 
     deauthOpencode: (): Promise<{
       success: boolean;
@@ -1608,7 +1636,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/deauth-opencode'),
+    }> => this.request('setup.deauthOpencode'),
 
     getCursorConfig: (
       projectPath: string
@@ -1628,7 +1656,7 @@ export class HttpApiClient implements ElectronAPI {
         tier: 'free' | 'pro';
       }>;
       error?: string;
-    }> => this.get(`/api/setup/cursor-config?projectPath=${encodeURIComponent(projectPath)}`),
+    }> => this.request('setup.getCursorConfig', { projectPath }),
 
     setCursorDefaultModel: (
       projectPath: string,
@@ -1637,7 +1665,7 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       model?: string;
       error?: string;
-    }> => this.post('/api/setup/cursor-config/default-model', { projectPath, model }),
+    }> => this.request('setup.setCursorDefaultModel', { projectPath, model }),
 
     setCursorModels: (
       projectPath: string,
@@ -1646,7 +1674,7 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       models?: string[];
       error?: string;
-    }> => this.post('/api/setup/cursor-config/models', { projectPath, models }),
+    }> => this.request('setup.setCursorModels', { projectPath, models }),
 
     // Cursor CLI Permissions
     getCursorPermissions: (
@@ -1665,10 +1693,7 @@ export class HttpApiClient implements ElectronAPI {
         permissions: { allow: string[]; deny: string[] };
       }>;
       error?: string;
-    }> =>
-      this.get(
-        `/api/setup/cursor-permissions${projectPath ? `?projectPath=${encodeURIComponent(projectPath)}` : ''}`
-      ),
+    }> => this.request('setup.getCursorPermissions', { projectPath }),
 
     applyCursorPermissionProfile: (
       profileId: 'strict' | 'development',
@@ -1680,7 +1705,7 @@ export class HttpApiClient implements ElectronAPI {
       scope?: string;
       profileId?: string;
       error?: string;
-    }> => this.post('/api/setup/cursor-permissions/profile', { profileId, scope, projectPath }),
+    }> => this.request('setup.applyCursorPermissionProfile', { profileId, scope, projectPath }),
 
     setCursorCustomPermissions: (
       projectPath: string,
@@ -1690,7 +1715,7 @@ export class HttpApiClient implements ElectronAPI {
       message?: string;
       permissions?: { allow: string[]; deny: string[] };
       error?: string;
-    }> => this.post('/api/setup/cursor-permissions/custom', { projectPath, permissions }),
+    }> => this.request('setup.setCursorCustomPermissions', { projectPath, permissions }),
 
     deleteCursorProjectPermissions: (
       projectPath: string
@@ -1698,10 +1723,7 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       message?: string;
       error?: string;
-    }> =>
-      this.httpDelete(
-        `/api/setup/cursor-permissions?projectPath=${encodeURIComponent(projectPath)}`
-      ),
+    }> => this.request('setup.deleteCursorProjectPermissions', { projectPath }),
 
     getCursorExampleConfig: (
       profileId?: 'strict' | 'development'
@@ -1710,10 +1732,7 @@ export class HttpApiClient implements ElectronAPI {
       profileId?: string;
       config?: string;
       error?: string;
-    }> =>
-      this.get(
-        `/api/setup/cursor-permissions/example${profileId ? `?profileId=${profileId}` : ''}`
-      ),
+    }> => this.request('setup.getCursorExampleConfig', { profileId }),
 
     // Codex CLI methods
     getCodexStatus: (): Promise<{
@@ -1733,13 +1752,13 @@ export class HttpApiClient implements ElectronAPI {
         hasEnvApiKey?: boolean;
       };
       error?: string;
-    }> => this.get('/api/setup/codex-status'),
+    }> => this.request('setup.getCodexStatus'),
 
     installCodex: (): Promise<{
       success: boolean;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/install-codex'),
+    }> => this.request('setup.installCodex'),
 
     authCodex: (): Promise<{
       success: boolean;
@@ -1750,7 +1769,7 @@ export class HttpApiClient implements ElectronAPI {
       error?: string;
       message?: string;
       output?: string;
-    }> => this.post('/api/setup/auth-codex'),
+    }> => this.request('setup.authCodex'),
 
     deauthCodex: (): Promise<{
       success: boolean;
@@ -1758,7 +1777,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/deauth-codex'),
+    }> => this.request('setup.deauthCodex'),
 
     verifyCodexAuth: (
       authMethod: 'cli' | 'api_key',
@@ -1767,7 +1786,7 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       authenticated: boolean;
       error?: string;
-    }> => this.post('/api/setup/verify-codex-auth', { authMethod, apiKey }),
+    }> => this.request('setup.verifyCodexAuth', { authMethod, apiKey }),
 
     // OpenCode CLI methods
     getOpencodeStatus: (): Promise<{
@@ -1793,7 +1812,7 @@ export class HttpApiClient implements ElectronAPI {
         hasEnvApiKey?: boolean;
       };
       error?: string;
-    }> => this.get('/api/setup/opencode-status'),
+    }> => this.request('setup.getOpencodeStatus'),
 
     // OpenCode Dynamic Model Discovery
     getOpencodeModels: (
@@ -1814,7 +1833,7 @@ export class HttpApiClient implements ElectronAPI {
       count?: number;
       cached?: boolean;
       error?: string;
-    }> => this.get(`/api/setup/opencode/models${refresh ? '?refresh=true' : ''}`),
+    }> => this.request('setup.getOpencodeModels', { refresh }),
 
     refreshOpencodeModels: (): Promise<{
       success: boolean;
@@ -1831,7 +1850,7 @@ export class HttpApiClient implements ElectronAPI {
       }>;
       count?: number;
       error?: string;
-    }> => this.post('/api/setup/opencode/models/refresh'),
+    }> => this.request('setup.refreshOpencodeModels'),
 
     getOpencodeProviders: (): Promise<{
       success: boolean;
@@ -1848,13 +1867,13 @@ export class HttpApiClient implements ElectronAPI {
         authMethod?: 'oauth' | 'api_key';
       }>;
       error?: string;
-    }> => this.get('/api/setup/opencode/providers'),
+    }> => this.request('setup.getOpencodeProviders'),
 
     clearOpencodeCache: (): Promise<{
       success: boolean;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/opencode/cache/clear'),
+    }> => this.request('setup.clearOpencodeCache'),
 
     // Gemini CLI methods
     getGeminiStatus: (): Promise<{
@@ -1880,7 +1899,7 @@ export class HttpApiClient implements ElectronAPI {
       loginCommand?: string;
       installCommand?: string;
       error?: string;
-    }> => this.get('/api/setup/gemini-status'),
+    }> => this.request('setup.getGeminiStatus'),
 
     authGemini: (): Promise<{
       success: boolean;
@@ -1888,7 +1907,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/auth-gemini'),
+    }> => this.request('setup.authGemini'),
 
     deauthGemini: (): Promise<{
       success: boolean;
@@ -1896,7 +1915,7 @@ export class HttpApiClient implements ElectronAPI {
       command?: string;
       message?: string;
       error?: string;
-    }> => this.post('/api/setup/deauth-gemini'),
+    }> => this.request('setup.deauthGemini'),
 
     // Copilot SDK methods
     getCopilotStatus: (): Promise<{
@@ -1917,7 +1936,42 @@ export class HttpApiClient implements ElectronAPI {
       loginCommand?: string;
       installCommand?: string;
       error?: string;
-    }> => this.get('/api/setup/copilot-status'),
+    }> => this.request('setup.getCopilotStatus'),
+
+    authCopilot: (): Promise<{
+      success: boolean;
+      message?: string;
+      error?: string;
+    }> => this.request('setup.authCopilot'),
+
+    deauthCopilot: (): Promise<{
+      success: boolean;
+      message?: string;
+      error?: string;
+    }> => this.request('setup.deauthCopilot'),
+
+    getCopilotModels: (
+      refresh?: boolean
+    ): Promise<{
+      success: boolean;
+      models?: ModelDefinition[];
+      count?: number;
+      cached?: boolean;
+      error?: string;
+    }> => this.request('setup.getCopilotModels', { refresh }),
+
+    refreshCopilotModels: (): Promise<{
+      success: boolean;
+      models?: ModelDefinition[];
+      count?: number;
+      error?: string;
+    }> => this.request('setup.refreshCopilotModels'),
+
+    clearCopilotCache: (): Promise<{
+      success: boolean;
+      message?: string;
+      error?: string;
+    }> => this.request('setup.clearCopilotCache'),
 
     onInstallProgress: (
       callback: (progress: { cli?: string; data?: string; type?: string }) => void
@@ -1932,7 +1986,7 @@ export class HttpApiClient implements ElectronAPI {
     },
   };
 
-  // z.ai API
+  // z.ai API — derived from the contract.
   zai = {
     getStatus: (): Promise<{
       success: boolean;
@@ -1941,9 +1995,9 @@ export class HttpApiClient implements ElectronAPI {
       hasApiKey?: boolean;
       hasEnvApiKey?: boolean;
       error?: string;
-    }> => this.get('/api/zai/status'),
+    }> => this.request('zai.getStatus'),
 
-    getUsage: (): Promise<ZaiUsageResponse> => this.get('/api/zai/usage'),
+    getUsage: (): Promise<ZaiUsageResponse> => this.request('zai.getUsage'),
 
     configure: (
       apiToken?: string,
@@ -1953,7 +2007,7 @@ export class HttpApiClient implements ElectronAPI {
       message?: string;
       isAvailable?: boolean;
       error?: string;
-    }> => this.post('/api/zai/configure', { apiToken, apiHost }),
+    }> => this.request('zai.configure', { apiToken, apiHost }),
 
     verify: (
       apiKey: string
@@ -1962,7 +2016,7 @@ export class HttpApiClient implements ElectronAPI {
       authenticated: boolean;
       message?: string;
       error?: string;
-    }> => this.post('/api/zai/verify', { apiKey }),
+    }> => this.request('zai.verify', { apiKey }),
   };
 
   // Features API — every method derives its path and response type from the contract.
@@ -2136,7 +2190,7 @@ export class HttpApiClient implements ElectronAPI {
     },
   };
 
-  // Enhance Prompt API
+  // Enhance Prompt API — derived from the contract.
   enhancePrompt = {
     enhance: (
       originalText: string,
@@ -2145,7 +2199,7 @@ export class HttpApiClient implements ElectronAPI {
       thinkingLevel?: string,
       projectPath?: string
     ): Promise<EnhancePromptResult> =>
-      this.post('/api/enhance-prompt', {
+      this.request('enhancePrompt.enhance', {
         originalText,
         enhancementMode,
         model,
@@ -2649,7 +2703,7 @@ export class HttpApiClient implements ElectronAPI {
     }> => this.request('workspace.directories'),
   };
 
-  // Agent API
+  // Agent API — derived from the contract.
   agent = {
     start: (
       sessionId: string,
@@ -2658,7 +2712,7 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       messages?: Message[];
       error?: string;
-    }> => this.post('/api/agent/start', { sessionId, workingDirectory }),
+    }> => this.request('agent.start', { sessionId, workingDirectory }),
 
     send: (
       sessionId: string,
@@ -2668,7 +2722,7 @@ export class HttpApiClient implements ElectronAPI {
       model?: string,
       thinkingLevel?: string
     ): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/agent/send', {
+      this.request('agent.send', {
         sessionId,
         message,
         workingDirectory,
@@ -2684,13 +2738,16 @@ export class HttpApiClient implements ElectronAPI {
       messages?: Message[];
       isRunning?: boolean;
       error?: string;
-    }> => this.post('/api/agent/history', { sessionId }),
+    }> => this.request('agent.getHistory', { sessionId }),
 
     stop: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/agent/stop', { sessionId }),
+      this.request('agent.stop', { sessionId }),
 
     clear: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/agent/clear', { sessionId }),
+      this.request('agent.clear', { sessionId }),
+
+    setModel: (sessionId: string, model: string): Promise<{ success: boolean; error?: string }> =>
+      this.request('agent.model', { sessionId, model }),
 
     onStream: (callback: (data: unknown) => void): (() => void) => {
       return this.subscribeToEvent('agent:stream', callback as EventCallback);
@@ -2715,7 +2772,13 @@ export class HttpApiClient implements ElectronAPI {
       };
       error?: string;
     }> =>
-      this.post('/api/agent/queue/add', { sessionId, message, imagePaths, model, thinkingLevel }),
+      this.request('agent.queueAdd', {
+        sessionId,
+        message,
+        imagePaths,
+        model,
+        thinkingLevel,
+      }),
 
     queueList: (
       sessionId: string
@@ -2730,16 +2793,16 @@ export class HttpApiClient implements ElectronAPI {
         addedAt: string;
       }>;
       error?: string;
-    }> => this.post('/api/agent/queue/list', { sessionId }),
+    }> => this.request('agent.queueList', { sessionId }),
 
     queueRemove: (
       sessionId: string,
       promptId: string
     ): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/agent/queue/remove', { sessionId, promptId }),
+      this.request('agent.queueRemove', { sessionId, promptId }),
 
     queueClear: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/agent/queue/clear', { sessionId }),
+      this.request('agent.queueClear', { sessionId }),
   };
 
   // Templates API
@@ -2791,7 +2854,7 @@ export class HttpApiClient implements ElectronAPI {
     getOverview: () => this.request('projects.getOverview'),
   };
 
-  // Sessions API
+  // Sessions API — derived from the contract.
   sessions = {
     list: (
       includeArchived?: boolean
@@ -2799,7 +2862,7 @@ export class HttpApiClient implements ElectronAPI {
       success: boolean;
       sessions?: SessionListItem[];
       error?: string;
-    }> => this.get(`/api/sessions?includeArchived=${includeArchived || false}`),
+    }> => this.request('sessions.list', { includeArchived }),
 
     create: (
       name: string,
@@ -2816,33 +2879,33 @@ export class HttpApiClient implements ElectronAPI {
         updatedAt: string;
       };
       error?: string;
-    }> => this.post('/api/sessions', { name, projectPath, workingDirectory }),
+    }> => this.request('sessions.create', { name, projectPath, workingDirectory }),
 
     update: (
       sessionId: string,
       name?: string,
       tags?: string[]
     ): Promise<{ success: boolean; error?: string }> =>
-      this.put(`/api/sessions/${sessionId}`, { name, tags }),
+      this.request('sessions.update', { sessionId, name, tags }),
 
     archive: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
-      this.post(`/api/sessions/${sessionId}/archive`, {}),
+      this.request('sessions.archive', { sessionId }),
 
     unarchive: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
-      this.post(`/api/sessions/${sessionId}/unarchive`, {}),
+      this.request('sessions.unarchive', { sessionId }),
 
     delete: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
-      this.httpDelete(`/api/sessions/${sessionId}`),
+      this.request('sessions.delete', { sessionId }),
   };
 
-  // Claude API
+  // Claude API — derived from the contract.
   claude = {
-    getUsage: (): Promise<ClaudeUsageResponse> => this.get('/api/claude/usage'),
+    getUsage: (): Promise<ClaudeUsageResponse> => this.request('claude.getUsage'),
   };
 
-  // Codex API
+  // Codex API — derived from the contract.
   codex = {
-    getUsage: (): Promise<CodexUsageResponse> => this.get('/api/codex/usage'),
+    getUsage: (): Promise<CodexUsageResponse> => this.request('codex.getUsage'),
     getModels: (
       refresh = false
     ): Promise<{
@@ -2858,15 +2921,22 @@ export class HttpApiClient implements ElectronAPI {
       }>;
       cachedAt?: number;
       error?: string;
-    }> => {
-      const url = `/api/codex/models${refresh ? '?refresh=true' : ''}`;
-      return this.get(url);
-    },
+    }> => this.request('codex.getModels', { refresh }),
   };
 
-  // Gemini API
+  // Gemini API — derived from the contract.
   gemini = {
-    getUsage: (): Promise<GeminiUsage> => this.get('/api/gemini/usage'),
+    getUsage: (): Promise<GeminiUsage> => this.request('gemini.getUsage'),
+    getStatus: (): Promise<{
+      success: boolean;
+      installed?: boolean;
+      version?: string | null;
+      path?: string | null;
+      authenticated?: boolean;
+      authMethod?: string;
+      hasCredentialsFile?: boolean;
+      error?: string;
+    }> => this.request('gemini.getStatus'),
   };
 
   // Context API
@@ -2984,16 +3054,16 @@ export class HttpApiClient implements ElectronAPI {
   notifications: NotificationsAPI & {
     onNotificationCreated: (callback: (notification: Notification) => void) => () => void;
   } = {
-    list: (projectPath: string) => this.post('/api/notifications/list', { projectPath }),
+    list: (projectPath: string) => this.request('notifications.list', { projectPath }),
 
     getUnreadCount: (projectPath: string) =>
-      this.post('/api/notifications/unread-count', { projectPath }),
+      this.request('notifications.unreadCount', { projectPath }),
 
     markAsRead: (projectPath: string, notificationId?: string) =>
-      this.post('/api/notifications/mark-read', { projectPath, notificationId }),
+      this.request('notifications.markRead', { projectPath, notificationId }),
 
     dismiss: (projectPath: string, notificationId?: string) =>
-      this.post('/api/notifications/dismiss', { projectPath, notificationId }),
+      this.request('notifications.dismiss', { projectPath, notificationId }),
 
     onNotificationCreated: (callback: (notification: Notification) => void): (() => void) => {
       return this.subscribeToEvent('notification:created', callback as EventCallback);
@@ -3003,18 +3073,18 @@ export class HttpApiClient implements ElectronAPI {
   // Event History API - stored events for debugging and replay
   eventHistory: EventHistoryAPI = {
     list: (projectPath: string, filter?: EventHistoryFilter) =>
-      this.post('/api/event-history/list', { projectPath, filter }),
+      this.request('eventHistory.list', { projectPath, filter }),
 
     get: (projectPath: string, eventId: string) =>
-      this.post('/api/event-history/get', { projectPath, eventId }),
+      this.request('eventHistory.get', { projectPath, eventId }),
 
     delete: (projectPath: string, eventId: string) =>
-      this.post('/api/event-history/delete', { projectPath, eventId }),
+      this.request('eventHistory.delete', { projectPath, eventId }),
 
-    clear: (projectPath: string) => this.post('/api/event-history/clear', { projectPath }),
+    clear: (projectPath: string) => this.request('eventHistory.clear', { projectPath }),
 
     replay: (projectPath: string, eventId: string, hookIds?: string[]) =>
-      this.post('/api/event-history/replay', { projectPath, eventId, hookIds }),
+      this.request('eventHistory.replay', { projectPath, eventId, hookIds }),
   };
 
   // MCP API - Test MCP server connections and list tools
@@ -3072,7 +3142,7 @@ export class HttpApiClient implements ElectronAPI {
         }>;
       };
       error?: string;
-    }> => this.post('/api/pipeline/config', { projectPath }),
+    }> => this.request('pipeline.getConfig', { projectPath }),
 
     saveConfig: (
       projectPath: string,
@@ -3089,7 +3159,7 @@ export class HttpApiClient implements ElectronAPI {
         }>;
       }
     ): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/pipeline/config/save', { projectPath, config }),
+      this.request('pipeline.saveConfig', { projectPath, config }),
 
     addStep: (
       projectPath: string,
@@ -3111,7 +3181,7 @@ export class HttpApiClient implements ElectronAPI {
         updatedAt: string;
       };
       error?: string;
-    }> => this.post('/api/pipeline/steps/add', { projectPath, step }),
+    }> => this.request('pipeline.addStep', { projectPath, step }),
 
     updateStep: (
       projectPath: string,
@@ -3134,19 +3204,19 @@ export class HttpApiClient implements ElectronAPI {
         updatedAt: string;
       };
       error?: string;
-    }> => this.post('/api/pipeline/steps/update', { projectPath, stepId, updates }),
+    }> => this.request('pipeline.updateStep', { projectPath, stepId, updates }),
 
     deleteStep: (
       projectPath: string,
       stepId: string
     ): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/pipeline/steps/delete', { projectPath, stepId }),
+      this.request('pipeline.deleteStep', { projectPath, stepId }),
 
     reorderSteps: (
       projectPath: string,
       stepIds: string[]
     ): Promise<{ success: boolean; error?: string }> =>
-      this.post('/api/pipeline/steps/reorder', { projectPath, stepIds }),
+      this.request('pipeline.reorderSteps', { projectPath, stepIds }),
   };
 }
 

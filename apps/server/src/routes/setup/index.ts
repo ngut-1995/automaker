@@ -1,8 +1,12 @@
 /**
  * Setup routes - HTTP API for CLI detection, API keys, and platform info
+ *
+ * Routes are registered from the shared operation contract; this file only maps
+ * each operation to the handler that implements it.
  */
 
 import { Router } from 'express';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 import { createClaudeStatusHandler } from './routes/claude-status.js';
 import { createInstallClaudeHandler } from './routes/install-claude.js';
 import { createAuthClaudeHandler } from './routes/auth-claude.js';
@@ -52,67 +56,56 @@ import {
   createGetExampleConfigHandler,
 } from './routes/cursor-config.js';
 
+export const SETUP_MOUNT = '/api/setup';
+
+/** Create setup operation handlers. */
+export function createSetupHandlers(): OperationHandlers {
+  return {
+    'setup.getClaudeStatus': createClaudeStatusHandler(),
+    'setup.installClaude': createInstallClaudeHandler(),
+    'setup.authClaude': createAuthClaudeHandler(),
+    'setup.deauthClaude': createDeauthClaudeHandler(),
+    'setup.storeApiKey': createStoreApiKeyHandler(),
+    'setup.deleteApiKey': createDeleteApiKeyHandler(),
+    'setup.getApiKeys': createApiKeysHandler(),
+    'setup.getPlatform': createPlatformHandler(),
+    'setup.verifyClaudeAuth': createVerifyClaudeAuthHandler(),
+    'setup.verifyCodexAuth': createVerifyCodexAuthHandler(),
+    'setup.getGhStatus': createGhStatusHandler(),
+    'setup.getCursorStatus': createCursorStatusHandler(),
+    'setup.authCursor': createAuthCursorHandler(),
+    'setup.deauthCursor': createDeauthCursorHandler(),
+    'setup.getCodexStatus': createCodexStatusHandler(),
+    'setup.installCodex': createInstallCodexHandler(),
+    'setup.authCodex': createAuthCodexHandler(),
+    'setup.deauthCodex': createDeauthCodexHandler(),
+    'setup.getOpencodeStatus': createOpencodeStatusHandler(),
+    'setup.authOpencode': createAuthOpencodeHandler(),
+    'setup.deauthOpencode': createDeauthOpencodeHandler(),
+    'setup.getGeminiStatus': createGeminiStatusHandler(),
+    'setup.authGemini': createAuthGeminiHandler(),
+    'setup.deauthGemini': createDeauthGeminiHandler(),
+    'setup.getCopilotStatus': createCopilotStatusHandler(),
+    'setup.authCopilot': createAuthCopilotHandler(),
+    'setup.deauthCopilot': createDeauthCopilotHandler(),
+    'setup.getCopilotModels': createGetCopilotModelsHandler(),
+    'setup.refreshCopilotModels': createRefreshCopilotModelsHandler(),
+    'setup.clearCopilotCache': createClearCopilotCacheHandler(),
+    'setup.getOpencodeModels': createGetOpencodeModelsHandler(),
+    'setup.refreshOpencodeModels': createRefreshOpencodeModelsHandler(),
+    'setup.getOpencodeProviders': createGetOpencodeProvidersHandler(),
+    'setup.clearOpencodeCache': createClearOpencodeCacheHandler(),
+    'setup.getCursorConfig': createGetCursorConfigHandler(),
+    'setup.setCursorDefaultModel': createSetCursorDefaultModelHandler(),
+    'setup.setCursorModels': createSetCursorModelsHandler(),
+    'setup.getCursorPermissions': createGetCursorPermissionsHandler(),
+    'setup.applyCursorPermissionProfile': createApplyPermissionProfileHandler(),
+    'setup.setCursorCustomPermissions': createSetCustomPermissionsHandler(),
+    'setup.deleteCursorProjectPermissions': createDeleteProjectPermissionsHandler(),
+    'setup.getCursorExampleConfig': createGetExampleConfigHandler(),
+  };
+}
+
 export function createSetupRoutes(): Router {
-  const router = Router();
-
-  router.get('/claude-status', createClaudeStatusHandler());
-  router.post('/install-claude', createInstallClaudeHandler());
-  router.post('/auth-claude', createAuthClaudeHandler());
-  router.post('/deauth-claude', createDeauthClaudeHandler());
-  router.post('/store-api-key', createStoreApiKeyHandler());
-  router.post('/delete-api-key', createDeleteApiKeyHandler());
-  router.get('/api-keys', createApiKeysHandler());
-  router.get('/platform', createPlatformHandler());
-  router.post('/verify-claude-auth', createVerifyClaudeAuthHandler());
-  router.post('/verify-codex-auth', createVerifyCodexAuthHandler());
-  router.get('/gh-status', createGhStatusHandler());
-
-  // Cursor CLI routes
-  router.get('/cursor-status', createCursorStatusHandler());
-  router.post('/auth-cursor', createAuthCursorHandler());
-  router.post('/deauth-cursor', createDeauthCursorHandler());
-
-  // Codex CLI routes
-  router.get('/codex-status', createCodexStatusHandler());
-  router.post('/install-codex', createInstallCodexHandler());
-  router.post('/auth-codex', createAuthCodexHandler());
-  router.post('/deauth-codex', createDeauthCodexHandler());
-
-  // OpenCode CLI routes
-  router.get('/opencode-status', createOpencodeStatusHandler());
-  router.post('/auth-opencode', createAuthOpencodeHandler());
-  router.post('/deauth-opencode', createDeauthOpencodeHandler());
-
-  // Gemini CLI routes
-  router.get('/gemini-status', createGeminiStatusHandler());
-  router.post('/auth-gemini', createAuthGeminiHandler());
-  router.post('/deauth-gemini', createDeauthGeminiHandler());
-
-  // Copilot CLI routes
-  router.get('/copilot-status', createCopilotStatusHandler());
-  router.post('/auth-copilot', createAuthCopilotHandler());
-  router.post('/deauth-copilot', createDeauthCopilotHandler());
-
-  // Copilot Dynamic Model Discovery routes
-  router.get('/copilot/models', createGetCopilotModelsHandler());
-  router.post('/copilot/models/refresh', createRefreshCopilotModelsHandler());
-  router.post('/copilot/cache/clear', createClearCopilotCacheHandler());
-
-  // OpenCode Dynamic Model Discovery routes
-  router.get('/opencode/models', createGetOpencodeModelsHandler());
-  router.post('/opencode/models/refresh', createRefreshOpencodeModelsHandler());
-  router.get('/opencode/providers', createGetOpencodeProvidersHandler());
-  router.post('/opencode/cache/clear', createClearOpencodeCacheHandler());
-  router.get('/cursor-config', createGetCursorConfigHandler());
-  router.post('/cursor-config/default-model', createSetCursorDefaultModelHandler());
-  router.post('/cursor-config/models', createSetCursorModelsHandler());
-
-  // Cursor CLI Permissions routes
-  router.get('/cursor-permissions', createGetCursorPermissionsHandler());
-  router.post('/cursor-permissions/profile', createApplyPermissionProfileHandler());
-  router.post('/cursor-permissions/custom', createSetCustomPermissionsHandler());
-  router.delete('/cursor-permissions', createDeleteProjectPermissionsHandler());
-  router.get('/cursor-permissions/example', createGetExampleConfigHandler());
-
-  return router;
+  return registerContractOperations(Router(), SETUP_MOUNT, createSetupHandlers());
 }
