@@ -38,6 +38,19 @@ Notable behaviour changes. Release notes are generated from commits (see
   Because those three IDs no longer name the model that runs, the UI shows the tier for
   them rather than the version they spell.
 
+- **Two dated Sonnet entries are gone from the Claude model picker.** `Claude Sonnet 4`
+  (`claude-sonnet-4-20250514`) and `Claude 3.5 Sonnet` (`claude-3-5-sonnet-20241022`) were
+  offered alongside the tiers and are no longer selectable. This is deliberate: keeping them
+  would mean hand-maintaining pinned versions in the one place the change above exists to stop
+  hand-maintaining them, and every release would have to decide again whether they are still
+  worth listing.
+
+  If a feature of yours already has one of them selected, it keeps running exactly as before —
+  a version you hold is treated as a hand-written pin and is sent to the provider unchanged.
+  You just cannot pick it again from the menu. To go on pinning a specific version, use the
+  `ANTHROPIC_DEFAULT_SONNET_MODEL` environment variable, or write the model ID on the feature
+  yourself.
+
 - **Claude-compatible providers: your tier mappings now genuinely decide.** If you use a
   Claude-compatible provider (GLM, MiniMax, OpenRouter), Automaker already set
   `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` from the tier mappings you configured,

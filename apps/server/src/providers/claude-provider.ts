@@ -410,6 +410,20 @@ export class ClaudeProvider extends BaseProvider {
    * Tiers, not versions. Automaker addresses Claude by tier and the provider picks
    * the model, so listing pinned model IDs here would advertise versions Automaker
    * no longer sends and cannot keep current.
+   *
+   * Three entries, and deliberately not five. Moving to tiers also dropped two dated
+   * Sonnet entries that were not tier duplicates -- `claude-sonnet-4-20250514` and
+   * `claude-3-5-sonnet-20241022` -- and they stay out. Offering them means
+   * hand-maintaining pinned versions in precisely the place this change exists to stop
+   * hand-maintaining them, and every release would have to revisit whether they are
+   * still worth listing.
+   *
+   * Nobody is broken by their absence: a feature that already carries one of those IDs
+   * still runs, because a hand-written pin passes through the resolver and
+   * `toClaudeWireModel` untouched -- it simply cannot be re-selected from the picker.
+   * Anyone who wants a fixed version uses the provider's own
+   * `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` variables, which is the supported way
+   * to pin. See docs/adr/0001-claude-tier-aliases.md and CHANGELOG.md.
    */
   getAvailableModels(): ModelDefinition[] {
     const models = [

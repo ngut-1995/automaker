@@ -16,6 +16,13 @@ vi.mock('@automaker/platform', () => ({
   }),
 }));
 
+/**
+ * The two dated Sonnet entries the tier move removed from the catalogue, kept out on
+ * purpose. They were not tier duplicates, so their removal is a decision in its own
+ * right: see CHANGELOG.md and docs/adr/0001-claude-tier-aliases.md.
+ */
+const DROPPED_DATED_SONNET_IDS = ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022'];
+
 describe('claude-provider.ts', () => {
   let provider: ClaudeProvider;
 
@@ -404,6 +411,16 @@ describe('claude-provider.ts', () => {
         expect(await modelSentToSdk(providerModel)).toBe(providerModel);
       }
     );
+
+    it.each(DROPPED_DATED_SONNET_IDS)(
+      'should still send %s unchanged although it left the catalogue',
+      async (droppedId) => {
+        // These two are no longer selectable, but a feature that already carries one is
+        // an ordinary hand-written pin: it is not in the pinned-by-accident map, so it
+        // reaches the SDK as-is. This is what makes dropping them from the picker safe.
+        expect(await modelSentToSdk(droppedId)).toBe(droppedId);
+      }
+    );
   });
 
   describe('getAvailableModels', () => {
@@ -418,6 +435,16 @@ describe('claude-provider.ts', () => {
 
       expect(models.map((m) => m.name)).toEqual(['Claude Opus', 'Claude Sonnet', 'Claude Haiku']);
       expect(models.every((m) => m.provider === 'anthropic')).toBe(true);
+    });
+
+    it.each(DROPPED_DATED_SONNET_IDS)('should not offer %s again', (droppedId) => {
+      // Deliberately removed, not forgotten: re-adding a dated identifier here means
+      // hand-maintaining a pinned version in the one place the tier move exists to stop
+      // doing that. See docs/adr/0001-claude-tier-aliases.md.
+      const models = provider.getAvailableModels();
+
+      expect(models.map((m) => m.id)).not.toContain(droppedId);
+      expect(models.map((m) => m.modelString)).not.toContain(droppedId);
     });
 
     it('should not advertise a pinned model ID', () => {

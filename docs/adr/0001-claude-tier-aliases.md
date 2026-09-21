@@ -32,6 +32,14 @@ read**, by an exact-match list of the three IDs it used to write. Matching `clau
 pattern would have been less maintenance but would also have silently unpinned versions a user
 chose on purpose, and nothing in the stored value distinguishes the two cases.
 
+**The picker offers three Claude entries where it offered five.** The two extra entries were
+dated Sonnet versions, not tier duplicates, and they are not coming back: a catalogue entry is a
+pinned version someone has to keep current, which is the maintenance this decision removes. The
+cost falls only on re-selection — a version already stored on a feature is a hand-written pin
+and still reaches the SDK unchanged — and `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` remains
+the supported way to pin. `apps/server/tests/unit/providers/claude-provider.test.ts` asserts the
+catalogue is exactly the three tiers, so a fourth entry cannot reappear unnoticed.
+
 ## Rejected
 
 **Bumping the pinned IDs to the current generation.** Correct today, stale at the next release,
