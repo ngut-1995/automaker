@@ -14,7 +14,12 @@ import {
   RETIRED_OPENCODE_MODEL_MAP,
 } from './opencode-models.js';
 import type { ClaudeCanonicalId } from './model.js';
-import { LEGACY_CLAUDE_ALIAS_MAP, isClaudeCanonicalId } from './model.js';
+import {
+  LEGACY_CLAUDE_ALIAS_MAP,
+  PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP,
+  isClaudeCanonicalId,
+  isPinnedByAccidentClaudeModelId,
+} from './model.js';
 import type { PhaseModelEntry } from './settings.js';
 
 /**
@@ -45,7 +50,11 @@ export function isLegacyClaudeAlias(id: string): boolean {
  * - Legacy Cursor IDs (e.g., 'auto' -> 'cursor-auto')
  * - Legacy OpenCode IDs (e.g., 'opencode/big-pickle' -> 'opencode-big-pickle')
  * - Legacy Claude aliases (e.g., 'sonnet' -> 'claude-sonnet')
+ * - Pinned Claude model IDs Automaker wrote on the user's behalf
+ *   (e.g., 'claude-opus-4-6' -> 'claude-opus'), by exact match only
  * - Already-canonical IDs are passed through unchanged
+ * - Any other pinned Claude model ID is passed through unchanged, so a
+ *   deliberate pin keeps working
  *
  * @param legacyId - The model ID to migrate
  * @returns The canonical model ID
@@ -83,6 +92,14 @@ export function migrateModelId(legacyId: string | undefined | null): string {
   // Already a canonical Claude ID
   if (isClaudeCanonicalId(legacyId)) {
     return legacyId;
+  }
+
+  // A pinned Claude model ID Automaker wrote on the user's behalf - collapse it
+  // back to the canonical ID for its tier, so the card follows the tier again.
+  // Exact equality against an enumerated list: a pattern would also unpin a
+  // version the user chose deliberately.
+  if (isPinnedByAccidentClaudeModelId(legacyId)) {
+    return PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP[legacyId];
   }
 
   // Legacy Claude alias (short name)

@@ -4,7 +4,7 @@ import type { ModelAlias, ModelProvider } from '@/store/app-store';
 import {
   normalizeThinkingLevelForModel,
   normalizeReasoningEffortForModel,
-  LEGACY_CLAUDE_ALIAS_MAP,
+  migrateModelId as sharedMigrateModelId,
   getClaudeTierDisplayName,
   type PhaseModelEntry,
 } from '@automaker/types';
@@ -20,12 +20,16 @@ export function cn(...inputs: ClassValue[]) {
 export { getErrorMessage } from '@automaker/utils/error-handler';
 
 /**
- * Migrate legacy model aliases to canonical prefixed IDs.
- * Returns the canonical ID if it's a legacy alias, otherwise returns the input unchanged.
+ * Migrate a stored model ID to its canonical form for display and editing.
+ *
+ * Delegates to the shared migration so the edit dialog agrees with what the
+ * server resolves at execution time: a legacy alias becomes canonical, and a
+ * version Automaker pinned on the user's behalf collapses back to its tier. A
+ * pin the user wrote themselves is returned unchanged.
  */
 export function migrateModelId(modelId: string | undefined): string | undefined {
   if (!modelId) return modelId;
-  return LEGACY_CLAUDE_ALIAS_MAP[modelId as keyof typeof LEGACY_CLAUDE_ALIAS_MAP] || modelId;
+  return sharedMigrateModelId(modelId);
 }
 
 /**

@@ -43,15 +43,17 @@ export interface FormatModelNameOptions {
 }
 
 /**
- * Labels for the exact pinned model IDs Automaker itself has shipped.
+ * Labels for the exact pinned model IDs whose version is knowable from the
+ * string. Matched by exact equality, never by pattern; anything else falls back
+ * to a tier name.
  *
- * These are the only Claude strings whose version is knowable from the string,
- * so they are matched by exact equality, never by pattern. Anything else falls
- * back to a tier name.
+ * The IDs Automaker once wrote on the user's behalf (`claude-opus-4-6`,
+ * `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`) are deliberately absent:
+ * they now collapse to their tier when read, so the version they name is not
+ * the version that runs. Only a pin Automaker never wrote can be labelled with
+ * a version.
  */
 const CLAUDE_PINNED_MODEL_LABELS: Record<string, string> = {
-  'claude-opus-4-6': 'Opus 4.6',
-  'claude-sonnet-4-6': 'Sonnet 4.6',
   'claude-haiku-4-5': 'Haiku 4.5',
 };
 

@@ -306,9 +306,16 @@ export function getClaudeTierDisplayName(model: string): string | undefined {
  * ```typescript
  * getModelDisplayName("haiku");  // "Claude Haiku"
  * getModelDisplayName("sonnet"); // "Claude Sonnet"
- * getModelDisplayName("claude-sonnet-4-6"); // "Claude Sonnet 4.6"
+ * getModelDisplayName("claude-sonnet-4-6"); // "Claude Sonnet" (tier fallback)
  * getModelDisplayName("claude-haiku-4-5-20251001"); // "Claude Haiku" (tier fallback)
  * ```
+ *
+ * @remarks
+ * The pinned model IDs Automaker once wrote on the user's behalf
+ * (`claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`) are
+ * deliberately absent from the table below. They now collapse to their tier on
+ * read, so the model they name is not the model that runs; labelling them with
+ * a version would report a model that never executes.
  */
 export function getModelDisplayName(model: ModelAlias | string): string {
   const displayNames: Record<string, string> = {
@@ -318,8 +325,6 @@ export function getModelDisplayName(model: ModelAlias | string): string {
     'claude-haiku': 'Claude Haiku',
     'claude-sonnet': 'Claude Sonnet',
     'claude-opus': 'Claude Opus',
-    'claude-sonnet-4-6': 'Claude Sonnet 4.6',
-    'claude-opus-4-6': 'Claude Opus 4.6',
     [CODEX_MODEL_MAP.gpt53Codex]: 'GPT-5.3-Codex',
     [CODEX_MODEL_MAP.gpt53CodexSpark]: 'GPT-5.3-Codex-Spark',
     [CODEX_MODEL_MAP.gpt52Codex]: 'GPT-5.2-Codex',

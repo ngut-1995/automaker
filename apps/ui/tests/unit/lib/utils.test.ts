@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getModelDisplayName } from '../../../src/lib/utils';
+import { getModelDisplayName, migrateModelId } from '../../../src/lib/utils';
 
 describe('getModelDisplayName', () => {
   it('keeps the existing labels for exact, known identifiers', () => {
@@ -36,5 +36,30 @@ describe('getModelDisplayName', () => {
     expect(getModelDisplayName('cursor-opus-4.5')).toBe('cursor-opus-4.5');
     expect(getModelDisplayName('copilot-claude-opus-4.5')).toBe('copilot-claude-opus-4.5');
     expect(getModelDisplayName('opencode-big-pickle')).toBe('opencode-big-pickle');
+  });
+});
+
+describe('migrateModelId', () => {
+  it('collapses a version Automaker pinned on the user\u2019s behalf to its tier', () => {
+    // The edit dialog must agree with what the server resolves at run time.
+    expect(migrateModelId('claude-opus-4-6')).toBe('claude-opus');
+    expect(migrateModelId('claude-sonnet-4-6')).toBe('claude-sonnet');
+    expect(migrateModelId('claude-haiku-4-5-20251001')).toBe('claude-haiku');
+  });
+
+  it('leaves a pin the user wrote themselves intact', () => {
+    expect(migrateModelId('claude-sonnet-4-20250514')).toBe('claude-sonnet-4-20250514');
+    expect(migrateModelId('claude-opus-4-7')).toBe('claude-opus-4-7');
+  });
+
+  it('still migrates legacy bare aliases to canonical IDs', () => {
+    expect(migrateModelId('opus')).toBe('claude-opus');
+    expect(migrateModelId('sonnet')).toBe('claude-sonnet');
+    expect(migrateModelId('haiku')).toBe('claude-haiku');
+  });
+
+  it('returns a falsy input unchanged', () => {
+    expect(migrateModelId(undefined)).toBeUndefined();
+    expect(migrateModelId('')).toBe('');
   });
 });

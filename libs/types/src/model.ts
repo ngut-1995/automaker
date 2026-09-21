@@ -29,6 +29,39 @@ export function isClaudeCanonicalId(model: string): model is ClaudeCanonicalId {
 }
 
 /**
+ * The pinned Claude model IDs Automaker itself used to write onto users' data
+ * on their behalf, each mapped back to the canonical ID naming its tier.
+ *
+ * Before Automaker addressed Claude by tier alias, choosing a tier stored the
+ * version that happened to be current when the card was created. Those values
+ * are pinned-by-accident: the user never chose them, but nothing in the stored
+ * value says so.
+ *
+ * Membership is decided by **exact equality** against this list, never by a
+ * pattern such as `claude-opus-*`. A pattern would also unpin versions a user
+ * chose deliberately, and Automaker cannot tell the two apart by inspecting the
+ * value. The cost is that this list gains an entry whenever the defaults
+ * change; that is accepted as visible debt rather than logic that guesses wrong
+ * (see docs/adr/0001-claude-tier-aliases.md).
+ *
+ * Note `claude-haiku-4-5` (undated) is deliberately absent: it appears in the
+ * UI's display tables but was never a value Automaker wrote.
+ */
+export const PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalId> = {
+  'claude-opus-4-6': 'claude-opus',
+  'claude-sonnet-4-6': 'claude-sonnet',
+  'claude-haiku-4-5-20251001': 'claude-haiku',
+} as const;
+
+/**
+ * Check whether a model string is one of the pinned model IDs Automaker wrote
+ * on the user's behalf. Exact equality only.
+ */
+export function isPinnedByAccidentClaudeModelId(model: string): boolean {
+  return Object.prototype.hasOwnProperty.call(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP, model);
+}
+
+/**
  * Legacy Claude model aliases (short names) for backward compatibility.
  * These map to the canonical ID for the same tier.
  * @deprecated Use canonical IDs (`claude-opus`, …) for new code

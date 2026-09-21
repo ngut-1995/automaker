@@ -3,6 +3,7 @@ import { resolveModelString, getEffectiveModel, resolvePhaseModel } from '../src
 import {
   CLAUDE_CANONICAL_IDS,
   CLAUDE_MODEL_MAP,
+  PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP,
   CURSOR_MODEL_MAP,
   DEFAULT_MODELS,
   type PhaseModelEntry,
@@ -69,16 +70,43 @@ describe('model-resolver', () => {
       });
     });
 
+    describe('with pinned-by-accident Claude model IDs', () => {
+      // The versions Automaker itself wrote onto users' cards before it
+      // addressed Claude by tier. They collapse back to canonical on read, so
+      // an existing card follows its tier again without being edited.
+      it.each(Object.entries(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP))(
+        'should collapse %s to %s',
+        (pinned, canonical) => {
+          expect(resolveModelString(pinned)).toBe(canonical);
+        }
+      );
+
+      it('should collapse without ever producing a bare tier alias', () => {
+        for (const pinned of Object.keys(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP)) {
+          const result = resolveModelString(pinned);
+          expect(result).toMatch(/^claude-(opus|sonnet|haiku)$/);
+        }
+      });
+    });
+
     describe('with hand-written pinned Claude model IDs', () => {
       it('should pass through a pinned Claude model ID unchanged', () => {
-        const pinned = 'claude-sonnet-4-6';
+        // Not on the enumerated list, so it is treated as a deliberate pin.
+        const pinned = 'claude-sonnet-4-20250514';
         const result = resolveModelString(pinned);
 
         expect(result).toBe(pinned);
       });
 
+      it('should not unpin a neighbouring version of an enumerated ID', () => {
+        // Matching is exact equality, never `claude-opus-*`.
+        for (const nearMiss of ['claude-opus-4-7', 'claude-opus-4-6-20260101']) {
+          expect(resolveModelString(nearMiss)).toBe(nearMiss);
+        }
+      });
+
       it('should pass through full Claude model string unchanged', () => {
-        const fullModel = 'claude-sonnet-4-6';
+        const fullModel = 'claude-sonnet-4-20250514';
         const result = resolveModelString(fullModel);
 
         expect(result).toBe(fullModel);
@@ -279,7 +307,7 @@ describe('model-resolver', () => {
     describe('priority handling', () => {
       it('should prioritize explicit model over all others', () => {
         const explicit = 'claude-opus-4-20241113';
-        const session = 'claude-sonnet-4-6';
+        const session = 'claude-sonnet-4-20250514';
         const defaultModel = 'claude-3-5-haiku-20241022';
 
         const result = getEffectiveModel(explicit, session, defaultModel);
@@ -288,7 +316,7 @@ describe('model-resolver', () => {
       });
 
       it('should use session model when explicit is undefined', () => {
-        const session = 'claude-sonnet-4-6';
+        const session = 'claude-sonnet-4-20250514';
         const defaultModel = 'claude-3-5-haiku-20241022';
 
         const result = getEffectiveModel(undefined, session, defaultModel);
@@ -333,7 +361,7 @@ describe('model-resolver', () => {
 
     describe('with empty strings', () => {
       it('should treat empty explicit string as undefined', () => {
-        const session = 'claude-sonnet-4-6';
+        const session = 'claude-sonnet-4-20250514';
 
         const result = getEffectiveModel('', session);
 
@@ -360,7 +388,7 @@ describe('model-resolver', () => {
 
     describe('integration scenarios', () => {
       it('should handle user overriding session model with alias', () => {
-        const sessionModel = 'claude-sonnet-4-6';
+        const sessionModel = 'claude-sonnet-4-20250514';
         const userChoice = 'opus';
 
         const result = getEffectiveModel(userChoice, sessionModel);
@@ -454,7 +482,7 @@ describe('model-resolver', () => {
       });
 
       it('should pass through full Claude model string', () => {
-        const fullModel = 'claude-sonnet-4-6';
+        const fullModel = 'claude-sonnet-4-20250514';
         const result = resolvePhaseModel(fullModel);
 
         expect(result.model).toBe(fullModel);
@@ -519,15 +547,30 @@ describe('model-resolver', () => {
       });
 
       it('should handle full Claude model string in entry', () => {
+        // A deliberate pin: not one of the versions Automaker itself wrote.
         const entry: PhaseModelEntry = {
-          model: 'claude-opus-4-6',
+          model: 'claude-opus-4-20241113' as PhaseModelEntry['model'],
           thinkingLevel: 'high',
         };
         const result = resolvePhaseModel(entry);
 
-        expect(result.model).toBe('claude-opus-4-6');
+        expect(result.model).toBe('claude-opus-4-20241113');
         expect(result.thinkingLevel).toBe('high');
       });
+
+      it.each(Object.entries(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP))(
+        'should collapse a phase model pinned to %s back to %s',
+        (pinned, canonical) => {
+          const entry: PhaseModelEntry = {
+            model: pinned as PhaseModelEntry['model'],
+            thinkingLevel: 'high',
+          };
+          const result = resolvePhaseModel(entry);
+
+          expect(result.model).toBe(canonical);
+          expect(result.thinkingLevel).toBe('high');
+        }
+      );
     });
 
     describe('with Cursor models (thinkingLevel should be preserved but unused)', () => {
@@ -576,7 +619,7 @@ describe('model-resolver', () => {
 
       it('should pass through unknown model with thinkingLevel', () => {
         const entry: PhaseModelEntry = { model: 'MiniMax-M2.1' as any, thinkingLevel: 'high' };
-        const customDefault = 'claude-haiku-4-5-20251001';
+        const customDefault = 'claude-haiku';
         const result = resolvePhaseModel(entry, customDefault);
 
         // Unknown models pass through, thinkingLevel is preserved

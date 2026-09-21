@@ -187,7 +187,7 @@ describe('agent-context-parser.ts', () => {
 
       it('should use default formatting when no options provided', () => {
         expect(formatModelName('claude-sonnet-4-5')).toBe('Claude Sonnet');
-        expect(formatModelName('claude-opus-4-6')).toBe('Opus 4.6');
+        expect(formatModelName('claude-opus-4-6')).toBe('Claude Opus');
       });
 
       it('should handle OpenRouter provider with multiple models', () => {
@@ -216,9 +216,16 @@ describe('agent-context-parser.ts', () => {
 
     describe('Claude model formatting (default)', () => {
       it('should keep the label of an exact, known pinned model ID', () => {
-        expect(formatModelName('claude-opus-4-6')).toBe('Opus 4.6');
-        expect(formatModelName('claude-sonnet-4-6')).toBe('Sonnet 4.6');
         expect(formatModelName('claude-haiku-4-5')).toBe('Haiku 4.5');
+      });
+
+      it('should name the tier for a version Automaker pinned on the user\u2019s behalf', () => {
+        // These collapse to their tier when read, so the version in the string
+        // is not the version that runs. Naming it would report a model that
+        // never executes.
+        expect(formatModelName('claude-opus-4-6')).toBe('Claude Opus');
+        expect(formatModelName('claude-sonnet-4-6')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
       });
 
       it('should name the tier for a canonical ID, which carries no version', () => {

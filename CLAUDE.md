@@ -171,6 +171,12 @@ the model string. The translation from canonical ID to the tier alias the SDK ex
 (`claude-opus` → `opus`) lives at the Claude provider boundary and nowhere else.
 
 A hand-written pinned model ID (`claude-opus-4-1-20250805`) passes through untouched.
+The one exception is the enumerated list of versions Automaker itself once wrote on the
+user's behalf (`PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP` in `@automaker/types`): those
+collapse back to their canonical ID on read, by **exact equality** and never by pattern,
+so an old feature card follows its tier again. Add an entry there whenever a default
+changes; do not turn it into a pattern.
+
 See `CONTEXT.md` for the vocabulary and `docs/adr/0001-claude-tier-aliases.md` for the
 decision.
 

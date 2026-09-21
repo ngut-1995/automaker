@@ -57,8 +57,14 @@ describe('getModelDisplayName', () => {
     expect(getModelDisplayName('claude-haiku')).toBe('Claude Haiku');
     expect(getModelDisplayName('claude-sonnet')).toBe('Claude Sonnet');
     expect(getModelDisplayName('claude-opus')).toBe('Claude Opus');
-    expect(getModelDisplayName('claude-sonnet-4-6')).toBe('Claude Sonnet 4.6');
-    expect(getModelDisplayName('claude-opus-4-6')).toBe('Claude Opus 4.6');
+  });
+
+  it('names the tier for a version Automaker pinned on the user\u2019s behalf', () => {
+    // These collapse to their tier when read, so the version in the string is
+    // not the version that runs.
+    expect(getModelDisplayName('claude-opus-4-6')).toBe('Claude Opus');
+    expect(getModelDisplayName('claude-sonnet-4-6')).toBe('Claude Sonnet');
+    expect(getModelDisplayName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
   });
 
   it('renders an unrecognised Claude string as its tier name, not a raw ID', () => {
