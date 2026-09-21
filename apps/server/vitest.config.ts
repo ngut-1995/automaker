@@ -37,6 +37,18 @@ export default defineConfig({
     },
     include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
+    typecheck: {
+      enabled: true,
+      checker: 'tsc',
+      tsconfig: './tsconfig.test.json',
+      // Cover every server test file, not just `.test-d.ts` (the Vitest default):
+      // the wire-model type assertions live in an ordinary `.test.ts` file.
+      include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
+      // Source is measured clean and must stay clean, so do not hide errors
+      // outside the test files. (Vitest's default is effectively `false`; set
+      // it explicitly so the intent is recorded rather than inherited.)
+      ignoreSourceErrors: false,
+    },
     mockReset: true,
     restoreMocks: true,
     clearMocks: true,
