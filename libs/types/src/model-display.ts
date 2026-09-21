@@ -244,6 +244,59 @@ export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
 };
 
 /**
+ * Claude tier names, keyed by tier alias.
+ *
+ * A tier name is what the UI shows when it cannot honestly name a version.
+ * See CONTEXT.md ("Tier alias") and docs/adr/0001-claude-tier-aliases.md.
+ */
+export const CLAUDE_TIER_DISPLAY_NAMES = {
+  opus: 'Claude Opus',
+  sonnet: 'Claude Sonnet',
+  haiku: 'Claude Haiku',
+} as const;
+
+export type ClaudeTier = keyof typeof CLAUDE_TIER_DISPLAY_NAMES;
+
+const CLAUDE_TIERS = Object.keys(CLAUDE_TIER_DISPLAY_NAMES) as ClaudeTier[];
+
+/**
+ * Identify the Claude tier a model string belongs to.
+ *
+ * Only strings that address Claude directly are considered: a bare tier alias
+ * (`opus`) or a `claude-` prefixed canonical or pinned ID. Models that merely
+ * mention a Claude tier while being served by another provider
+ * (`cursor-opus-4.5`, `copilot-claude-opus-4.5`, `anthropic/claude-sonnet-4-5`)
+ * are deliberately not claimed here, so their own display rules keep applying.
+ *
+ * @returns the tier alias, or undefined when the string is not a Claude model
+ */
+export function getClaudeTier(model: string): ClaudeTier | undefined {
+  const value = model.toLowerCase();
+  const isClaudeModel = value.startsWith('claude-') || (CLAUDE_TIERS as string[]).includes(value);
+  if (!isClaudeModel) return undefined;
+
+  return CLAUDE_TIERS.find((tier) => value === tier || value.includes(`-${tier}`));
+}
+
+/**
+ * Display name for the tier a Claude model string belongs to.
+ *
+ * This is the honest fallback for any Claude string a display table does not
+ * recognise: Automaker sends a tier alias and the provider picks the version,
+ * so naming no version is correct and guessing one is not.
+ *
+ * @example
+ * ```typescript
+ * getClaudeTierDisplayName("claude-haiku-4-5-20251001"); // "Claude Haiku"
+ * getClaudeTierDisplayName("cursor-opus-4.5");           // undefined
+ * ```
+ */
+export function getClaudeTierDisplayName(model: string): string | undefined {
+  const tier = getClaudeTier(model);
+  return tier ? CLAUDE_TIER_DISPLAY_NAMES[tier] : undefined;
+}
+
+/**
  * Get display name for a model
  *
  * @param model - Model identifier or full model string
@@ -254,6 +307,7 @@ export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
  * getModelDisplayName("haiku");  // "Claude Haiku"
  * getModelDisplayName("sonnet"); // "Claude Sonnet"
  * getModelDisplayName("claude-sonnet-4-6"); // "Claude Sonnet 4.6"
+ * getModelDisplayName("claude-haiku-4-5-20251001"); // "Claude Haiku" (tier fallback)
  * ```
  */
 export function getModelDisplayName(model: ModelAlias | string): string {
@@ -288,6 +342,11 @@ export function getModelDisplayName(model: ModelAlias | string): string {
   if (model in GEMINI_MODEL_MAP) {
     return GEMINI_MODEL_MAP[model as keyof typeof GEMINI_MODEL_MAP].label;
   }
+
+  // Unrecognised Claude string: name the tier rather than print a raw ID.
+  // Automaker cannot know which version a tier alias resolved to.
+  const claudeTierName = getClaudeTierDisplayName(model);
+  if (claudeTierName) return claudeTierName;
 
   return model;
 }

@@ -229,8 +229,12 @@ export {
   THINKING_LEVEL_LABELS,
   REASONING_EFFORT_LEVELS,
   REASONING_EFFORT_LABELS,
+  CLAUDE_TIER_DISPLAY_NAMES,
   getModelDisplayName,
+  getClaudeTier,
+  getClaudeTierDisplayName,
 } from './model-display.js';
+export type { ClaudeTier } from './model-display.js';
 
 // Issue validation types
 export type {

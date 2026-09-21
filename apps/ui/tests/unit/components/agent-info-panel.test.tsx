@@ -156,7 +156,7 @@ describe('AgentInfoPanel', () => {
       });
 
       // Falls back to default formatting
-      expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+      expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
     });
 
     it('should fallback to default model name when providers list is empty', () => {
@@ -180,7 +180,7 @@ describe('AgentInfoPanel', () => {
       });
 
       // Falls back to default formatting
-      expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+      expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
     });
 
     it('should use default model name when providerId is undefined', () => {
@@ -204,7 +204,7 @@ describe('AgentInfoPanel', () => {
       });
 
       // Uses default formatting since no providerId
-      expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+      expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
     });
 
     it('should display correct model name for Opus models with provider', () => {
@@ -270,7 +270,7 @@ describe('AgentInfoPanel', () => {
         wrapper: createWrapper(),
       });
 
-      expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+      expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
     });
 
     it('should show model info for in_progress features with agentInfo', () => {
@@ -289,7 +289,7 @@ describe('AgentInfoPanel', () => {
         { wrapper: createWrapper() }
       );
 
-      expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+      expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
     });
   });
 });

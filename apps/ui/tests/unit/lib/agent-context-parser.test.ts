@@ -96,7 +96,7 @@ describe('agent-context-parser.ts', () => {
         };
 
         // Should fall through to default Claude formatting
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Sonnet 4.5');
+        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
       });
 
       it('should fallback to default formatting when model is not in provider models', () => {
@@ -123,7 +123,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: [],
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Sonnet 4.5');
+        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
       });
 
       it('should handle provider with no models array', () => {
@@ -139,7 +139,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Sonnet 4.5');
+        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
       });
 
       it('should handle model with no displayName', () => {
@@ -156,7 +156,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Sonnet 4.5');
+        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
       });
 
       it('should ignore provider lookup when providerId is undefined', () => {
@@ -173,7 +173,7 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: providers,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Sonnet 4.5');
+        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
       });
 
       it('should ignore provider lookup when claudeCompatibleProviders is undefined', () => {
@@ -182,11 +182,11 @@ describe('agent-context-parser.ts', () => {
           claudeCompatibleProviders: undefined,
         };
 
-        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Sonnet 4.5');
+        expect(formatModelName('claude-sonnet-4-5', options)).toBe('Claude Sonnet');
       });
 
       it('should use default formatting when no options provided', () => {
-        expect(formatModelName('claude-sonnet-4-5')).toBe('Sonnet 4.5');
+        expect(formatModelName('claude-sonnet-4-5')).toBe('Claude Sonnet');
         expect(formatModelName('claude-opus-4-6')).toBe('Opus 4.6');
       });
 
@@ -215,36 +215,33 @@ describe('agent-context-parser.ts', () => {
     });
 
     describe('Claude model formatting (default)', () => {
-      it('should format claude-opus-4-6 as Opus 4.6', () => {
+      it('should keep the label of an exact, known pinned model ID', () => {
         expect(formatModelName('claude-opus-4-6')).toBe('Opus 4.6');
-      });
-
-      it('should format claude-opus as Opus 4.6', () => {
-        expect(formatModelName('claude-opus')).toBe('Opus 4.6');
-      });
-
-      it('should format other opus models as Opus 4.5', () => {
-        expect(formatModelName('claude-opus-4-5')).toBe('Opus 4.5');
-        expect(formatModelName('claude-3-opus')).toBe('Opus 4.5');
-      });
-
-      it('should format claude-sonnet-4-6 as Sonnet 4.6', () => {
         expect(formatModelName('claude-sonnet-4-6')).toBe('Sonnet 4.6');
-      });
-
-      it('should format claude-sonnet as Sonnet 4.6', () => {
-        expect(formatModelName('claude-sonnet')).toBe('Sonnet 4.6');
-      });
-
-      it('should format other sonnet models as Sonnet 4.5', () => {
-        expect(formatModelName('claude-sonnet-4-5')).toBe('Sonnet 4.5');
-        expect(formatModelName('claude-3-sonnet')).toBe('Sonnet 4.5');
-      });
-
-      it('should format haiku models as Haiku 4.5', () => {
         expect(formatModelName('claude-haiku-4-5')).toBe('Haiku 4.5');
-        expect(formatModelName('claude-3-haiku')).toBe('Haiku 4.5');
-        expect(formatModelName('claude-haiku')).toBe('Haiku 4.5');
+      });
+
+      it('should name the tier for a canonical ID, which carries no version', () => {
+        expect(formatModelName('claude-opus')).toBe('Claude Opus');
+        expect(formatModelName('claude-sonnet')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-haiku')).toBe('Claude Haiku');
+      });
+
+      it('should name the tier for an opus string it does not recognise', () => {
+        expect(formatModelName('claude-opus-4-5')).toBe('Claude Opus');
+        expect(formatModelName('claude-opus-9-9')).toBe('Claude Opus');
+        expect(formatModelName('claude-3-opus')).toBe('Claude Opus');
+      });
+
+      it('should name the tier for a sonnet string it does not recognise', () => {
+        expect(formatModelName('claude-sonnet-4-5')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-sonnet-4-20250514')).toBe('Claude Sonnet');
+        expect(formatModelName('claude-3-sonnet')).toBe('Claude Sonnet');
+      });
+
+      it('should name the tier for a dated haiku identifier rather than print its raw ID', () => {
+        expect(formatModelName('claude-haiku-4-5-20251001')).toBe('Claude Haiku');
+        expect(formatModelName('claude-3-haiku')).toBe('Claude Haiku');
       });
     });
 
@@ -302,16 +299,15 @@ describe('agent-context-parser.ts', () => {
         expect(formatModelName('composer-1')).toBe('Composer 1');
       });
 
-      it('should format cursor-sonnet (but falls through to Sonnet due to earlier check)', () => {
-        // Note: The earlier 'sonnet' check in the function matches first
-        expect(formatModelName('cursor-sonnet')).toBe('Sonnet 4.5');
-        expect(formatModelName('cursor-sonnet-4-5')).toBe('Sonnet 4.5');
+      it('should format cursor sonnet models as Cursor Sonnet', () => {
+        // The Claude rules no longer shadow these: they only match Claude models.
+        expect(formatModelName('cursor-sonnet')).toBe('Cursor Sonnet');
+        expect(formatModelName('cursor-sonnet-4.6')).toBe('Cursor Sonnet');
       });
 
-      it('should format cursor-opus (but falls through to Opus due to earlier check)', () => {
-        // Note: The earlier 'opus' check in the function matches first
-        expect(formatModelName('cursor-opus')).toBe('Opus 4.5');
-        expect(formatModelName('cursor-opus-4-6')).toBe('Opus 4.6');
+      it('should format cursor opus models as Cursor Opus', () => {
+        expect(formatModelName('cursor-opus')).toBe('Cursor Opus');
+        expect(formatModelName('cursor-opus-4.5')).toBe('Cursor Opus');
       });
 
       it('should format cursor-gpt models', () => {

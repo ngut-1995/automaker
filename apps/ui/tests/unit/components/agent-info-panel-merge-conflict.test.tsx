@@ -80,7 +80,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
     });
 
     // merge_conflict features should show model name like backlog
-    expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+    expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
   });
 
   it('should render model info for backlog features (baseline comparison)', () => {
@@ -90,7 +90,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
       wrapper: createWrapper(),
     });
 
-    expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+    expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
   });
 
   it('should show provider-aware model name for merge_conflict features', () => {
@@ -130,7 +130,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
 
     // useFeature and useAgentOutput should have been called but with shouldFetchData=false behavior
     // The key indicator is that the component renders the backlog-like model info view
-    expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+    expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
   });
 
   it('should show thinking level for merge_conflict Claude features', () => {
@@ -144,7 +144,7 @@ describe('AgentInfoPanel - merge_conflict status', () => {
       wrapper: createWrapper(),
     });
 
-    expect(screen.getByText('Sonnet 4.5')).toBeInTheDocument();
+    expect(screen.getByText('Claude Sonnet')).toBeInTheDocument();
     // ThinkingLevel indicator should be visible
     expect(screen.getByText('High')).toBeInTheDocument();
   });

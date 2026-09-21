@@ -5,6 +5,7 @@ import {
   normalizeThinkingLevelForModel,
   normalizeReasoningEffortForModel,
   LEGACY_CLAUDE_ALIAS_MAP,
+  getClaudeTierDisplayName,
   type PhaseModelEntry,
 } from '@automaker/types';
 
@@ -101,7 +102,12 @@ export function getProviderFromModel(model?: string): ModelProvider {
 
 /**
  * Get display name for a model
- * Handles both aliases (e.g., "sonnet") and full model IDs (e.g., "claude-sonnet-4-20250514")
+ *
+ * Handles both tier aliases (e.g., "sonnet") and canonical IDs (e.g.,
+ * "claude-sonnet"). Any Claude string that is not an exact match falls back to
+ * its tier name: Automaker addresses Claude by tier, so it cannot know which
+ * version ran (see docs/adr/0001-claude-tier-aliases.md). Non-Claude models are
+ * returned unchanged when unknown, exactly as before.
  */
 export function getModelDisplayName(model: ModelAlias | string): string {
   const displayNames: Record<string, string> = {
@@ -129,7 +135,7 @@ export function getModelDisplayName(model: ModelAlias | string): string {
     'cursor-gpt-5.2': 'GPT-5.2',
     'cursor-gpt-5.1': 'GPT-5.1',
   };
-  return displayNames[model] || model;
+  return displayNames[model] || getClaudeTierDisplayName(model) || model;
 }
 
 /**

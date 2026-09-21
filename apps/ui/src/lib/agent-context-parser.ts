@@ -4,6 +4,7 @@
  */
 
 import type { ClaudeCompatibleProvider } from '@automaker/types';
+import { getClaudeTierDisplayName } from '@automaker/types';
 
 export interface AgentTaskInfo {
   // Task list extracted from TodoWrite tool calls
@@ -42,6 +43,19 @@ export interface FormatModelNameOptions {
 }
 
 /**
+ * Labels for the exact pinned model IDs Automaker itself has shipped.
+ *
+ * These are the only Claude strings whose version is knowable from the string,
+ * so they are matched by exact equality, never by pattern. Anything else falls
+ * back to a tier name.
+ */
+const CLAUDE_PINNED_MODEL_LABELS: Record<string, string> = {
+  'claude-opus-4-6': 'Opus 4.6',
+  'claude-sonnet-4-6': 'Sonnet 4.6',
+  'claude-haiku-4-5': 'Haiku 4.5',
+};
+
+/**
  * Formats a model name for display, with optional provider-aware lookup.
  *
  * When a providerId and providers array are supplied, this function will:
@@ -65,12 +79,16 @@ export function formatModelName(model: string, options?: FormatModelNameOptions)
     }
   }
 
-  // Claude models
-  if (model.includes('opus-4-6') || model === 'claude-opus') return 'Opus 4.6';
-  if (model.includes('opus')) return 'Opus 4.5';
-  if (model.includes('sonnet-4-6') || model === 'claude-sonnet') return 'Sonnet 4.6';
-  if (model.includes('sonnet')) return 'Sonnet 4.5';
-  if (model.includes('haiku')) return 'Haiku 4.5';
+  // Claude models.
+  //
+  // Automaker addresses Claude by tier alias and lets the provider pick the
+  // version, so a version can only be shown for an exact, known identifier
+  // (see docs/adr/0001-claude-tier-aliases.md). Every other Claude string --
+  // a canonical ID, a dated ID, a version released after this build -- renders
+  // as its tier name. Naming no version is correct; naming a wrong one is not.
+  if (model in CLAUDE_PINNED_MODEL_LABELS) return CLAUDE_PINNED_MODEL_LABELS[model];
+  const claudeTierName = getClaudeTierDisplayName(model);
+  if (claudeTierName) return claudeTierName;
 
   // Codex/GPT models - specific formatting
   if (model === 'codex-gpt-5.3-codex') return 'GPT-5.3 Codex';
