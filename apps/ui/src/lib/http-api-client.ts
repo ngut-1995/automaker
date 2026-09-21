@@ -968,7 +968,7 @@ export class HttpApiClient implements ElectronAPI {
     return this.parseJson<T>(await this.transport(endpoint, 'POST', { ...options, body }));
   }
 
-  async get<T>(endpoint: string, options?: TransportOptions): Promise<T> {
+  private async get<T>(endpoint: string, options?: TransportOptions): Promise<T> {
     return this.parseJson<T>(await this.transport(endpoint, 'GET', options));
   }
 
