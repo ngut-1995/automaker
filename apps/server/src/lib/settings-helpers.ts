@@ -11,6 +11,7 @@ import type {
   PromptCustomization,
   ClaudeApiProfile,
   ClaudeCompatibleProvider,
+  ClaudeModelAlias,
   PhaseModelKey,
   PhaseModelEntry,
   Credentials,
@@ -723,6 +724,24 @@ function findModelInProvider(
 }
 
 /**
+ * Resolves a provider model's `mapsToClaudeModel` tier alias to its canonical
+ * Claude model ID (e.g., "haiku" -> "claude-haiku").
+ *
+ * A tier alias maps to its canonical ID through the tier table, not the
+ * resolver: the resolver refuses a bare alias by type (see resolver.ts).
+ * An out-of-contract stored value (not a tier) is kept as-is rather than
+ * dropped, which is what the resolver used to do.
+ *
+ * Deliberately does not log, so each caller can log at its own level.
+ *
+ * @param tier - The stored `mapsToClaudeModel` value
+ * @returns The canonical Claude model ID, or the value unchanged when it is not a tier
+ */
+function resolveMappedClaudeModel(tier: ClaudeModelAlias): string {
+  return CLAUDE_CANONICAL_ID_BY_TIER[tier] ?? tier;
+}
+
+/**
  * Resolves the provider and Claude-compatible model configuration.
  *
  * This is the central logic for resolving provider context, supporting:
@@ -804,12 +823,7 @@ export async function resolveProviderContext(
     // 3. Resolve the mapped Claude model if specified
     let resolvedModel: string | undefined;
     if (modelConfig?.mapsToClaudeModel) {
-      // A tier alias maps to its canonical ID through the tier table, not the
-      // resolver: the resolver refuses a bare alias by type (see resolver.ts).
-      // An out-of-contract stored value (not a tier) is kept as-is rather than
-      // dropped, which is what the resolver used to do.
-      resolvedModel =
-        CLAUDE_CANONICAL_ID_BY_TIER[modelConfig.mapsToClaudeModel] ?? modelConfig.mapsToClaudeModel;
+      resolvedModel = resolveMappedClaudeModel(modelConfig.mapsToClaudeModel);
       logger.debug(
         `${logPrefix} Model "${modelId}" maps to Claude model "${modelConfig.mapsToClaudeModel}" -> "${resolvedModel}"`
       );
@@ -873,13 +887,7 @@ export async function getProviderByModelId(
         // Resolve the mapped Claude model if specified
         let resolvedModel: string | undefined;
         if (modelConfig.mapsToClaudeModel) {
-          // A tier alias maps to its canonical ID through the tier table, not the
-          // resolver: the resolver refuses a bare alias by type (see resolver.ts).
-          // An out-of-contract stored value (not a tier) is kept as-is rather than
-          // dropped, which is what the resolver used to do.
-          resolvedModel =
-            CLAUDE_CANONICAL_ID_BY_TIER[modelConfig.mapsToClaudeModel] ??
-            modelConfig.mapsToClaudeModel;
+          resolvedModel = resolveMappedClaudeModel(modelConfig.mapsToClaudeModel);
           logger.info(
             `${logPrefix} Model "${modelId}" maps to Claude model "${modelConfig.mapsToClaudeModel}" -> "${resolvedModel}"`
           );
