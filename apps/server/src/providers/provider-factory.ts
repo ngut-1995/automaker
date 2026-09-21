@@ -8,6 +8,7 @@
 import { BaseProvider } from './base-provider.js';
 import type { InstallationStatus, ModelDefinition } from './types.js';
 import {
+  CLAUDE_TIERS,
   isCursorModel,
   isCodexModel,
   isOpencodeModel,
@@ -304,9 +305,7 @@ registerProvider('claude', {
   factory: () => new ClaudeProvider(),
   aliases: ['anthropic'],
   canHandleModel: (model: string) => {
-    return (
-      model.startsWith('claude-') || ['opus', 'sonnet', 'haiku'].some((n) => model.includes(n))
-    );
+    return model.startsWith('claude-') || CLAUDE_TIERS.some((tier) => model.includes(tier));
   },
   priority: 0, // Default priority
 });

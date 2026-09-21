@@ -11,6 +11,12 @@ import type { CursorModelId } from './cursor-models.js';
 import { CURSOR_MODEL_MAP, LEGACY_CURSOR_MODEL_MAP } from './cursor-models.js';
 import type { AgentModel, CodexModelId } from './model.js';
 import { CODEX_MODEL_MAP } from './model.js';
+import {
+  CLAUDE_TIERS,
+  CLAUDE_TIER_DISPLAY_NAMES,
+  CLAUDE_TIER_ROW_BY_TIER,
+  type ClaudeTier,
+} from './claude-tiers.js';
 import { GEMINI_MODEL_MAP, type GeminiModelId } from './gemini-models.js';
 import { COPILOT_MODEL_MAP } from './copilot-models.js';
 import {
@@ -46,33 +52,25 @@ export interface ThinkingLevelOption {
 }
 
 /**
- * Claude model options with full metadata for UI display
+ * Claude model options with full metadata for UI display.
  *
- * Ordered from fastest/cheapest (Haiku) to most capable (Opus).
+ * Derived from the tier rows in `./claude-tiers.js`, fastest first: label, badge
+ * and description all come from the one row that defines the tier, so a tier
+ * added or renamed there appears here with no edit.
+ *
+ * The IDs are bare tier aliases for historical reasons -- this list predates the
+ * canonical IDs -- and `getModelDisplayName` answers either spelling.
  */
-export const CLAUDE_MODELS: ModelOption[] = [
-  {
-    id: 'haiku',
-    label: 'Claude Haiku',
-    description: 'Fast and efficient for simple tasks.',
-    badge: 'Speed',
+export const CLAUDE_MODELS: ModelOption[] = CLAUDE_TIERS.map((tier) => {
+  const row = CLAUDE_TIER_ROW_BY_TIER[tier];
+  return {
+    id: tier,
+    label: row.displayName,
+    description: row.description,
+    badge: row.badge,
     provider: 'claude',
-  },
-  {
-    id: 'sonnet',
-    label: 'Claude Sonnet',
-    description: 'Balanced performance with strong reasoning.',
-    badge: 'Balanced',
-    provider: 'claude',
-  },
-  {
-    id: 'opus',
-    label: 'Claude Opus',
-    description: 'Most capable model for complex work.',
-    badge: 'Premium',
-    provider: 'claude',
-  },
-];
+  };
+});
 
 /**
  * Codex model options with full metadata for UI display
@@ -251,20 +249,11 @@ export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
 };
 
 /**
- * Claude tier names, keyed by tier alias.
- *
- * A tier name is what the UI shows when it cannot honestly name a version.
- * See CONTEXT.md ("Tier alias") and docs/adr/0001-claude-tier-aliases.md.
+ * Claude tier names and the tier type are defined once, in `./claude-tiers.js`.
+ * Re-exported here because this is where every naming caller looks for them.
  */
-export const CLAUDE_TIER_DISPLAY_NAMES = {
-  opus: 'Claude Opus',
-  sonnet: 'Claude Sonnet',
-  haiku: 'Claude Haiku',
-} as const;
-
-export type ClaudeTier = keyof typeof CLAUDE_TIER_DISPLAY_NAMES;
-
-const CLAUDE_TIERS = Object.keys(CLAUDE_TIER_DISPLAY_NAMES) as ClaudeTier[];
+export { CLAUDE_TIER_DISPLAY_NAMES };
+export type { ClaudeTier };
 
 /**
  * Identify the Claude tier a model string belongs to.
@@ -298,7 +287,7 @@ const CLAUDE_TIERS = Object.keys(CLAUDE_TIER_DISPLAY_NAMES) as ClaudeTier[];
  *
  * A consequence worth knowing: the first tier found wins, so a contrived string
  * naming two tiers (`claude-opus-vs-sonnet`) resolves to whichever tier
- * `CLAUDE_TIER_DISPLAY_NAMES` lists first. No real identifier does that.
+ * `CLAUDE_TIERS` lists first. No real identifier does that.
  *
  * @returns the tier alias, or undefined when the string is not a Claude model
  */

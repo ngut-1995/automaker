@@ -82,6 +82,14 @@ Notable behaviour changes. Release notes are generated from commits (see
 
   A Claude-compatible provider's own name for a model still wins over all of this, unchanged.
 
+- **One description per Claude tier.** The Claude entries in the provider model list
+  (the `/models` payload) described the tiers in their own words — "Most capable Claude
+  tier", "Balanced Claude tier for everyday work", "Fastest, cheapest Claude tier" — while
+  the model picker described the same three tiers differently. Both now read the one
+  description the tier carries, the picker's: "Most capable model for complex work.",
+  "Balanced performance with strong reasoning.", "Fast and efficient for simple tasks."
+  Nothing about which model runs changes.
+
 - **Claude-compatible providers: your tier mappings now genuinely decide.** If you use a
   Claude-compatible provider (GLM, MiniMax, OpenRouter), Automaker already set
   `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` from the tier mappings you configured,

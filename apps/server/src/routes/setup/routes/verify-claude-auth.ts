@@ -8,7 +8,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import { createLogger } from '@automaker/utils';
 import { getClaudeAuthIndicators } from '@automaker/platform';
 import { getApiKey } from '../common.js';
-import { toClaudeWireModel } from '../../../providers/claude-provider.js';
+import { toClaudeWireModel } from '../../../providers/claude-wire-model.js';
 import {
   createSecureAuthEnv,
   AuthSessionManager,

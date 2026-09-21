@@ -3,9 +3,16 @@ import { resolveModelString, getEffectiveModel, resolvePhaseModel } from '../src
 import {
   CLAUDE_CANONICAL_IDS,
   CLAUDE_MODEL_MAP,
+  CLAUDE_MODELS,
+  CLAUDE_TIERS,
+  CLAUDE_TIER_DISPLAY_NAMES,
+  CLAUDE_TIER_ROWS,
+  LEGACY_CLAUDE_ALIAS_MAP,
   PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP,
   CURSOR_MODEL_MAP,
   DEFAULT_MODELS,
+  deriveClaudeTierTables,
+  type ClaudeTierRow,
   type PhaseModelEntry,
 } from '@automaker/types';
 
@@ -421,6 +428,67 @@ describe('model-resolver', () => {
         expect(resolved).toContain('claude-');
         expect(resolved).toBe(CLAUDE_MODEL_MAP[alias]);
       }
+    });
+  });
+
+  describe('the Claude tiers are enumerated in one place', () => {
+    // Criterion 1 of ngut-1995/harbor#39: the tier name, its canonical ID, its display
+    // name and its wire alias are derivable from one another, so one table generates the
+    // rest. These assertions fail the moment a second hand-written table appears -- a
+    // hand-written one cannot stay in step with a source it does not read.
+
+    const sortedTiers = [...CLAUDE_TIERS].sort();
+
+    it('has one row per tier in every derived table, and no row that is not a tier', () => {
+      expect(Object.keys(CLAUDE_TIER_DISPLAY_NAMES).sort()).toEqual(sortedTiers);
+      expect(Object.keys(CLAUDE_MODEL_MAP).sort()).toEqual(sortedTiers);
+      expect(Object.keys(LEGACY_CLAUDE_ALIAS_MAP).sort()).toEqual(sortedTiers);
+      expect([...CLAUDE_CANONICAL_IDS].sort()).toEqual(sortedTiers.map((t) => `claude-${t}`));
+      expect(
+        CLAUDE_MODELS.map((option) => String(option.id))
+          .slice()
+          .sort()
+      ).toEqual(sortedTiers);
+    });
+
+    it.each(CLAUDE_TIERS)('derives every spelling of %s from its one row', (tier) => {
+      const canonicalId = `claude-${tier}`;
+      const row = CLAUDE_TIER_ROWS.find((r) => r.tier === tier)!;
+
+      expect(CLAUDE_MODEL_MAP[tier]).toBe(canonicalId);
+      expect(LEGACY_CLAUDE_ALIAS_MAP[tier]).toBe(canonicalId);
+      expect(CLAUDE_CANONICAL_IDS).toContain(canonicalId);
+      expect(CLAUDE_TIER_DISPLAY_NAMES[tier]).toBe(row.displayName);
+      expect(CLAUDE_MODELS.find((option) => option.id === tier)?.label).toBe(row.displayName);
+    });
+
+    it.each(CLAUDE_TIERS)('resolves %s by alias and by canonical ID', (tier) => {
+      expect(resolveModelString(tier)).toBe(`claude-${tier}`);
+      expect(resolveModelString(`claude-${tier}`)).toBe(`claude-${tier}`);
+    });
+
+    it('carries a tier that does not exist yet into every derived table', () => {
+      // The direct test of "adding a tier is a change in one place": a row for a tier
+      // nobody has heard of, put through the same derivation the real rows go through.
+      // Nothing else is written, and every table has it.
+      const invented: ClaudeTierRow<'fable'> = {
+        tier: 'fable',
+        displayName: 'Claude Fable',
+        description: 'A tier invented by this test.',
+        badge: 'Balanced',
+        rank: 'standard',
+        maxOutputTokens: 1,
+      };
+
+      const tables = deriveClaudeTierTables([...CLAUDE_TIER_ROWS, invented]);
+
+      expect(tables.tiers).toContain('fable');
+      expect(tables.canonicalIds).toContain('claude-fable');
+      expect(tables.canonicalIdByTier.fable).toBe('claude-fable');
+      expect(tables.displayNames.fable).toBe('Claude Fable');
+      expect(tables.rowByTier.fable).toBe(invented);
+      // and the tiers that do exist are untouched by the addition
+      expect(tables.tiers).toEqual([...CLAUDE_TIERS, 'fable']);
     });
   });
 

@@ -25,6 +25,7 @@ import {
   codexModelHasThinking,
   getThinkingLevelsForModel,
 } from '@automaker/types';
+import { CLAUDE_TIERS } from '@automaker/types';
 import {
   CLAUDE_MODELS,
   CURSOR_MODELS,
@@ -1337,8 +1338,8 @@ export function PhaseModelSelector({
       sonnet: 'Sonnet',
       opus: 'Opus',
     };
-    // Sort in order: haiku, sonnet, opus for consistent display
-    const sortOrder: ClaudeModelAlias[] = ['haiku', 'sonnet', 'opus'];
+    // Sorted in the order the tiers are declared (fastest first).
+    const sortOrder: readonly ClaudeModelAlias[] = CLAUDE_TIERS;
     const sortedMappedModels = [...allMappedModels].sort(
       (a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b)
     );

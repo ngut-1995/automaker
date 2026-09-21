@@ -1,4 +1,5 @@
 import type {
+  ClaudeTier,
   Feature as BaseFeature,
   FeatureImagePath,
   FeatureTextFilePath,
@@ -9,8 +10,9 @@ import type {
 } from '@automaker/types';
 import type { FeatureImage } from './chat-types';
 
-// Available models for feature execution
-export type ClaudeModel = 'opus' | 'sonnet' | 'haiku';
+// Available models for feature execution: the Claude tiers, which are enumerated
+// once in @automaker/types.
+export type ClaudeModel = ClaudeTier;
 
 export interface Feature extends Omit<
   BaseFeature,

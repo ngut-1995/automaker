@@ -11,13 +11,15 @@ import { classifyError, getUserFriendlyErrorMessage, createLogger } from '@autom
 import { getClaudeAuthIndicators } from '@automaker/platform';
 import {
   getThinkingTokenBudget,
-  isClaudeCanonicalId,
   validateBareModelId,
-  type ClaudeCanonicalId,
+  CLAUDE_TIERS,
+  CLAUDE_TIER_ROWS,
+  CLAUDE_TIER_CONTEXT_WINDOW,
   type ClaudeApiProfile,
   type ClaudeCompatibleProvider,
   type Credentials,
 } from '@automaker/types';
+import { toClaudeWireModel } from './claude-wire-model.js';
 import type {
   ExecuteOptions,
   ProviderMessage,
@@ -52,38 +54,6 @@ const SYSTEM_ENV_VARS = [
   'XDG_CACHE_HOME',
   'XDG_STATE_HOME',
 ];
-
-/**
- * Canonical ID -> tier alias, the Claude SDK's wire format for a tier.
- *
- * This is the single boundary where a tier alias comes into existence. The SDK
- * resolves the alias to whatever model is current for that tier on this account,
- * and `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` -- which Automaker sets from a
- * Claude-compatible provider's tier mappings -- is what captures it.
- *
- * Neither `stripProviderPrefix` nor `getBareModelIdForCli` does this: both pass the
- * `claude-` prefix through deliberately, because every other consumer wants the
- * canonical ID. See docs/adr/0001-claude-tier-aliases.md.
- */
-const CLAUDE_TIER_ALIASES: Record<ClaudeCanonicalId, string> = {
-  'claude-opus': 'opus',
-  'claude-sonnet': 'sonnet',
-  'claude-haiku': 'haiku',
-};
-
-/**
- * Translate a model string into the value sent to the Claude Agent SDK.
- *
- * A canonical ID becomes its tier alias. Everything else -- a hand-written pinned
- * model ID, a Claude-compatible provider's own model -- is passed through
- * unchanged, because Automaker has no business rewriting a model it did not choose.
- */
-export function toClaudeWireModel(model: string): string {
-  if (isClaudeCanonicalId(model)) {
-    return CLAUDE_TIER_ALIASES[model];
-  }
-  return model;
-}
 
 /**
  * Check if the config is a ClaudeCompatibleProvider (new system)
@@ -159,14 +129,14 @@ function buildEnv(
     // Model mappings - only for legacy ClaudeApiProfile
     // For ClaudeCompatibleProvider, the model is passed directly (no mapping needed)
     if (!isClaudeCompatibleProvider(providerConfig) && providerConfig.modelMappings) {
-      if (providerConfig.modelMappings.haiku) {
-        env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] = providerConfig.modelMappings.haiku;
-      }
-      if (providerConfig.modelMappings.sonnet) {
-        env['ANTHROPIC_DEFAULT_SONNET_MODEL'] = providerConfig.modelMappings.sonnet;
-      }
-      if (providerConfig.modelMappings.opus) {
-        env['ANTHROPIC_DEFAULT_OPUS_MODEL'] = providerConfig.modelMappings.opus;
+      // One variable per tier, named after the tier: these are what decide the model a
+      // tier alias resolves to (docs/adr/0001-claude-tier-aliases.md).
+      const { modelMappings } = providerConfig;
+      for (const tier of CLAUDE_TIERS) {
+        const mapped = modelMappings[tier];
+        if (mapped) {
+          env[`ANTHROPIC_DEFAULT_${tier.toUpperCase()}_MODEL`] = mapped;
+        }
       }
     }
 
@@ -426,45 +396,22 @@ export class ClaudeProvider extends BaseProvider {
    * to pin. See docs/adr/0001-claude-tier-aliases.md and CHANGELOG.md.
    */
   getAvailableModels(): ModelDefinition[] {
-    const models = [
-      {
-        id: 'claude-opus',
-        name: 'Claude Opus',
-        modelString: 'claude-opus',
-        provider: 'anthropic',
-        description: 'Most capable Claude tier',
-        contextWindow: 200000,
-        maxOutputTokens: 128000,
-        supportsVision: true,
-        supportsTools: true,
-        tier: 'premium' as const,
-        default: true,
-      },
-      {
-        id: 'claude-sonnet',
-        name: 'Claude Sonnet',
-        modelString: 'claude-sonnet',
-        provider: 'anthropic',
-        description: 'Balanced Claude tier for everyday work',
-        contextWindow: 200000,
-        maxOutputTokens: 64000,
-        supportsVision: true,
-        supportsTools: true,
-        tier: 'standard' as const,
-      },
-      {
-        id: 'claude-haiku',
-        name: 'Claude Haiku',
-        modelString: 'claude-haiku',
-        provider: 'anthropic',
-        description: 'Fastest, cheapest Claude tier',
-        contextWindow: 200000,
-        maxOutputTokens: 8000,
-        supportsVision: true,
-        supportsTools: true,
-        tier: 'basic' as const,
-      },
-    ] satisfies ModelDefinition[];
+    // Derived from the one table that enumerates the tiers, most capable first --
+    // a catalogue leads with its strongest entry, and the rows are ordered
+    // fastest first for the pickers.
+    const models = [...CLAUDE_TIER_ROWS].reverse().map((row) => ({
+      id: `claude-${row.tier}`,
+      name: row.displayName,
+      modelString: `claude-${row.tier}`,
+      provider: 'anthropic',
+      description: row.description,
+      contextWindow: CLAUDE_TIER_CONTEXT_WINDOW,
+      maxOutputTokens: row.maxOutputTokens,
+      supportsVision: true,
+      supportsTools: true,
+      tier: row.rank,
+      ...(row.isDefault ? { default: true } : {}),
+    })) satisfies ModelDefinition[];
     return models;
   }
 

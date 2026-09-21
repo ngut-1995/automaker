@@ -7,6 +7,7 @@
  */
 
 import type { ModelAlias, ModelId } from './model.js';
+import type { ClaudeTier } from './claude-tiers.js';
 import type { CursorModelId } from './cursor-models.js';
 import { CURSOR_MODEL_MAP, getAllCursorModelIds } from './cursor-models.js';
 import type { OpencodeModelId } from './opencode-models.js';
@@ -415,7 +416,7 @@ export type ClaudeCompatibleProviderType =
 /**
  * ClaudeModelAlias - The three main Claude model aliases for mapping
  */
-export type ClaudeModelAlias = 'haiku' | 'sonnet' | 'opus';
+export type ClaudeModelAlias = ClaudeTier;
 
 /**
  * ProviderModel - A model exposed by a Claude-compatible provider
@@ -505,15 +506,17 @@ export interface ClaudeApiProfile {
   useAuthToken?: boolean;
   /** API_TIMEOUT_MS override in milliseconds */
   timeoutMs?: number;
-  /** Optional model name mappings (deprecated - use ClaudeCompatibleProvider.models instead) */
-  modelMappings?: {
-    /** Maps to ANTHROPIC_DEFAULT_HAIKU_MODEL */
-    haiku?: string;
-    /** Maps to ANTHROPIC_DEFAULT_SONNET_MODEL */
-    sonnet?: string;
-    /** Maps to ANTHROPIC_DEFAULT_OPUS_MODEL */
-    opus?: string;
-  };
+  /**
+   * Optional model name mappings, one entry per Claude tier: each becomes
+   * `ANTHROPIC_DEFAULT_{TIER}_MODEL` in the SDK environment, which is what
+   * decides the model a tier alias resolves to.
+   *
+   * Keyed by `ClaudeTier` so the tier set is the one in `./claude-tiers.js`
+   * rather than a fourth copy of it.
+   *
+   * @deprecated use ClaudeCompatibleProvider.models instead
+   */
+  modelMappings?: Partial<Record<ClaudeTier, string>>;
   /** Set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 */
   disableNonessentialTraffic?: boolean;
 }

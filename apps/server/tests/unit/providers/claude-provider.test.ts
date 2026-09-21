@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ClaudeProvider } from '@/providers/claude-provider.js';
+import * as wire from '@/providers/claude-wire-model.js';
 import * as sdk from '@anthropic-ai/claude-agent-sdk';
+import { CLAUDE_TIERS, CLAUDE_TIER_DISPLAY_NAMES, CLAUDE_TIER_ROWS } from '@automaker/types';
 import { collectAsyncGenerator } from '../../utils/helpers.js';
 
 vi.mock('@anthropic-ai/claude-agent-sdk');
+
+vi.mock('@/providers/claude-wire-model.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof wire>();
+  return { ...actual, toClaudeWireModel: vi.fn(actual.toClaudeWireModel) };
+});
 
 vi.mock('@automaker/platform', () => ({
   getClaudeAuthIndicators: vi.fn().mockResolvedValue({
@@ -423,6 +430,44 @@ describe('claude-provider.ts', () => {
     );
   });
 
+  describe('the wire boundary', () => {
+    async function runQuery(model: string): Promise<void> {
+      vi.mocked(sdk.query).mockReturnValue(
+        (async function* () {
+          yield { type: 'text', text: 'test' };
+        })()
+      );
+      await collectAsyncGenerator(provider.executeQuery({ prompt: 'Test', model, cwd: '/test' }));
+    }
+
+    it.each(CLAUDE_TIERS)(
+      'translates claude-%s exactly once on the way to the SDK',
+      async (tier) => {
+        // Criterion: "the translation still happens at exactly one point on the way to
+        // the SDK". Moving the function out of this module must not add a second call.
+        await runQuery(`claude-${tier}`);
+
+        expect(vi.mocked(wire.toClaudeWireModel)).toHaveBeenCalledTimes(1);
+        expect(vi.mocked(wire.toClaudeWireModel)).toHaveBeenCalledWith(`claude-${tier}`);
+        expect(vi.mocked(sdk.query).mock.calls[0][0].options?.model).toBe(tier);
+      }
+    );
+
+    it('translates a pass-through model exactly once as well', async () => {
+      await runQuery('GLM-4.7');
+
+      expect(vi.mocked(wire.toClaudeWireModel)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(sdk.query).mock.calls[0][0].options?.model).toBe('GLM-4.7');
+    });
+
+    it.each(CLAUDE_TIERS)('produces the bare alias %s only inside the wire value', (tier) => {
+      // The containment property: the alias comes into existence here and the canonical
+      // ID is what every other consumer keeps seeing.
+      expect(wire.toClaudeWireModel(`claude-${tier}`)).toBe(tier);
+      expect(wire.toClaudeWireModel(tier)).toBe(tier);
+    });
+  });
+
   describe('getAvailableModels', () => {
     it('should return one entry per Claude tier', () => {
       const models = provider.getAvailableModels();
@@ -478,6 +523,22 @@ describe('claude-provider.ts', () => {
       models.forEach((model) => {
         expect(model.contextWindow).toBe(200000);
       });
+    });
+
+    it('should hold one entry per tier in the single source, named by it', () => {
+      // The catalogue is derived from CLAUDE_TIER_ROWS, so a tier added there appears
+      // here without this file being touched -- and a tier renamed there cannot leave a
+      // stale name behind.
+      const models = provider.getAvailableModels();
+
+      expect(models.map((m) => m.id).sort()).toEqual(
+        [...CLAUDE_TIERS].sort().map((tier) => `claude-${tier}`)
+      );
+      for (const row of CLAUDE_TIER_ROWS) {
+        const entry = models.find((m) => m.id === `claude-${row.tier}`);
+        expect(entry?.name).toBe(CLAUDE_TIER_DISPLAY_NAMES[row.tier]);
+        expect(entry?.maxOutputTokens).toBe(row.maxOutputTokens);
+      }
     });
 
     it('should have modelString field matching id', () => {

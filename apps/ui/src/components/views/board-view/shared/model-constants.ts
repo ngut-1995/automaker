@@ -1,5 +1,7 @@
 import type { ModelProvider, ThinkingLevel, ReasoningEffort } from '@automaker/types';
 import {
+  CLAUDE_TIERS,
+  CLAUDE_TIER_ROW_BY_TIER,
   CURSOR_MODEL_MAP,
   CODEX_MODEL_MAP,
   OPENCODE_MODELS as OPENCODE_MODEL_CONFIGS,
@@ -26,32 +28,22 @@ export type ModelOption = {
 };
 
 /**
- * Claude models with canonical prefixed IDs
- * UI displays short labels but stores full canonical IDs
+ * Claude models with canonical prefixed IDs.
+ *
+ * Derived from the tier rows in `@automaker/types`, which is the one place the
+ * tiers are enumerated: the UI stores canonical IDs and shows the tier's display
+ * name, so both spellings come from the same row.
  */
-export const CLAUDE_MODELS: ModelOption[] = [
-  {
-    id: 'claude-haiku', // Canonical prefixed ID
-    label: 'Claude Haiku',
-    description: 'Fast and efficient for simple tasks.',
-    badge: 'Speed',
+export const CLAUDE_MODELS: ModelOption[] = CLAUDE_TIERS.map((tier) => {
+  const row = CLAUDE_TIER_ROW_BY_TIER[tier];
+  return {
+    id: `claude-${tier}`,
+    label: row.displayName,
+    description: row.description,
+    badge: row.badge,
     provider: 'claude',
-  },
-  {
-    id: 'claude-sonnet', // Canonical prefixed ID
-    label: 'Claude Sonnet',
-    description: 'Balanced performance with strong reasoning.',
-    badge: 'Balanced',
-    provider: 'claude',
-  },
-  {
-    id: 'claude-opus', // Canonical prefixed ID
-    label: 'Claude Opus',
-    description: 'Most capable model for complex work.',
-    badge: 'Premium',
-    provider: 'claude',
-  },
-];
+  };
+});
 
 /**
  * Cursor models derived from CURSOR_MODEL_MAP

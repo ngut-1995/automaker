@@ -47,10 +47,12 @@ import {
   PROJECT_SETTINGS_VERSION,
 } from '../types/settings.js';
 import {
+  CLAUDE_TIERS,
   DEFAULT_MAX_CONCURRENCY,
   migrateModelId,
   migrateCursorModelIds,
   migrateOpencodeModelIds,
+  type ClaudeTier,
 } from '@automaker/types';
 
 const logger = createLogger('SettingsService');
@@ -365,29 +367,17 @@ export class SettingsService {
       const models: ProviderModel[] = [];
 
       if (profile.modelMappings) {
-        // Haiku mapping
-        if (profile.modelMappings.haiku) {
-          models.push({
-            id: profile.modelMappings.haiku,
-            displayName: this.inferModelDisplayName(profile.modelMappings.haiku, 'haiku'),
-            mapsToClaudeModel: 'haiku',
-          });
-        }
-        // Sonnet mapping
-        if (profile.modelMappings.sonnet) {
-          models.push({
-            id: profile.modelMappings.sonnet,
-            displayName: this.inferModelDisplayName(profile.modelMappings.sonnet, 'sonnet'),
-            mapsToClaudeModel: 'sonnet',
-          });
-        }
-        // Opus mapping
-        if (profile.modelMappings.opus) {
-          models.push({
-            id: profile.modelMappings.opus,
-            displayName: this.inferModelDisplayName(profile.modelMappings.opus, 'opus'),
-            mapsToClaudeModel: 'opus',
-          });
+        // One mapping per tier, in the order the tiers are declared.
+        const { modelMappings } = profile;
+        for (const tier of CLAUDE_TIERS) {
+          const mapped = modelMappings[tier];
+          if (mapped) {
+            models.push({
+              id: mapped,
+              displayName: this.inferModelDisplayName(mapped, tier),
+              mapsToClaudeModel: tier,
+            });
+          }
         }
       }
 
@@ -417,7 +407,7 @@ export class SettingsService {
    * @param tier - The tier hint (haiku/sonnet/opus)
    * @returns A user-friendly display name
    */
-  private inferModelDisplayName(modelId: string, tier: 'haiku' | 'sonnet' | 'opus'): string {
+  private inferModelDisplayName(modelId: string, tier: ClaudeTier): string {
     // Common patterns in model IDs
     const lowerModelId = modelId.toLowerCase();
 

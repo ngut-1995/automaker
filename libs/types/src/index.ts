@@ -85,6 +85,19 @@ export type { ErrorType, ErrorInfo } from './error.js';
 // Image types
 export type { ImageData, ImageContentBlock } from './image.js';
 
+// The Claude tiers, enumerated once (see ./claude-tiers.ts)
+export {
+  CLAUDE_TIER_ROWS,
+  CLAUDE_TIERS,
+  CLAUDE_CANONICAL_ID_BY_TIER,
+  CLAUDE_TIER_ROW_BY_TIER,
+  CLAUDE_TIER_CONTEXT_WINDOW,
+  isClaudeTier,
+  claudeTierOf,
+  deriveClaudeTierTables,
+} from './claude-tiers.js';
+export type { ClaudeTierRow, ClaudeTierRank, ClaudeTierTables } from './claude-tiers.js';
+
 // Model types and constants
 export {
   CLAUDE_MODEL_MAP,
@@ -238,7 +251,7 @@ export {
   getClaudeTier,
   getClaudeTierDisplayName,
 } from './model-display.js';
-export type { ClaudeTier } from './model-display.js';
+export type { ClaudeTier } from './claude-tiers.js';
 
 // Issue validation types
 export type {

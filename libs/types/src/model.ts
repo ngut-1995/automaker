@@ -1,32 +1,27 @@
 /**
  * Model alias mapping for Claude models
  */
+import { CLAUDE_CANONICAL_ID_BY_TIER } from './claude-tiers.js';
+import type { ClaudeCanonicalId as ClaudeCanonicalIdType } from './claude-tiers.js';
 import type { CursorModelId } from './cursor-models.js';
 import type { OpencodeModelId } from './opencode-models.js';
 import type { GeminiModelId } from './gemini-models.js';
 
 /**
- * Canonical Claude model IDs with provider prefix
- * Used for internal storage and consistent provider routing.
+ * The Claude tier vocabulary lives in `./claude-tiers.js`, which is the one place
+ * the three tiers are written out. Re-exported here because this module is where
+ * callers have always found them.
  */
-export type ClaudeCanonicalId = 'claude-haiku' | 'claude-sonnet' | 'claude-opus';
-
-/**
- * Every canonical Claude ID.
- *
- * A canonical ID names a tier, never a version: Automaker does not know, and must
- * not decide, which concrete model a tier resolves to. The translation from a
- * canonical ID to the tier alias the SDK expects lives at the Claude provider
- * boundary and nowhere else (see docs/adr/0001-claude-tier-aliases.md).
- */
-export const CLAUDE_CANONICAL_IDS = ['claude-haiku', 'claude-sonnet', 'claude-opus'] as const;
-
-/**
- * Check whether a model string is one of Automaker's canonical Claude IDs.
- */
-export function isClaudeCanonicalId(model: string): model is ClaudeCanonicalId {
-  return (CLAUDE_CANONICAL_IDS as readonly string[]).includes(model);
-}
+export type { ClaudeTier, ClaudeCanonicalId } from './claude-tiers.js';
+export {
+  CLAUDE_TIER_ROWS,
+  CLAUDE_TIERS,
+  CLAUDE_CANONICAL_IDS,
+  isClaudeCanonicalId,
+  isClaudeTier,
+  claudeTierOf,
+  deriveClaudeTierTables,
+} from './claude-tiers.js';
 
 /**
  * The pinned Claude model IDs Automaker itself used to write onto users' data
@@ -47,7 +42,7 @@ export function isClaudeCanonicalId(model: string): model is ClaudeCanonicalId {
  * Note `claude-haiku-4-5` (undated) is deliberately absent: it appears in the
  * UI's display tables but was never a value Automaker wrote.
  */
-export const PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalId> = {
+export const PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalIdType> = {
   'claude-opus-4-6': 'claude-opus',
   'claude-sonnet-4-6': 'claude-sonnet',
   'claude-haiku-4-5-20251001': 'claude-haiku',
@@ -64,22 +59,23 @@ export function isPinnedByAccidentClaudeModelId(model: string): boolean {
 /**
  * Legacy Claude model aliases (short names) for backward compatibility.
  * These map to the canonical ID for the same tier.
+ *
+ * Derived from the tier rows, so a new tier is aliasable without an edit here.
+ * The `Record<string, ...>` type is deliberate: callers pass arbitrary strings
+ * in (`model in CLAUDE_MODEL_MAP`), and `ModelAlias` is its `keyof`.
+ *
  * @deprecated Use canonical IDs (`claude-opus`, …) for new code
  */
-export const CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalId> = {
-  haiku: 'claude-haiku',
-  sonnet: 'claude-sonnet',
-  opus: 'claude-opus',
-} as const;
+export const CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalIdType> = CLAUDE_CANONICAL_ID_BY_TIER;
 
 /**
- * Map from legacy aliases to canonical IDs
+ * Map from legacy aliases to canonical IDs.
+ *
+ * The same table as `CLAUDE_MODEL_MAP` -- they were two hand-written copies of
+ * one map, and they are now two names for one derived object.
  */
-export const LEGACY_CLAUDE_ALIAS_MAP: Record<string, ClaudeCanonicalId> = {
-  haiku: 'claude-haiku',
-  sonnet: 'claude-sonnet',
-  opus: 'claude-opus',
-} as const;
+export const LEGACY_CLAUDE_ALIAS_MAP: Record<string, ClaudeCanonicalIdType> =
+  CLAUDE_CANONICAL_ID_BY_TIER;
 
 /**
  * Codex/OpenAI model identifiers
