@@ -150,7 +150,7 @@ describe('provider-factory.ts', () => {
 
     describe('Cursor models via model ID lookup', () => {
       it('should return CodexProvider for gpt-5.2 (Codex model, not Cursor)', () => {
-        // gpt-5.2 is in both CURSOR_MODEL_MAP and CODEX_MODEL_CONFIG_MAP
+        // gpt-5.2 is in both CURSOR_MODEL_CATALOGUE and CODEX_MODEL_CONFIG_MAP
         // It should route to Codex since Codex models take priority
         const provider = ProviderFactory.getProviderForModel('gpt-5.2');
         expect(provider).toBeInstanceOf(CodexProvider);

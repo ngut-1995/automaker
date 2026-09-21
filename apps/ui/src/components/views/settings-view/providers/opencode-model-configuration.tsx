@@ -16,10 +16,10 @@ import { Input } from '@/components/ui/input';
 import type {
   OpencodeModelId,
   OpencodeProvider,
-  OpencodeModelConfig,
+  OpencodeModelRow,
   ModelDefinition,
 } from '@automaker/types';
-import { OPENCODE_MODELS, OPENCODE_MODEL_CONFIG_MAP } from '@automaker/types';
+import { OPENCODE_CATALOGUE_ROWS, OPENCODE_MODEL_CATALOGUE } from '@automaker/types';
 import type { OpenCodeProviderInfo } from '../cli-status/opencode-cli-status';
 import {
   OpenCodeIcon,
@@ -200,30 +200,35 @@ export function OpencodeModelConfiguration({
   // Determine the free tier models to display.
   // When dynamic models are available from CLI, use the opencode provider models
   // from the dynamic list (they reflect the actual currently-available models).
-  // Fall back to the hardcoded OPENCODE_MODELS only when CLI hasn't returned data.
+  // Fall back to the declared catalogue rows only when CLI hasn't returned data.
   const dynamicOpencodeFreeModels = useMemo(() => {
     const opencodeModelsFromCli = dynamicModels.filter((m) => m.provider === 'opencode');
     if (opencodeModelsFromCli.length === 0) return null;
 
-    // Convert dynamic ModelDefinition to OpencodeModelConfig for the static section
+    // Convert a discovered ModelDefinition into a catalogue row, so this section
+    // renders a discovered model exactly as it renders a declared one.
     return opencodeModelsFromCli.map(
-      (m): OpencodeModelConfig => ({
+      (m): OpencodeModelRow => ({
         id: m.id.replace('opencode/', 'opencode-') as OpencodeModelId,
         label: m.name.replace(/\s*\(Free\)\s*$/, '').replace(/\s*\(OpenCode\)\s*$/, ''),
         description: m.description,
-        supportsVision: m.supportsVision ?? false,
-        provider: 'opencode' as OpencodeProvider,
+        provider: 'opencode',
+        badge: 'Free',
         tier: 'free',
+        supportsVision: m.supportsVision ?? false,
+        supportsTools: m.supportsTools ?? true,
+        hasThinking: false,
+        isDefault: m.default ?? false,
       })
     );
   }, [dynamicModels]);
 
   // Use dynamically discovered free tier models when available, otherwise hardcoded fallback
-  const effectiveStaticModels = dynamicOpencodeFreeModels ?? OPENCODE_MODELS;
+  const effectiveStaticModels = dynamicOpencodeFreeModels ?? OPENCODE_CATALOGUE_ROWS;
 
   // Build an effective config map that includes dynamic models (for default model dropdown lookup)
   const effectiveModelConfigMap = useMemo(() => {
-    const map = { ...OPENCODE_MODEL_CONFIG_MAP };
+    const map = { ...OPENCODE_MODEL_CATALOGUE };
     if (dynamicOpencodeFreeModels) {
       for (const model of dynamicOpencodeFreeModels) {
         map[model.id] = model;
@@ -241,7 +246,7 @@ export function OpencodeModelConfiguration({
       acc[model.provider].push(model);
       return acc;
     },
-    {} as Record<OpencodeProvider, OpencodeModelConfig[]>
+    {} as Record<OpencodeProvider, OpencodeModelRow[]>
   );
 
   // Group dynamic models by provider

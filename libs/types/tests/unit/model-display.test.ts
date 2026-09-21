@@ -12,13 +12,13 @@ import {
   getModelDisplayName,
   getClaudeTierDisplayName,
   MODEL_DISPLAY_NAMES,
-  CODEX_MODELS,
   CLAUDE_TIER_DISPLAY_NAMES,
 } from '../../src/model-display.js';
-import { CURSOR_MODEL_MAP } from '../../src/cursor-models.js';
-import { COPILOT_MODEL_MAP } from '../../src/copilot-models.js';
-import { GEMINI_MODEL_MAP } from '../../src/gemini-models.js';
-import { OPENCODE_MODELS } from '../../src/opencode-models.js';
+import { CODEX_CATALOGUE_ROWS } from '../../src/codex-models.js';
+import { CURSOR_CATALOGUE_ROWS } from '../../src/cursor-models.js';
+import { COPILOT_CATALOGUE_ROWS } from '../../src/copilot-models.js';
+import { GEMINI_CATALOGUE_ROWS } from '../../src/gemini-models.js';
+import { OPENCODE_CATALOGUE_ROWS } from '../../src/opencode-models.js';
 
 describe('getClaudeTierDisplayName', () => {
   it('names the tier for bare tier aliases', () => {
@@ -121,13 +121,15 @@ describe('getModelDisplayName', () => {
  * name.
  */
 describe('the single display-name table', () => {
-  const CATALOGUE_LABELS: Record<string, string> = {
-    ...Object.fromEntries(CODEX_MODELS.map((m) => [m.id, m.label])),
-    ...Object.fromEntries(Object.entries(CURSOR_MODEL_MAP).map(([id, c]) => [id, c.label])),
-    ...Object.fromEntries(Object.entries(GEMINI_MODEL_MAP).map(([id, c]) => [id, c.label])),
-    ...Object.fromEntries(Object.entries(COPILOT_MODEL_MAP).map(([id, c]) => [id, c.label])),
-    ...Object.fromEntries(OPENCODE_MODELS.map((m) => [m.id, m.label])),
-  };
+  const CATALOGUE_LABELS: Record<string, string> = Object.fromEntries(
+    [
+      ...CODEX_CATALOGUE_ROWS,
+      ...CURSOR_CATALOGUE_ROWS,
+      ...GEMINI_CATALOGUE_ROWS,
+      ...COPILOT_CATALOGUE_ROWS,
+      ...OPENCODE_CATALOGUE_ROWS,
+    ].map((row) => [row.id, row.label])
+  );
 
   /**
    * The complete set of identifiers whose name is written by hand instead of

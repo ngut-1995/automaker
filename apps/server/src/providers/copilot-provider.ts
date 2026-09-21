@@ -25,7 +25,7 @@ import type {
 // Note: validateBareModelId is not used because Copilot's bare model IDs
 // legitimately contain prefixes like claude-, gemini-, gpt-
 import {
-  COPILOT_MODEL_MAP,
+  COPILOT_MODEL_DEFINITIONS,
   type CopilotAuthStatus,
   type CopilotRuntimeModel,
 } from '@automaker/types';
@@ -930,31 +930,22 @@ export class CopilotProvider extends CliProvider {
    * Returns both static model definitions and runtime-discovered models
    */
   getAvailableModels(): ModelDefinition[] {
-    // Start with static model definitions - explicitly typed to allow runtime models
-    const staticModels: ModelDefinition[] = Object.entries(COPILOT_MODEL_MAP).map(
-      ([id, config]) => ({
-        id, // Full model ID with copilot- prefix
-        name: config.label,
-        modelString: id.replace('copilot-', ''), // Bare model for CLI
-        provider: 'copilot',
-        description: config.description,
-        supportsTools: config.supportsTools,
-        supportsVision: config.supportsVision,
-        contextWindow: config.contextWindow,
-      })
-    );
+    // The declared models come from the Copilot catalogue in `@automaker/types`,
+    // which is the one place they are enumerated (ngut-1995/harbor#83). Copied
+    // into a new array so the runtime models appended below do not mutate it.
+    const models: ModelDefinition[] = [...COPILOT_MODEL_DEFINITIONS];
 
     // Add runtime models if available (discovered via CLI)
     if (this.runtimeModels) {
       for (const runtimeModel of this.runtimeModels) {
-        // Skip if already in static list
-        const staticId = `copilot-${runtimeModel.id}`;
-        if (staticModels.some((m) => m.id === staticId)) {
+        // Skip if already declared in the catalogue
+        const runtimeId = `copilot-${runtimeModel.id}`;
+        if (models.some((m) => m.id === runtimeId)) {
           continue;
         }
 
-        staticModels.push({
-          id: staticId,
+        models.push({
+          id: runtimeId,
           name: runtimeModel.name || runtimeModel.id,
           modelString: runtimeModel.id,
           provider: 'copilot',
@@ -966,7 +957,7 @@ export class CopilotProvider extends CliProvider {
       }
     }
 
-    return staticModels;
+    return models;
   }
 
   /**

@@ -262,7 +262,10 @@ export type { ModelOption, ThinkingLevelOption, ReasoningEffortOption } from './
 export {
   CLAUDE_MODELS,
   CODEX_MODELS,
+  CURSOR_MODELS,
+  OPENCODE_MODELS,
   GEMINI_MODELS,
+  COPILOT_MODELS,
   THINKING_LEVEL_OPTIONS,
   THINKING_LEVELS,
   THINKING_LEVEL_LABELS,

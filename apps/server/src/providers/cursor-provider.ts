@@ -39,7 +39,7 @@ import {
   type CursorToolCallEvent,
   type CursorResultEvent,
   type CursorAuthStatus,
-  CURSOR_MODEL_MAP,
+  CURSOR_MODEL_DEFINITIONS,
 } from '@automaker/types';
 import { createLogger, isAbortError } from '@automaker/utils';
 import { spawnJSONLProcess, execInWsl } from '@automaker/platform';
@@ -1234,18 +1234,14 @@ export class CursorProvider extends CliProvider {
   }
 
   /**
-   * Get available Cursor models
+   * Get available Cursor models.
+   *
+   * Derived from the Cursor catalogue in `@automaker/types`, which is the one
+   * place Cursor models are enumerated (ngut-1995/harbor#83). Writing the list
+   * out here a second time is how a picker and a server drift apart.
    */
   getAvailableModels(): ModelDefinition[] {
-    return Object.entries(CURSOR_MODEL_MAP).map(([id, config]) => ({
-      id: `cursor-${id}`,
-      name: config.label,
-      modelString: id,
-      provider: 'cursor',
-      description: config.description,
-      supportsTools: true,
-      supportsVision: config.supportsVision,
-    }));
+    return CURSOR_MODEL_DEFINITIONS;
   }
 
   /**

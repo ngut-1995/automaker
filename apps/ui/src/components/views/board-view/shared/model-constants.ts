@@ -1,12 +1,12 @@
-import type { ModelOption, ModelProvider } from '@automaker/types';
+import type { ModelOption } from '@automaker/types';
 import {
   CLAUDE_TIERS,
   CLAUDE_TIER_ROW_BY_TIER,
-  CURSOR_MODEL_MAP,
+  CURSOR_MODELS,
   CODEX_MODELS,
-  OPENCODE_MODELS as OPENCODE_MODEL_CONFIGS,
-  GEMINI_MODEL_MAP,
-  COPILOT_MODEL_MAP,
+  OPENCODE_MODELS,
+  GEMINI_MODELS,
+  COPILOT_MODELS,
 } from '@automaker/types';
 import { Brain, Zap, Scale, Cpu, Rocket, Sparkles } from 'lucide-react';
 import {
@@ -43,69 +43,20 @@ export const CLAUDE_MODELS: ModelOption[] = CLAUDE_TIERS.map((tier) => {
 });
 
 /**
- * Cursor models derived from CURSOR_MODEL_MAP
- * IDs already have 'cursor-' prefix in the canonical format
- */
-export const CURSOR_MODELS: ModelOption[] = Object.entries(CURSOR_MODEL_MAP).map(
-  ([id, config]) => ({
-    id, // Already prefixed in canonical format
-    label: config.label,
-    description: config.description,
-    provider: 'cursor' as ModelProvider,
-    hasThinking: config.hasThinking,
-  })
-);
-
-/**
- * Codex models.
+ * The picker lists for every provider whose models live in a shared catalogue.
  *
- * Not written out here: the list is the one the shared Codex catalogue derives,
- * so the picker cannot drift from the models the server accepts. It used to be
- * a hand-written copy, and it went stale at GPT-5.2 while the rest of Automaker
- * already knew about GPT-5.3 (ngut-1995/harbor#78).
+ * None of them is written out here: each is the list the provider's own
+ * catalogue in `@automaker/types` derives, so the picker cannot offer a model
+ * the server does not accept, or miss one it does. Codex was the last list
+ * written by hand, and it went stale at GPT-5.2 while the rest of Automaker
+ * already knew about GPT-5.3 (ngut-1995/harbor#78); the remaining four followed
+ * it into the catalogue shape in ngut-1995/harbor#83.
+ *
+ * OpenCode's list is only the models Automaker declares statically. The picker
+ * appends the ones the OpenCode CLI discovers at runtime and renders both the
+ * same way -- a discovered model wears no mark of its own.
  */
-export { CODEX_MODELS };
-
-/**
- * OpenCode models derived from OPENCODE_MODEL_CONFIGS
- */
-export const OPENCODE_MODELS: ModelOption[] = OPENCODE_MODEL_CONFIGS.map((config) => ({
-  id: config.id,
-  label: config.label,
-  description: config.description,
-  badge: config.tier === 'free' ? 'Free' : config.tier === 'premium' ? 'Premium' : undefined,
-  provider: config.provider as ModelProvider,
-}));
-
-/**
- * Gemini models derived from GEMINI_MODEL_MAP
- * Model IDs already have 'gemini-' prefix (like Cursor models)
- */
-export const GEMINI_MODELS: ModelOption[] = Object.entries(GEMINI_MODEL_MAP).map(
-  ([id, config]) => ({
-    id, // IDs already have gemini- prefix (e.g., 'gemini-2.5-flash')
-    label: config.label,
-    description: config.description,
-    badge: config.supportsThinking ? 'Thinking' : 'Speed',
-    provider: 'gemini' as ModelProvider,
-    hasThinking: config.supportsThinking,
-  })
-);
-
-/**
- * Copilot models derived from COPILOT_MODEL_MAP
- * Model IDs already have 'copilot-' prefix
- */
-export const COPILOT_MODELS: ModelOption[] = Object.entries(COPILOT_MODEL_MAP).map(
-  ([id, config]) => ({
-    id, // IDs already have copilot- prefix (e.g., 'copilot-gpt-4o')
-    label: config.label,
-    description: config.description,
-    badge: config.supportsVision ? 'Vision' : 'Standard',
-    provider: 'copilot' as ModelProvider,
-    hasThinking: false,
-  })
-);
+export { CURSOR_MODELS, CODEX_MODELS, OPENCODE_MODELS, GEMINI_MODELS, COPILOT_MODELS };
 
 /**
  * All available models (Claude + Cursor + Codex + OpenCode + Gemini + Copilot)

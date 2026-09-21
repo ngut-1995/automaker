@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/select';
 import { Terminal } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CursorModelId, CursorModelConfig } from '@automaker/types';
-import { CURSOR_MODEL_MAP } from '@automaker/types';
+import type { CursorModelId, CursorModelRow } from '@automaker/types';
+import { CURSOR_CATALOGUE_ROWS, CURSOR_MODEL_CATALOGUE } from '@automaker/types';
 
 interface CursorModelConfigurationProps {
   enabledCursorModels: CursorModelId[];
@@ -28,8 +28,8 @@ export function CursorModelConfiguration({
   onDefaultModelChange,
   onModelToggle,
 }: CursorModelConfigurationProps) {
-  // All available models from the model map
-  const availableModels: CursorModelConfig[] = Object.values(CURSOR_MODEL_MAP);
+  // Every declared Cursor model, in catalogue order
+  const availableModels: CursorModelRow[] = CURSOR_CATALOGUE_ROWS;
 
   return (
     <div
@@ -67,7 +67,7 @@ export function CursorModelConfiguration({
             </SelectTrigger>
             <SelectContent>
               {enabledCursorModels.map((modelId) => {
-                const model = CURSOR_MODEL_MAP[modelId];
+                const model = CURSOR_MODEL_CATALOGUE[modelId];
                 if (!model) return null;
                 return (
                   <SelectItem key={modelId} value={modelId}>

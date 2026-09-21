@@ -1,6 +1,6 @@
 import type { CopilotModelId } from '@automaker/types';
 import { CopilotIcon } from '@/components/ui/provider-icon';
-import { COPILOT_MODEL_MAP } from '@automaker/types';
+import { COPILOT_CATALOGUE_ROWS } from '@automaker/types';
 import { BaseModelConfiguration, type BaseModelInfo } from './shared/base-model-configuration';
 
 interface CopilotModelConfigurationProps {
@@ -15,15 +15,13 @@ interface CopilotModelInfo extends BaseModelInfo<CopilotModelId> {
   supportsVision: boolean;
 }
 
-// Build model info from the COPILOT_MODEL_MAP
-const COPILOT_MODELS: CopilotModelInfo[] = Object.entries(COPILOT_MODEL_MAP).map(
-  ([id, config]) => ({
-    id: id as CopilotModelId,
-    label: config.label,
-    description: config.description,
-    supportsVision: config.supportsVision,
-  })
-);
+// Derived from the Copilot catalogue, the one place Copilot models are enumerated
+const COPILOT_MODELS: CopilotModelInfo[] = COPILOT_CATALOGUE_ROWS.map((row) => ({
+  id: row.id,
+  label: row.label,
+  description: row.description,
+  supportsVision: row.supportsVision,
+}));
 
 export function CopilotModelConfiguration({
   enabledCopilotModels,

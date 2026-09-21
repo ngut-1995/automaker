@@ -14,6 +14,7 @@ import {
   OPENCODE_MODELS,
   ModelOption,
 } from './model-constants';
+import { mergeDiscoveredOpencodeModels } from './opencode-model-merge';
 import { useEffect, useRef } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import { useOpencodeModels } from '@/hooks/queries';
@@ -125,12 +126,12 @@ export function ModelSelector({
   const codexModelOptions: ModelOption[] =
     dynamicCodexModels.length > 0 ? dynamicCodexModels : CODEX_MODELS;
 
-  // Filter static OpenCode models based on enabled models from global settings
+  // Filter the declared OpenCode models by what the user enabled in settings
   const filteredStaticOpencodeModels = OPENCODE_MODELS.filter((model) =>
     (enabledOpencodeModels as string[]).includes(model.id)
   );
 
-  // Filter dynamic OpenCode models based on enabled dynamic model IDs
+  // Filter the discovered OpenCode models by what the user enabled in settings
   const filteredDynamicOpencodeModels: ModelOption[] = dynamicOpencodeModelsList
     .filter((model) => enabledDynamicModelIds.includes(model.id))
     .map((model) => ({
@@ -140,20 +141,12 @@ export function ModelSelector({
       provider: 'opencode' as ModelProvider,
     }));
 
-  // Combined OpenCode models (static + dynamic), deduplicating by model name
-  // Static IDs use dash format (opencode-glm-5-free), dynamic use slash format (opencode/glm-5-free)
-  const normalizeModelName = (id: string): string => {
-    if (id.startsWith('opencode-')) return id.slice('opencode-'.length);
-    if (id.startsWith('opencode/')) return id.slice('opencode/'.length);
-    return id;
-  };
-  const staticModelNames = new Set(
-    filteredStaticOpencodeModels.map((m) => normalizeModelName(m.id))
+  // The declared models and the ones the CLI discovered, in one list the picker
+  // renders without telling them apart.
+  const allOpencodeModels = mergeDiscoveredOpencodeModels(
+    filteredStaticOpencodeModels,
+    filteredDynamicOpencodeModels
   );
-  const uniqueDynamicModels = filteredDynamicOpencodeModels.filter(
-    (m) => !staticModelNames.has(normalizeModelName(m.id))
-  );
-  const allOpencodeModels = [...filteredStaticOpencodeModels, ...uniqueDynamicModels];
 
   // Filter Cursor models based on enabled models from global settings
   const filteredCursorModels = CURSOR_MODELS.filter((model) => {

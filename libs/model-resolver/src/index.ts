@@ -6,7 +6,7 @@
 // Re-export constants from types
 export {
   CLAUDE_MODEL_MAP,
-  CURSOR_MODEL_MAP,
+  CURSOR_MODEL_CATALOGUE,
   DEFAULT_MODELS,
   type ModelAlias,
   type CursorModelId,

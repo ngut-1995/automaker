@@ -10,12 +10,12 @@ import type { ModelProvider } from './settings.js';
 import { LEGACY_CURSOR_MODEL_MAP } from './cursor-models.js';
 import { CLAUDE_MODEL_MAP, CODEX_MODEL_MAP } from './model.js';
 import {
-  OPENCODE_MODEL_CONFIG_MAP,
+  OPENCODE_MODEL_CATALOGUE,
   LEGACY_OPENCODE_MODEL_MAP,
   RETIRED_OPENCODE_MODEL_MAP,
 } from './opencode-models.js';
-import { GEMINI_MODEL_MAP } from './gemini-models.js';
-import { COPILOT_MODEL_MAP } from './copilot-models.js';
+import { GEMINI_MODEL_CATALOGUE } from './gemini-models.js';
+import { COPILOT_MODEL_CATALOGUE } from './copilot-models.js';
 
 /** Provider prefix constants */
 export const PROVIDER_PREFIXES = {
@@ -133,7 +133,7 @@ export function isGeminiModel(model: string | undefined | null): boolean {
   }
 
   // Check if it's a known Gemini model ID (map keys include gemini- prefix)
-  if (model in GEMINI_MODEL_MAP) {
+  if (model in GEMINI_MODEL_CATALOGUE) {
     return true;
   }
 
@@ -155,7 +155,7 @@ export function isCopilotModel(model: string | undefined | null): boolean {
   }
 
   // Check if it's a known Copilot model ID (map keys include copilot- prefix)
-  if (model in COPILOT_MODEL_MAP) {
+  if (model in COPILOT_MODEL_CATALOGUE) {
     return true;
   }
 
@@ -186,7 +186,7 @@ export function isOpencodeModel(model: string | undefined | null): boolean {
   }
 
   // Check if it's a known OpenCode model ID (handles both formats during transition)
-  if (model in OPENCODE_MODEL_CONFIG_MAP) {
+  if (model in OPENCODE_MODEL_CATALOGUE) {
     return true;
   }
 

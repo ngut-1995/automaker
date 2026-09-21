@@ -56,20 +56,26 @@ describe('opencode-provider.ts', () => {
       expect(models).toHaveLength(5);
     });
 
+    /**
+     * The declared models are named by their canonical IDs -- the dash spelling
+     * a feature card stores -- because the list now derives from the shared
+     * OpenCode catalogue rather than being written out here (harbor#83). The
+     * slash spelling is what the CLI reports, and is migrated on read.
+     */
     it('should include Big Pickle as default', () => {
       const models = provider.getAvailableModels();
-      const bigPickle = models.find((m) => m.id === 'opencode/big-pickle');
+      const bigPickle = models.find((m) => m.id === 'opencode-big-pickle');
 
       expect(bigPickle).toBeDefined();
-      expect(bigPickle?.name).toBe('Big Pickle (Free)');
+      expect(bigPickle?.name).toBe('Big Pickle');
       expect(bigPickle?.provider).toBe('opencode');
       expect(bigPickle?.default).toBe(true);
-      expect(bigPickle?.modelString).toBe('opencode/big-pickle');
+      expect(bigPickle?.modelString).toBe('opencode-big-pickle');
     });
 
     it('should include free tier GLM model', () => {
       const models = provider.getAvailableModels();
-      const glm = models.find((m) => m.id === 'opencode/glm-5-free');
+      const glm = models.find((m) => m.id === 'opencode-glm-5-free');
 
       expect(glm).toBeDefined();
       expect(glm?.name).toBe('GLM 5 Free');
@@ -78,7 +84,7 @@ describe('opencode-provider.ts', () => {
 
     it('should include free tier MiniMax model', () => {
       const models = provider.getAvailableModels();
-      const minimax = models.find((m) => m.id === 'opencode/minimax-m2.5-free');
+      const minimax = models.find((m) => m.id === 'opencode-minimax-m2.5-free');
 
       expect(minimax).toBeDefined();
       expect(minimax?.name).toBe('MiniMax M2.5 Free');
@@ -1246,7 +1252,7 @@ describe('opencode-provider.ts', () => {
       const defaultModels = models.filter((m) => m.default === true);
 
       expect(defaultModels).toHaveLength(1);
-      expect(defaultModels[0].id).toBe('opencode/big-pickle');
+      expect(defaultModels[0].id).toBe('opencode-big-pickle');
     });
 
     it('should have valid tier values for all models', () => {

@@ -3,7 +3,7 @@ import {
   resolveModelString,
   getEffectiveModel,
   CLAUDE_MODEL_MAP,
-  CURSOR_MODEL_MAP,
+  CURSOR_MODEL_CATALOGUE,
   DEFAULT_MODELS,
 } from '@automaker/model-resolver';
 
@@ -116,7 +116,7 @@ describe('model-resolver.ts', () => {
       });
 
       it('should handle all known Cursor model IDs with prefix', () => {
-        const cursorModelIds = Object.keys(CURSOR_MODEL_MAP);
+        const cursorModelIds = Object.keys(CURSOR_MODEL_CATALOGUE);
         cursorModelIds.forEach((modelId) => {
           const result = resolveModelString(`cursor-${modelId}`);
           expect(result).toBe(`cursor-${modelId}`);

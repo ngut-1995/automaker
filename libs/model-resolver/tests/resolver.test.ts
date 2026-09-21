@@ -9,7 +9,7 @@ import {
   CLAUDE_TIER_ROWS,
   LEGACY_CLAUDE_ALIAS_MAP,
   PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP,
-  CURSOR_MODEL_MAP,
+  CURSOR_MODEL_CATALOGUE,
   DEFAULT_MODELS,
   deriveClaudeTierTables,
   type ClaudeTierRow,
@@ -239,8 +239,8 @@ describe('model-resolver', () => {
       });
 
       it('should handle all known Cursor model IDs', () => {
-        // CURSOR_MODEL_MAP now uses prefixed keys (e.g., 'cursor-auto')
-        const cursorModelIds = Object.keys(CURSOR_MODEL_MAP);
+        // CURSOR_MODEL_CATALOGUE now uses prefixed keys (e.g., 'cursor-auto')
+        const cursorModelIds = Object.keys(CURSOR_MODEL_CATALOGUE);
 
         for (const modelId of cursorModelIds) {
           // modelId is already prefixed (e.g., 'cursor-auto')

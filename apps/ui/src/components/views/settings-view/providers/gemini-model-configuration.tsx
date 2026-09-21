@@ -1,6 +1,6 @@
 import type { GeminiModelId } from '@automaker/types';
 import { GeminiIcon } from '@/components/ui/provider-icon';
-import { GEMINI_MODEL_MAP } from '@automaker/types';
+import { GEMINI_CATALOGUE_ROWS } from '@automaker/types';
 import { BaseModelConfiguration, type BaseModelInfo } from './shared/base-model-configuration';
 
 interface GeminiModelConfigurationProps {
@@ -15,12 +15,12 @@ interface GeminiModelInfo extends BaseModelInfo<GeminiModelId> {
   supportsThinking: boolean;
 }
 
-// Build model info from the GEMINI_MODEL_MAP
-const GEMINI_MODELS: GeminiModelInfo[] = Object.entries(GEMINI_MODEL_MAP).map(([id, config]) => ({
-  id: id as GeminiModelId,
-  label: config.label,
-  description: config.description,
-  supportsThinking: config.supportsThinking,
+// Derived from the Gemini catalogue, the one place Gemini models are enumerated
+const GEMINI_MODELS: GeminiModelInfo[] = GEMINI_CATALOGUE_ROWS.map((row) => ({
+  id: row.id,
+  label: row.label,
+  description: row.description,
+  supportsThinking: row.hasThinking,
 }));
 
 export function GeminiModelConfiguration({

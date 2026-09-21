@@ -22,7 +22,7 @@ import type {
   ModelDefinition,
 } from './types.js';
 import { validateBareModelId } from '@automaker/types';
-import { GEMINI_MODEL_MAP, type GeminiAuthStatus } from '@automaker/types';
+import { GEMINI_MODEL_DEFINITIONS, type GeminiAuthStatus } from '@automaker/types';
 import { createLogger, isAbortError } from '@automaker/utils';
 import { spawnJSONLProcess, type SubprocessOptions } from '@automaker/platform';
 import { normalizeTodos } from './tool-normalization.js';
@@ -875,19 +875,14 @@ export class GeminiProvider extends CliProvider {
   }
 
   /**
-   * Get available Gemini models
+   * Get available Gemini models.
+   *
+   * Derived from the Gemini catalogue in `@automaker/types`, which is the one
+   * place Gemini models are enumerated (ngut-1995/harbor#83). Writing the list
+   * out here a second time is how a picker and a server drift apart.
    */
   getAvailableModels(): ModelDefinition[] {
-    return Object.entries(GEMINI_MODEL_MAP).map(([id, config]) => ({
-      id, // Full model ID with gemini- prefix (e.g., 'gemini-2.5-flash')
-      name: config.label,
-      modelString: id, // Same as id - CLI uses the full model name
-      provider: 'gemini',
-      description: config.description,
-      supportsTools: true,
-      supportsVision: config.supportsVision,
-      contextWindow: config.contextWindow,
-    }));
+    return GEMINI_MODEL_DEFINITIONS;
   }
 
   /**

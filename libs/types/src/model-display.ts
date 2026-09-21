@@ -7,7 +7,7 @@
 
 import type { ModelAlias, ThinkingLevel, ModelProvider } from './settings.js';
 import type { ReasoningEffort } from './provider.js';
-import { CURSOR_MODEL_MAP, LEGACY_CURSOR_MODEL_MAP } from './cursor-models.js';
+import { CURSOR_CATALOGUE_ROWS, LEGACY_CURSOR_MODEL_MAP } from './cursor-models.js';
 import { CODEX_CATALOGUE_ROWS } from './codex-models.js';
 import {
   CLAUDE_TIERS,
@@ -15,10 +15,10 @@ import {
   CLAUDE_TIER_ROW_BY_TIER,
   type ClaudeTier,
 } from './claude-tiers.js';
-import { GEMINI_MODEL_MAP } from './gemini-models.js';
-import { COPILOT_MODEL_MAP } from './copilot-models.js';
+import { GEMINI_CATALOGUE_ROWS } from './gemini-models.js';
+import { COPILOT_CATALOGUE_ROWS } from './copilot-models.js';
 import {
-  OPENCODE_MODELS,
+  OPENCODE_CATALOGUE_ROWS,
   LEGACY_OPENCODE_MODEL_MAP,
   RETIRED_OPENCODE_MODEL_MAP,
 } from './opencode-models.js';
@@ -106,20 +106,65 @@ export const CODEX_MODELS: ModelOption[] = CODEX_CATALOGUE_ROWS.map((row) => ({
 }));
 
 /**
- * Gemini model options with full metadata for UI display
- * Based on https://github.com/google-gemini/gemini-cli
- * Model IDs match the keys in GEMINI_MODEL_MAP (e.g., 'gemini-2.5-flash')
+ * Cursor model options with full metadata for UI display.
+ *
+ * Derived from the Cursor catalogue in `./cursor-models.js`, which is the one
+ * place Cursor models are enumerated. Cursor rows carry no badge: the provider
+ * declares none and the picker has never shown one.
  */
-export const GEMINI_MODELS: ModelOption[] = Object.entries(GEMINI_MODEL_MAP).map(
-  ([id, config]) => ({
-    id,
-    label: config.label,
-    description: config.description,
-    badge: config.supportsThinking ? 'Thinking' : 'Speed',
-    provider: 'gemini' as const,
-    hasThinking: config.supportsThinking,
-  })
-);
+export const CURSOR_MODELS: ModelOption[] = CURSOR_CATALOGUE_ROWS.map((row) => ({
+  id: row.id,
+  label: row.label,
+  description: row.description,
+  provider: row.provider,
+  hasThinking: row.hasThinking,
+}));
+
+/**
+ * OpenCode model options with full metadata for UI display.
+ *
+ * Derived from the OpenCode catalogue in `./opencode-models.js`. These are the
+ * models Automaker declares statically; the picker appends the ones the CLI
+ * discovers at runtime to this list and renders both the same way.
+ */
+export const OPENCODE_MODELS: ModelOption[] = OPENCODE_CATALOGUE_ROWS.map((row) => ({
+  id: row.id,
+  label: row.label,
+  description: row.description,
+  badge: row.badge,
+  provider: row.provider,
+}));
+
+/**
+ * Gemini model options with full metadata for UI display.
+ *
+ * Derived from the Gemini catalogue in `./gemini-models.js`, which is the one
+ * place Gemini models are enumerated.
+ */
+export const GEMINI_MODELS: ModelOption[] = GEMINI_CATALOGUE_ROWS.map((row) => ({
+  id: row.id,
+  label: row.label,
+  description: row.description,
+  badge: row.badge,
+  provider: row.provider,
+  hasThinking: row.hasThinking,
+}));
+
+/**
+ * Copilot model options with full metadata for UI display.
+ *
+ * Derived from the Copilot catalogue in `./copilot-models.js`. These are the
+ * models Automaker declares statically; which of them a given account can reach
+ * depends on its subscription, which the CLI reports at runtime.
+ */
+export const COPILOT_MODELS: ModelOption[] = COPILOT_CATALOGUE_ROWS.map((row) => ({
+  id: row.id,
+  label: row.label,
+  description: row.description,
+  badge: row.badge,
+  provider: row.provider,
+  hasThinking: row.hasThinking,
+}));
 
 /**
  * Thinking level options with display labels.
@@ -281,8 +326,7 @@ export function getClaudeTierDisplayName(model: string): string | undefined {
  *
  * Every non-Claude model Automaker offers already has a label in its provider's
  * own catalogue -- the same label the model picker offers it under
- * (`CURSOR_MODEL_MAP`, `COPILOT_MODEL_MAP`, `GEMINI_MODEL_MAP`,
- * `OPENCODE_MODELS`, and `CODEX_MODELS` above). Writing those names a second
+ * (the five `*_CATALOGUE_ROWS` tables). Writing those names a second
  * time here is how the three display helpers drifted apart in the first place,
  * so this table is *derived* from those catalogues instead. A new model, or a
  * renamed one, is a one-line change in the single catalogue entry it already
@@ -293,13 +337,15 @@ export function getClaudeTierDisplayName(model: string): string | undefined {
  * `getClaudeTierDisplayName`, which names a tier and never a version. See
  * docs/adr/0001-claude-tier-aliases.md.
  */
-const PROVIDER_CATALOGUE_DISPLAY_NAMES: Record<string, string> = {
-  ...Object.fromEntries(CODEX_MODELS.map((m) => [m.id, m.label])),
-  ...Object.fromEntries(Object.entries(CURSOR_MODEL_MAP).map(([id, c]) => [id, c.label])),
-  ...Object.fromEntries(Object.entries(GEMINI_MODEL_MAP).map(([id, c]) => [id, c.label])),
-  ...Object.fromEntries(Object.entries(COPILOT_MODEL_MAP).map(([id, c]) => [id, c.label])),
-  ...Object.fromEntries(OPENCODE_MODELS.map((m) => [m.id, m.label])),
-};
+const PROVIDER_CATALOGUE_DISPLAY_NAMES: Record<string, string> = Object.fromEntries(
+  [
+    ...CODEX_CATALOGUE_ROWS,
+    ...CURSOR_CATALOGUE_ROWS,
+    ...GEMINI_CATALOGUE_ROWS,
+    ...COPILOT_CATALOGUE_ROWS,
+    ...OPENCODE_CATALOGUE_ROWS,
+  ].map((row) => [row.id, row.label])
+);
 
 /**
  * The only rows written by hand, and each one needs a reason.
@@ -310,7 +356,7 @@ const PROVIDER_CATALOGUE_DISPLAY_NAMES: Record<string, string> = {
  * better one, the better one is kept here rather than silently changed.
  */
 const DISPLAY_NAME_OVERRIDES: Record<string, string> = {
-  // `CURSOR_MODEL_MAP` calls this "Auto (Recommended)", which is advice, not a
+  // The Cursor catalogue calls this "Auto (Recommended)", which is advice, not a
   // name. Both surfaces that named it already said "Cursor Auto".
   'cursor-auto': 'Cursor Auto',
 };
@@ -343,7 +389,7 @@ const ALIASED_MODEL_IDS: Record<string, string> = {
  * only -- anything a catalogue lists is answered above, before this runs.
  */
 function getPatternedDisplayName(model: string): string | undefined {
-  // Cursor models absent from CURSOR_MODEL_MAP: name the provider and the tier
+  // Cursor models absent from the Cursor catalogue: name the provider and the tier
   // rather than echo an identifier.
   if (model.startsWith('cursor-sonnet')) return 'Cursor Sonnet';
   if (model.startsWith('cursor-opus')) return 'Cursor Opus';

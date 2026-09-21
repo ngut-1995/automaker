@@ -9,7 +9,11 @@
 import type { ModelAlias, ModelId } from './model.js';
 import type { ClaudeTier } from './claude-tiers.js';
 import type { CursorModelId } from './cursor-models.js';
-import { CURSOR_MODEL_MAP, getAllCursorModelIds } from './cursor-models.js';
+import {
+  CURSOR_MODEL_CATALOGUE,
+  getAllCursorModelIds,
+  DEFAULT_CURSOR_MODEL,
+} from './cursor-models.js';
 import type { OpencodeModelId } from './opencode-models.js';
 import { getAllOpencodeModelIds, DEFAULT_OPENCODE_MODEL } from './opencode-models.js';
 import type { GeminiModelId } from './gemini-models.js';
@@ -1886,7 +1890,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   enhancementModel: 'sonnet', // Legacy alias still supported
   validationModel: 'opus', // Legacy alias still supported
   enabledCursorModels: getAllCursorModelIds(), // Returns prefixed IDs
-  cursorDefaultModel: 'cursor-auto', // Use canonical prefixed ID
+  cursorDefaultModel: DEFAULT_CURSOR_MODEL, // Already prefixed
   enabledOpencodeModels: getAllOpencodeModelIds(), // Returns prefixed IDs
   opencodeDefaultModel: DEFAULT_OPENCODE_MODEL, // Already prefixed
   enabledDynamicModelIds: [],

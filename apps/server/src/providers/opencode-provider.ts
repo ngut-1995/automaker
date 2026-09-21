@@ -25,6 +25,7 @@ import type {
   InstallationStatus,
   ContentBlock,
 } from '@automaker/types';
+import { OPENCODE_MODEL_DEFINITIONS } from '@automaker/types';
 import { type SubprocessOptions, getOpenCodeAuthIndicators } from '@automaker/platform';
 import { createLogger } from '@automaker/utils';
 
@@ -920,63 +921,15 @@ export class OpencodeProvider extends CliProvider {
   }
 
   /**
-   * Get default hardcoded models (fallback when CLI is unavailable)
+   * The models Automaker declares statically, used until the CLI answers.
+   *
+   * Derived from the OpenCode catalogue in `@automaker/types`, which is the one
+   * place the declared models are enumerated (ngut-1995/harbor#83). A model the
+   * CLI discovers is converted to the same shape by `modelInfoToDefinition`, so
+   * by the time either reaches the picker they are indistinguishable.
    */
   private getDefaultModels(): ModelDefinition[] {
-    return [
-      // OpenCode Free Tier Models
-      {
-        id: 'opencode/big-pickle',
-        name: 'Big Pickle (Free)',
-        modelString: 'opencode/big-pickle',
-        provider: 'opencode',
-        description: 'OpenCode free tier model - great for general coding',
-        supportsTools: true,
-        supportsVision: false,
-        tier: 'basic',
-        default: true,
-      },
-      {
-        id: 'opencode/glm-5-free',
-        name: 'GLM 5 Free',
-        modelString: 'opencode/glm-5-free',
-        provider: 'opencode',
-        description: 'OpenCode free tier GLM model',
-        supportsTools: true,
-        supportsVision: false,
-        tier: 'basic',
-      },
-      {
-        id: 'opencode/gpt-5-nano',
-        name: 'GPT-5 Nano (Free)',
-        modelString: 'opencode/gpt-5-nano',
-        provider: 'opencode',
-        description: 'Fast and lightweight free tier model',
-        supportsTools: true,
-        supportsVision: false,
-        tier: 'basic',
-      },
-      {
-        id: 'opencode/kimi-k2.5-free',
-        name: 'Kimi K2.5 Free',
-        modelString: 'opencode/kimi-k2.5-free',
-        provider: 'opencode',
-        description: 'OpenCode free tier Kimi model for coding',
-        supportsTools: true,
-        supportsVision: false,
-        tier: 'basic',
-      },
-      {
-        id: 'opencode/minimax-m2.5-free',
-        name: 'MiniMax M2.5 Free',
-        modelString: 'opencode/minimax-m2.5-free',
-        provider: 'opencode',
-        description: 'OpenCode free tier MiniMax model',
-        supportsTools: true,
-        supportsVision: false,
-        tier: 'basic',
-      },
-    ];
+    return OPENCODE_MODEL_DEFINITIONS;
   }
 
   // ==========================================================================

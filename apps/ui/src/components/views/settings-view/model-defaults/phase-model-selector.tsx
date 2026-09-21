@@ -38,6 +38,7 @@ import {
   REASONING_EFFORT_LABELS,
   type ModelOption,
 } from '@/components/views/board-view/shared/model-constants';
+import { mergeDiscoveredOpencodeModels } from '@/components/views/board-view/shared/opencode-model-merge';
 import { Check, ChevronsUpDown, Star, ChevronRight, ChevronDown } from 'lucide-react';
 import {
   AnthropicIcon,
@@ -603,20 +604,7 @@ export function PhaseModelSelector({
         provider: 'opencode' as const,
       }));
 
-    // Merge, avoiding duplicates (static models take precedence)
-    // Static IDs use dash format (opencode-glm-5-free), dynamic use slash format (opencode/glm-5-free)
-    // Normalize both to the model name part for comparison
-    const normalizeModelName = (id: string): string => {
-      if (id.startsWith('opencode-')) return id.slice('opencode-'.length);
-      if (id.startsWith('opencode/')) return id.slice('opencode/'.length);
-      return id;
-    };
-    const staticModelNames = new Set(staticModels.map((m) => normalizeModelName(m.id)));
-    const uniqueDynamic = dynamicModelOptions.filter(
-      (m) => !staticModelNames.has(normalizeModelName(m.id))
-    );
-
-    return [...staticModels, ...uniqueDynamic];
+    return mergeDiscoveredOpencodeModels(staticModels, dynamicModelOptions);
   }, [enabledOpencodeModels, dynamicOpencodeModels, enabledDynamicModelIds]);
 
   // Check if providers are disabled (needed for rendering conditions)

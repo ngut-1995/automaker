@@ -17,7 +17,7 @@ import type { Request, Response } from 'express';
 import path from 'path';
 import { CursorConfigManager } from '../../../providers/cursor-config-manager.js';
 import {
-  CURSOR_MODEL_MAP,
+  CURSOR_MODEL_CATALOGUE,
   CURSOR_PERMISSION_PROFILES,
   type CursorModelId,
   type CursorPermissionProfile,
@@ -84,7 +84,7 @@ export function createGetCursorConfigHandler() {
       res.json({
         success: true,
         config: configManager.getConfig(),
-        availableModels: Object.values(CURSOR_MODEL_MAP),
+        availableModels: Object.values(CURSOR_MODEL_CATALOGUE),
       });
     } catch (error) {
       logError(error, 'Get Cursor config failed');
@@ -116,10 +116,10 @@ export function createSetCursorDefaultModelHandler() {
       // Validate path to prevent traversal attacks
       validateProjectPath(projectPath);
 
-      if (!model || !(model in CURSOR_MODEL_MAP)) {
+      if (!model || !(model in CURSOR_MODEL_CATALOGUE)) {
         res.status(400).json({
           success: false,
-          error: `Invalid model ID. Valid models: ${Object.keys(CURSOR_MODEL_MAP).join(', ')}`,
+          error: `Invalid model ID. Valid models: ${Object.keys(CURSOR_MODEL_CATALOGUE).join(', ')}`,
         });
         return;
       }
@@ -167,7 +167,7 @@ export function createSetCursorModelsHandler() {
       }
 
       // Filter to valid models only
-      const validModels = models.filter((m): m is CursorModelId => m in CURSOR_MODEL_MAP);
+      const validModels = models.filter((m): m is CursorModelId => m in CURSOR_MODEL_CATALOGUE);
 
       if (validModels.length === 0) {
         res.status(400).json({

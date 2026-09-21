@@ -6,11 +6,11 @@
  */
 
 import type { CursorModelId, LegacyCursorModelId } from './cursor-models.js';
-import { LEGACY_CURSOR_MODEL_MAP, CURSOR_MODEL_MAP } from './cursor-models.js';
+import { LEGACY_CURSOR_MODEL_MAP, CURSOR_MODEL_CATALOGUE } from './cursor-models.js';
 import type { OpencodeModelId, LegacyOpencodeModelId } from './opencode-models.js';
 import {
   LEGACY_OPENCODE_MODEL_MAP,
-  OPENCODE_MODEL_CONFIG_MAP,
+  OPENCODE_MODEL_CATALOGUE,
   RETIRED_OPENCODE_MODEL_MAP,
 } from './opencode-models.js';
 import type { ClaudeCanonicalId } from './model.js';
@@ -124,7 +124,7 @@ export function migrateModelId(legacyId: string | undefined | null): string | un
   }
 
   // Already has cursor- prefix and is in the map - it's canonical
-  if (legacyId.startsWith('cursor-') && legacyId in CURSOR_MODEL_MAP) {
+  if (legacyId.startsWith('cursor-') && legacyId in CURSOR_MODEL_CATALOGUE) {
     return legacyId;
   }
 
@@ -134,7 +134,7 @@ export function migrateModelId(legacyId: string | undefined | null): string | un
   }
 
   // Already has opencode- prefix - check if it's a current canonical ID
-  if (legacyId.startsWith('opencode-') && legacyId in OPENCODE_MODEL_CONFIG_MAP) {
+  if (legacyId.startsWith('opencode-') && legacyId in OPENCODE_MODEL_CATALOGUE) {
     return legacyId;
   }
 
@@ -165,7 +165,7 @@ export function migrateCursorModelIds(ids: string[]): CursorModelId[] {
 
   return ids.map((id) => {
     // Already canonical
-    if (id.startsWith('cursor-') && id in CURSOR_MODEL_MAP) {
+    if (id.startsWith('cursor-') && id in CURSOR_MODEL_CATALOGUE) {
       return id as CursorModelId;
     }
 
@@ -198,7 +198,7 @@ export function migrateOpencodeModelIds(ids: string[]): OpencodeModelId[] {
   return ids
     .map((id) => {
       // Already canonical (dash format) and current
-      if (id.startsWith('opencode-') && id in OPENCODE_MODEL_CONFIG_MAP) {
+      if (id.startsWith('opencode-') && id in OPENCODE_MODEL_CATALOGUE) {
         return id as OpencodeModelId;
       }
 

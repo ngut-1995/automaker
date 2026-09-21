@@ -13,9 +13,9 @@ import type { ClaudeCompatibleProvider, ProviderModel } from '@automaker/types';
 import {
   getModelDisplayName as getTypesModelDisplayName,
   CODEX_MODEL_IDS,
-  CURSOR_MODEL_MAP,
-  COPILOT_MODEL_MAP,
-  GEMINI_MODEL_MAP,
+  CURSOR_MODEL_CATALOGUE,
+  COPILOT_MODEL_CATALOGUE,
+  GEMINI_MODEL_CATALOGUE,
   OPENCODE_MODELS,
 } from '@automaker/types';
 import { getModelDisplayName as getUiModelDisplayName } from '../../../src/lib/utils';
@@ -319,9 +319,9 @@ describe('agent-context-parser.ts', () => {
       const EVERY_KNOWN_MODEL_ID: string[] = [
         ...CLAUDE_MODEL_STRINGS,
         ...CODEX_MODEL_IDS,
-        ...Object.keys(CURSOR_MODEL_MAP),
-        ...Object.keys(COPILOT_MODEL_MAP),
-        ...Object.keys(GEMINI_MODEL_MAP),
+        ...Object.keys(CURSOR_MODEL_CATALOGUE),
+        ...Object.keys(COPILOT_MODEL_CATALOGUE),
+        ...Object.keys(GEMINI_MODEL_CATALOGUE),
         ...OPENCODE_MODELS.map((m) => m.id),
         // Shapes no catalogue enumerates.
         'auto',
