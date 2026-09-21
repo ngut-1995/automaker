@@ -11,6 +11,8 @@
 // Main exports
 export { GlobalAutoModeService } from './global-service.js';
 export { AutoModeServiceFacade } from './facade.js';
+export { AutoModeFacadeCache } from './facade-cache.js';
+export type { FacadeProvider } from './facade-cache.js';
 export { AutoModeServiceCompat } from './compat.js';
 
 // Convenience factory function

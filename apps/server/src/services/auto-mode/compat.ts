@@ -8,40 +8,20 @@
  */
 
 import type { Feature } from '@automaker/types';
-import type { EventEmitter } from '../../lib/events.js';
 import { GlobalAutoModeService } from './global-service.js';
 import { AutoModeServiceFacade } from './facade.js';
-import type { SettingsService } from '../settings-service.js';
-import type { FeatureLoader } from '../feature-loader.js';
-import type { ClaudeUsageService } from '../claude-usage-service.js';
-import type { FacadeOptions, AutoModeStatus, RunningAgentInfo } from './types.js';
+import type { AutoModeFacadeCache } from './facade-cache.js';
+import type { AutoModeStatus, RunningAgentInfo } from './types.js';
 
 /**
  * AutoModeServiceCompat wraps GlobalAutoModeService and facades to provide
  * the old AutoModeService interface that routes expect.
  */
 export class AutoModeServiceCompat {
-  private readonly globalService: GlobalAutoModeService;
-  private readonly facadeOptions: FacadeOptions;
-  private readonly facadeCache = new Map<string, AutoModeServiceFacade>();
-
   constructor(
-    events: EventEmitter,
-    settingsService: SettingsService | null,
-    featureLoader: FeatureLoader,
-    claudeUsageService?: ClaudeUsageService | null
-  ) {
-    this.globalService = new GlobalAutoModeService(events, settingsService, featureLoader);
-    const sharedServices = this.globalService.getSharedServices();
-
-    this.facadeOptions = {
-      events,
-      settingsService,
-      featureLoader,
-      sharedServices,
-      claudeUsageService: claudeUsageService ?? null,
-    };
-  }
+    private readonly globalService: GlobalAutoModeService,
+    private readonly facadeCache: AutoModeFacadeCache
+  ) {}
 
   /**
    * Get the global service for direct access
@@ -52,16 +32,11 @@ export class AutoModeServiceCompat {
 
   /**
    * Get or create a facade for a specific project.
-   * Facades are cached by project path so that auto loop state
+   * Delegates to the composition-root-owned cache so that auto loop state
    * (stored in the facade's AutoLoopCoordinator) persists across API calls.
    */
   createFacade(projectPath: string): AutoModeServiceFacade {
-    let facade = this.facadeCache.get(projectPath);
-    if (!facade) {
-      facade = AutoModeServiceFacade.create(projectPath, this.facadeOptions);
-      this.facadeCache.set(projectPath, facade);
-    }
-    return facade;
+    return this.facadeCache.getFacade(projectPath);
   }
 
   // ===========================================================================

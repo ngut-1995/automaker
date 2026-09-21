@@ -56,7 +56,11 @@ import {
 import { createSettingsRoutes } from './routes/settings/index.js';
 import { AgentService } from './services/agent-service.js';
 import { FeatureLoader } from './services/feature-loader.js';
-import { AutoModeServiceCompat } from './services/auto-mode/index.js';
+import {
+  AutoModeFacadeCache,
+  AutoModeServiceCompat,
+  GlobalAutoModeService,
+} from './services/auto-mode/index.js';
 import { getTerminalService } from './services/terminal-service.js';
 import { SettingsService } from './services/settings-service.js';
 import { createSpecRegenerationRoutes } from './routes/app-spec/index.js';
@@ -325,8 +329,17 @@ const settingsService = new SettingsService(DATA_DIR);
 const agentService = new AgentService(DATA_DIR, events, settingsService);
 const featureLoader = new FeatureLoader();
 
-// Auto-mode services: compatibility layer provides old interface while using new architecture
-const autoModeService = new AutoModeServiceCompat(events, settingsService, featureLoader);
+// Auto-mode services: the composition root owns the shared global service and
+// the per-project facade cache; the compat shim is just a thin delegating
+// interface for routes.
+const globalAutoModeService = new GlobalAutoModeService(events, settingsService, featureLoader);
+const facadeCache = new AutoModeFacadeCache({
+  events,
+  settingsService,
+  featureLoader,
+  sharedServices: globalAutoModeService.getSharedServices(),
+});
+const autoModeService = new AutoModeServiceCompat(globalAutoModeService, facadeCache);
 const claudeUsageService = new ClaudeUsageService();
 const codexAppServerService = new CodexAppServerService();
 const codexModelCacheService = new CodexModelCacheService(DATA_DIR, codexAppServerService);
