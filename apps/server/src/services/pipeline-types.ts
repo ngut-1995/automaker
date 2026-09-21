@@ -2,7 +2,7 @@
  * Pipeline Types - Type definitions for PipelineOrchestrator
  */
 
-import type { Feature, PipelineStep, PipelineConfig } from '@automaker/types';
+import type { Feature, FeatureStatus, PipelineStep, PipelineConfig } from '@automaker/types';
 
 export interface PipelineContext {
   projectPath: string;
@@ -44,7 +44,7 @@ export interface MergeResult {
 export type UpdateFeatureStatusFn = (
   projectPath: string,
   featureId: string,
-  status: string
+  status: FeatureStatus
 ) => Promise<void>;
 
 export type BuildFeaturePromptFn = (

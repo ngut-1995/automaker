@@ -2,6 +2,8 @@
  * Ideation types for AutoMaker brainstorming and idea management
  */
 
+import type { FeatureStatus } from './feature.js';
+
 // ============================================================================
 // Core Types
 // ============================================================================
@@ -190,7 +192,7 @@ export interface UpdateIdeaInput {
 }
 
 export interface ConvertToFeatureOptions {
-  column?: string;
+  column?: FeatureStatus;
   dependencies?: string[];
   tags?: string[];
   keepIdea?: boolean;

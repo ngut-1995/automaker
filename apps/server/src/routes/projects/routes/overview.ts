@@ -42,7 +42,7 @@ function computeFeatureCounts(features: Feature[]): FeatureStatusCounts {
   };
 
   for (const feature of features) {
-    switch (feature.status) {
+    switch (feature.status as string) {
       case 'pending':
       case 'ready':
         counts.pending++;
