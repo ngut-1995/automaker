@@ -58,6 +58,28 @@ describe('migrateModelId', () => {
     expect(migrateModelId('haiku')).toBe('claude-haiku');
   });
 
+  it('keeps a Cursor identifier byte for byte', () => {
+    // Editing a card must not rewrite another provider's stored identifier.
+    expect(migrateModelId('cursor-auto')).toBe('cursor-auto');
+    expect(migrateModelId('cursor-opus-4.1')).toBe('cursor-opus-4.1');
+    // A bare legacy Cursor ID is the settings layer's business, not the dialog's.
+    expect(migrateModelId('opus-4.5')).toBe('opus-4.5');
+  });
+
+  it('keeps an OpenCode identifier byte for byte, retired or not', () => {
+    expect(migrateModelId('opencode-big-pickle')).toBe('opencode-big-pickle');
+    // 'opencode-grok-code' is retired and the shared migration replaces it;
+    // the dialog must not.
+    expect(migrateModelId('opencode-grok-code')).toBe('opencode-grok-code');
+    expect(migrateModelId('opencode/glm-4.7-free')).toBe('opencode/glm-4.7-free');
+  });
+
+  it('keeps identifiers from the remaining providers untouched', () => {
+    expect(migrateModelId('codex-gpt-5.3-codex')).toBe('codex-gpt-5.3-codex');
+    expect(migrateModelId('copilot-claude-opus-4.5')).toBe('copilot-claude-opus-4.5');
+    expect(migrateModelId('gemini-3-pro')).toBe('gemini-3-pro');
+  });
+
   it('returns a falsy input unchanged', () => {
     expect(migrateModelId(undefined)).toBeUndefined();
     expect(migrateModelId('')).toBe('');

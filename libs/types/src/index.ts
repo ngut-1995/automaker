@@ -307,6 +307,7 @@ export {
   isLegacyOpencodeModelId,
   isLegacyClaudeAlias,
   migrateModelId,
+  migrateClaudeModelId,
   migrateCursorModelIds,
   migrateOpencodeModelIds,
   migratePhaseModelEntry,

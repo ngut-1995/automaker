@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { migrateModelId, migratePhaseModelEntry } from '../../src/model-migration.js';
+import {
+  migrateClaudeModelId,
+  migrateModelId,
+  migratePhaseModelEntry,
+} from '../../src/model-migration.js';
 import {
   CLAUDE_CANONICAL_IDS,
   PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP,
@@ -73,6 +77,55 @@ describe('pinned-by-accident Claude model IDs', () => {
       expect(migrateModelId('cursor-auto')).toBe('cursor-auto');
       expect(migrateModelId('codex-gpt-5.3-codex')).toBe('codex-gpt-5.3-codex');
       expect(migrateModelId('GLM-4.7')).toBe('GLM-4.7');
+    });
+  });
+
+  describe('migrateClaudeModelId', () => {
+    it.each(Object.entries(PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP))(
+      'collapses %s to %s',
+      (pinned, canonical) => {
+        expect(migrateClaudeModelId(pinned)).toBe(canonical);
+      }
+    );
+
+    it.each(DELIBERATE_PINS)('leaves the deliberate pin %s intact', (pinned) => {
+      expect(migrateClaudeModelId(pinned)).toBe(pinned);
+    });
+
+    it.each(CLAUDE_CANONICAL_IDS)('leaves the canonical ID %s unchanged', (canonical) => {
+      expect(migrateClaudeModelId(canonical)).toBe(canonical);
+    });
+
+    it('migrates the legacy bare Claude aliases', () => {
+      expect(migrateClaudeModelId('opus')).toBe('claude-opus');
+      expect(migrateClaudeModelId('sonnet')).toBe('claude-sonnet');
+      expect(migrateClaudeModelId('haiku')).toBe('claude-haiku');
+    });
+
+    it('carries no Cursor rule: a Cursor identifier survives byte for byte', () => {
+      expect(migrateClaudeModelId('cursor-auto')).toBe('cursor-auto');
+      // A bare legacy Cursor ID, which migrateModelId would prefix.
+      expect(migrateClaudeModelId('opus-4.5')).toBe('opus-4.5');
+      expect(migrateModelId('opus-4.5')).toBe('cursor-opus-4.5');
+    });
+
+    it('carries no OpenCode rule: a retired identifier survives byte for byte', () => {
+      expect(migrateClaudeModelId('opencode-big-pickle')).toBe('opencode-big-pickle');
+      expect(migrateClaudeModelId('opencode-grok-code')).toBe('opencode-grok-code');
+      expect(migrateModelId('opencode-grok-code')).toBe('opencode-big-pickle');
+      expect(migrateClaudeModelId('opencode/glm-4.7-free')).toBe('opencode/glm-4.7-free');
+    });
+
+    it('leaves the remaining providers untouched', () => {
+      expect(migrateClaudeModelId('codex-gpt-5.3-codex')).toBe('codex-gpt-5.3-codex');
+      expect(migrateClaudeModelId('copilot-claude-opus-4.5')).toBe('copilot-claude-opus-4.5');
+      expect(migrateClaudeModelId('GLM-4.7')).toBe('GLM-4.7');
+    });
+
+    it('returns a falsy input unchanged', () => {
+      expect(migrateClaudeModelId(undefined)).toBeUndefined();
+      expect(migrateClaudeModelId(null)).toBeNull();
+      expect(migrateClaudeModelId('')).toBe('');
     });
   });
 

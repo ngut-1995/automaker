@@ -4,7 +4,7 @@ import type { ModelAlias, ModelProvider } from '@/store/app-store';
 import {
   normalizeThinkingLevelForModel,
   normalizeReasoningEffortForModel,
-  migrateModelId as sharedMigrateModelId,
+  migrateClaudeModelId,
   getClaudeTierDisplayName,
   type PhaseModelEntry,
 } from '@automaker/types';
@@ -20,16 +20,22 @@ export function cn(...inputs: ClassValue[]) {
 export { getErrorMessage } from '@automaker/utils/error-handler';
 
 /**
- * Migrate a stored model ID to its canonical form for display and editing.
+ * Migrate a stored Claude model ID to its canonical form for display and editing.
  *
- * Delegates to the shared migration so the edit dialog agrees with what the
- * server resolves at execution time: a legacy alias becomes canonical, and a
- * version Automaker pinned on the user's behalf collapses back to its tier. A
- * pin the user wrote themselves is returned unchanged.
+ * Delegates to the shared migration's Claude-only entry point, so the edit
+ * dialog agrees with what the server resolves at execution time for Claude -- a
+ * legacy alias becomes canonical, and a version Automaker pinned on the user's
+ * behalf collapses back to its tier -- while a pin the user wrote themselves,
+ * and every non-Claude identifier, is returned byte for byte.
+ *
+ * Not the full `migrateModelId`: that one also carries the Cursor and OpenCode
+ * rules, and rewriting another provider's stored identifier when the user opens
+ * a card is a behaviour change nobody asked for. Not a local copy of the Claude
+ * rules either: the duplication is what drifted last time.
  */
 export function migrateModelId(modelId: string | undefined): string | undefined {
   if (!modelId) return modelId;
-  return sharedMigrateModelId(modelId);
+  return migrateClaudeModelId(modelId);
 }
 
 /**

@@ -44,6 +44,55 @@ export function isLegacyClaudeAlias(id: string): boolean {
 }
 
 /**
+ * Migrate a Claude model ID to canonical format, recognising nothing else.
+ *
+ * This is the Claude-only half of {@link migrateModelId}, split out so that a
+ * caller which is only ever allowed to touch Claude values -- the feature edit
+ * dialog, which must return every other provider's stored identifier byte for
+ * byte -- can reach the Claude rules without also inheriting the Cursor and
+ * OpenCode ones. Splitting here rather than re-stating the Claude rules in
+ * `apps/ui` keeps one definition of them in the codebase.
+ *
+ * Handles:
+ * - Legacy Claude aliases (e.g., 'sonnet' -> 'claude-sonnet')
+ * - Pinned Claude model IDs Automaker wrote on the user's behalf
+ *   (e.g., 'claude-opus-4-6' -> 'claude-opus'), by exact match only
+ * - Already-canonical Claude IDs are passed through unchanged
+ *
+ * Everything else -- a deliberate Claude pin, and every non-Claude identifier
+ * -- is returned unchanged.
+ *
+ * @param modelId - The model ID to migrate
+ * @returns The canonical Claude ID, or the input unchanged
+ */
+export function migrateClaudeModelId(modelId: string | undefined | null): string {
+  if (!modelId) {
+    return modelId as string;
+  }
+
+  // Already a canonical Claude ID
+  if (isClaudeCanonicalId(modelId)) {
+    return modelId;
+  }
+
+  // A pinned Claude model ID Automaker wrote on the user's behalf - collapse it
+  // back to the canonical ID for its tier, so the card follows the tier again.
+  // Exact equality against an enumerated list: a pattern would also unpin a
+  // version the user chose deliberately.
+  if (isPinnedByAccidentClaudeModelId(modelId)) {
+    return PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP[modelId];
+  }
+
+  // Legacy Claude alias (short name)
+  if (isLegacyClaudeAlias(modelId)) {
+    return LEGACY_CLAUDE_ALIAS_MAP[modelId];
+  }
+
+  // A deliberate pin, or another provider's identifier - pass through
+  return modelId;
+}
+
+/**
  * Migrate a single model ID to canonical format
  *
  * Handles:
@@ -89,26 +138,8 @@ export function migrateModelId(legacyId: string | undefined | null): string {
     return LEGACY_OPENCODE_MODEL_MAP[legacyId];
   }
 
-  // Already a canonical Claude ID
-  if (isClaudeCanonicalId(legacyId)) {
-    return legacyId;
-  }
-
-  // A pinned Claude model ID Automaker wrote on the user's behalf - collapse it
-  // back to the canonical ID for its tier, so the card follows the tier again.
-  // Exact equality against an enumerated list: a pattern would also unpin a
-  // version the user chose deliberately.
-  if (isPinnedByAccidentClaudeModelId(legacyId)) {
-    return PINNED_BY_ACCIDENT_CLAUDE_MODEL_MAP[legacyId];
-  }
-
-  // Legacy Claude alias (short name)
-  if (isLegacyClaudeAlias(legacyId)) {
-    return LEGACY_CLAUDE_ALIAS_MAP[legacyId];
-  }
-
-  // Unknown or already canonical - pass through
-  return legacyId;
+  // Claude rules, plus the pass-through for an unknown or already-canonical ID
+  return migrateClaudeModelId(legacyId);
 }
 
 /**
