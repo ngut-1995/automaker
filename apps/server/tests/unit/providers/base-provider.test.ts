@@ -8,6 +8,14 @@ import type {
   ModelDefinition,
 } from '@automaker/types';
 
+const TEST_RESPONSE: ProviderMessage = {
+  type: 'assistant',
+  message: {
+    role: 'assistant',
+    content: [{ type: 'text', text: 'test response' }],
+  },
+};
+
 // Concrete implementation for testing the abstract class
 class TestProvider extends BaseProvider {
   getName(): string {
@@ -15,7 +23,7 @@ class TestProvider extends BaseProvider {
   }
 
   async *executeQuery(_options: ExecuteOptions): AsyncGenerator<ProviderMessage> {
-    yield { type: 'text', text: 'test response' };
+    yield TEST_RESPONSE;
   }
 
   async detectInstallation(): Promise<InstallationStatus> {
@@ -23,7 +31,15 @@ class TestProvider extends BaseProvider {
   }
 
   getAvailableModels(): ModelDefinition[] {
-    return [{ id: 'test-model-1', name: 'Test Model 1', description: 'A test model' }];
+    return [
+      {
+        id: 'test-model-1',
+        name: 'Test Model 1',
+        modelString: 'test-model-1',
+        provider: 'test-provider',
+        description: 'A test model',
+      },
+    ];
   }
 }
 
@@ -37,7 +53,7 @@ describe('base-provider.ts', () => {
     it('should initialize with provided config', () => {
       const config: ProviderConfig = {
         apiKey: 'test-key',
-        baseUrl: 'https://test.com',
+        env: { TEST: 'true' },
       };
       const provider = new TestProvider(config);
       expect(provider.getConfig()).toEqual(config);
@@ -117,7 +133,7 @@ describe('base-provider.ts', () => {
     it('should return current config', () => {
       const config: ProviderConfig = {
         apiKey: 'test-key',
-        model: 'test-model',
+        cliPath: '/usr/bin/test-cli',
       };
       const provider = new TestProvider(config);
 
@@ -139,22 +155,22 @@ describe('base-provider.ts', () => {
     it('should merge partial config with existing config', () => {
       const provider = new TestProvider({ apiKey: 'original-key' });
 
-      provider.setConfig({ model: 'new-model' });
+      provider.setConfig({ env: { FEATURE: 'on' } });
 
       expect(provider.getConfig()).toEqual({
         apiKey: 'original-key',
-        model: 'new-model',
+        env: { FEATURE: 'on' },
       });
     });
 
     it('should override existing fields', () => {
-      const provider = new TestProvider({ apiKey: 'old-key', model: 'old-model' });
+      const provider = new TestProvider({ apiKey: 'old-key', cliPath: '/old-cli' });
 
       provider.setConfig({ apiKey: 'new-key' });
 
       expect(provider.getConfig()).toEqual({
         apiKey: 'new-key',
-        model: 'old-model',
+        cliPath: '/old-cli',
       });
     });
 
@@ -171,29 +187,29 @@ describe('base-provider.ts', () => {
       const provider = new TestProvider();
 
       provider.setConfig({ apiKey: 'key1' });
-      provider.setConfig({ model: 'model1' });
-      provider.setConfig({ baseUrl: 'https://test.com' });
+      provider.setConfig({ cliPath: '/usr/bin/cli' });
+      provider.setConfig({ env: { TEST: 'true' } });
 
       expect(provider.getConfig()).toEqual({
         apiKey: 'key1',
-        model: 'model1',
-        baseUrl: 'https://test.com',
+        cliPath: '/usr/bin/cli',
+        env: { TEST: 'true' },
       });
     });
 
     it('should preserve other fields when updating one field', () => {
       const provider = new TestProvider({
         apiKey: 'key',
-        model: 'model',
-        baseUrl: 'https://test.com',
+        cliPath: '/old-cli',
+        env: { TEST: 'true' },
       });
 
-      provider.setConfig({ model: 'new-model' });
+      provider.setConfig({ cliPath: '/new-cli' });
 
       expect(provider.getConfig()).toEqual({
         apiKey: 'key',
-        model: 'new-model',
-        baseUrl: 'https://test.com',
+        cliPath: '/new-cli',
+        env: { TEST: 'true' },
       });
     });
   });
@@ -211,11 +227,12 @@ describe('base-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'test',
-        projectDirectory: '/test',
+        model: 'test-model',
+        cwd: '/test',
       });
       const result = await generator.next();
 
-      expect(result.value).toEqual({ type: 'text', text: 'test response' });
+      expect(result.value).toEqual(TEST_RESPONSE);
     });
 
     it('should require detectInstallation implementation', async () => {

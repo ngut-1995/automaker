@@ -30,8 +30,8 @@ describe('cursor-config-manager.ts', () => {
   describe('constructor', () => {
     it('should load existing config from disk', () => {
       const existingConfig = {
-        defaultModel: 'claude-3-5-sonnet',
-        models: ['auto', 'claude-3-5-sonnet'],
+        defaultModel: 'cursor-sonnet-4.6',
+        models: ['cursor-auto', 'cursor-sonnet-4.6'],
       };
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
@@ -97,9 +97,9 @@ describe('cursor-config-manager.ts', () => {
     });
 
     it('should set and persist default model', () => {
-      manager.setDefaultModel('claude-3-5-sonnet');
+      manager.setDefaultModel('cursor-sonnet-4.6');
 
-      expect(manager.getDefaultModel()).toBe('claude-3-5-sonnet');
+      expect(manager.getDefaultModel()).toBe('cursor-sonnet-4.6');
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
@@ -125,9 +125,9 @@ describe('cursor-config-manager.ts', () => {
     });
 
     it('should set enabled models', () => {
-      manager.setEnabledModels(['claude-3-5-sonnet', 'gpt-4o']);
+      manager.setEnabledModels(['cursor-sonnet-4.6', 'cursor-gpt-5.2']);
 
-      expect(manager.getEnabledModels()).toEqual(['claude-3-5-sonnet', 'gpt-4o']);
+      expect(manager.getEnabledModels()).toEqual(['cursor-sonnet-4.6', 'cursor-gpt-5.2']);
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
@@ -154,9 +154,9 @@ describe('cursor-config-manager.ts', () => {
     });
 
     it('should add a new model', () => {
-      manager.addModel('claude-3-5-sonnet');
+      manager.addModel('cursor-sonnet-4.6');
 
-      expect(manager.getEnabledModels()).toContain('claude-3-5-sonnet');
+      expect(manager.getEnabledModels()).toContain('cursor-sonnet-4.6');
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
@@ -171,9 +171,9 @@ describe('cursor-config-manager.ts', () => {
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ defaultModel: 'cursor-auto' }));
       manager = new CursorConfigManager(testProjectPath);
 
-      manager.addModel('claude-3-5-sonnet');
+      manager.addModel('cursor-sonnet-4.6');
 
-      expect(manager.getEnabledModels()).toContain('claude-3-5-sonnet');
+      expect(manager.getEnabledModels()).toContain('cursor-sonnet-4.6');
     });
   });
 
@@ -182,32 +182,32 @@ describe('cursor-config-manager.ts', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(
         JSON.stringify({
-          defaultModel: 'auto',
-          models: ['auto', 'claude-3-5-sonnet', 'gpt-4o'],
+          defaultModel: 'cursor-auto',
+          models: ['cursor-auto', 'cursor-sonnet-4.6', 'cursor-gpt-5.2'],
         })
       );
       manager = new CursorConfigManager(testProjectPath);
     });
 
     it('should remove a model', () => {
-      manager.removeModel('gpt-4o');
+      manager.removeModel('cursor-gpt-5.2');
 
-      expect(manager.getEnabledModels()).not.toContain('gpt-4o');
+      expect(manager.getEnabledModels()).not.toContain('cursor-gpt-5.2');
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should handle removing non-existent model', () => {
-      manager.removeModel('non-existent' as any);
+      manager.removeModel('cursor-grok');
 
       // Should still save (filtering happens regardless)
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should do nothing if models array is undefined', () => {
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ defaultModel: 'auto' }));
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ defaultModel: 'cursor-auto' }));
       manager = new CursorConfigManager(testProjectPath);
 
-      manager.removeModel('auto');
+      manager.removeModel('cursor-auto');
 
       expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
@@ -218,27 +218,27 @@ describe('cursor-config-manager.ts', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(
         JSON.stringify({
-          defaultModel: 'auto',
-          models: ['auto', 'claude-3-5-sonnet'],
+          defaultModel: 'cursor-auto',
+          models: ['cursor-auto', 'cursor-sonnet-4.6'],
         })
       );
       manager = new CursorConfigManager(testProjectPath);
     });
 
     it('should return true for enabled model', () => {
-      expect(manager.isModelEnabled('auto')).toBe(true);
-      expect(manager.isModelEnabled('claude-3-5-sonnet')).toBe(true);
+      expect(manager.isModelEnabled('cursor-auto')).toBe(true);
+      expect(manager.isModelEnabled('cursor-sonnet-4.6')).toBe(true);
     });
 
     it('should return false for disabled model', () => {
-      expect(manager.isModelEnabled('gpt-4o')).toBe(false);
+      expect(manager.isModelEnabled('cursor-gpt-5.2')).toBe(false);
     });
 
     it('should return false if models is undefined', () => {
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ defaultModel: 'auto' }));
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ defaultModel: 'cursor-auto' }));
       manager = new CursorConfigManager(testProjectPath);
 
-      expect(manager.isModelEnabled('auto')).toBe(false);
+      expect(manager.isModelEnabled('cursor-auto')).toBe(false);
     });
   });
 
@@ -281,8 +281,8 @@ describe('cursor-config-manager.ts', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(
         JSON.stringify({
-          defaultModel: 'claude-3-5-sonnet',
-          models: ['claude-3-5-sonnet'],
+          defaultModel: 'cursor-sonnet-4.6',
+          models: ['cursor-sonnet-4.6'],
           mcpServers: ['server1'],
           rules: ['rules.md'],
         })
@@ -332,7 +332,7 @@ describe('cursor-config-manager.ts', () => {
         .mockReturnValueOnce(false); // For directory check in saveConfig
 
       manager = new CursorConfigManager(testProjectPath);
-      manager.setDefaultModel('claude-3-5-sonnet');
+      manager.setDefaultModel('cursor-sonnet-4.6');
 
       expect(fs.mkdirSync).toHaveBeenCalledWith(path.dirname(expectedConfigPath), {
         recursive: true,
@@ -346,7 +346,7 @@ describe('cursor-config-manager.ts', () => {
         throw new Error('Write failed');
       });
 
-      expect(() => manager.setDefaultModel('claude-3-5-sonnet')).toThrow('Write failed');
+      expect(() => manager.setDefaultModel('cursor-sonnet-4.6')).toThrow('Write failed');
     });
   });
 });

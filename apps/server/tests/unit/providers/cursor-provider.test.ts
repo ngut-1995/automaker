@@ -157,7 +157,7 @@ describe('cursor-provider.ts', () => {
   });
 
   describe('Cursor Gemini models support', () => {
-    let provider: CursorProvider;
+    let provider: CursorProvider & { cliPath?: string };
 
     beforeEach(() => {
       provider = Object.create(CursorProvider.prototype) as CursorProvider & {

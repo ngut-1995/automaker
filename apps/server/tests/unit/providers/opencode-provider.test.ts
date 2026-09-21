@@ -207,6 +207,7 @@ describe('opencode-provider.ts', () => {
       const args = provider.buildCliArgs({
         prompt: 'Hello',
         model: 'opencode/big-pickle',
+        cwd: '',
       });
 
       expect(args).not.toContain('-c');
@@ -647,6 +648,7 @@ describe('opencode-provider.ts', () => {
       const results = await collectAsyncGenerator<ProviderMessage>(
         mockedProvider.executeQuery({
           prompt: 'Read a file',
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
         })
       );
@@ -673,6 +675,7 @@ describe('opencode-provider.ts', () => {
       await collectAsyncGenerator(
         mockedProvider.executeQuery({
           prompt: 'My test prompt',
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
         })
       );
@@ -695,6 +698,7 @@ describe('opencode-provider.ts', () => {
       await collectAsyncGenerator(
         mockedProvider.executeQuery({
           prompt: arrayPrompt as unknown as string,
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
         })
       );
@@ -765,6 +769,7 @@ describe('opencode-provider.ts', () => {
         collectAsyncGenerator(
           unmockedProvider.executeQuery({
             prompt: 'Test',
+            model: 'opencode/big-pickle',
             cwd: '/test',
           })
         )
@@ -883,11 +888,11 @@ describe('opencode-provider.ts', () => {
 
     it('should merge config updates', () => {
       provider.setConfig({ apiKey: 'key1' });
-      provider.setConfig({ model: 'model1' });
+      provider.setConfig({ cliPath: '/usr/bin/opencode' });
 
       const config = provider.getConfig();
       expect(config.apiKey).toBe('key1');
-      expect(config.model).toBe('model1');
+      expect(config.cliPath).toBe('/usr/bin/opencode');
     });
   });
 
@@ -920,6 +925,7 @@ describe('opencode-provider.ts', () => {
       await collectAsyncGenerator(
         mockedProvider.executeQuery({
           prompt: [] as unknown as string,
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
         })
       );
@@ -941,6 +947,7 @@ describe('opencode-provider.ts', () => {
       await collectAsyncGenerator(
         mockedProvider.executeQuery({
           prompt: imageOnlyPrompt as unknown as string,
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
         })
       );
@@ -965,6 +972,7 @@ describe('opencode-provider.ts', () => {
       await collectAsyncGenerator(
         mockedProvider.executeQuery({
           prompt: mixedPrompt as unknown as string,
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
         })
       );
@@ -987,6 +995,7 @@ describe('opencode-provider.ts', () => {
       await collectAsyncGenerator(
         mockedProvider.executeQuery({
           prompt: promptWithEmptyText as unknown as string,
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
         })
       );
@@ -1015,6 +1024,7 @@ describe('opencode-provider.ts', () => {
       await collectAsyncGenerator(
         mockedProvider.executeQuery({
           prompt: 'Test',
+          model: 'opencode/big-pickle',
           cwd: '/tmp',
           abortController,
         })

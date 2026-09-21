@@ -35,6 +35,49 @@ vi.mock('@automaker/platform', () => ({
  */
 const DROPPED_DATED_SONNET_IDS = ['claude-3-5-sonnet-20241022'];
 
+const SESSION_UUID = '00000000-0000-4000-8000-000000000000';
+
+function assistantMessage(text: string): sdk.SDKAssistantMessage {
+  return {
+    type: 'assistant',
+    message: {
+      role: 'assistant',
+      content: [{ type: 'text', text }],
+    },
+    parent_tool_use_id: null,
+    uuid: SESSION_UUID,
+    session_id: 'test-session',
+  };
+}
+
+/**
+ * Wrap a stream of SDK messages in the full `Query` shape `sdk.query` returns.
+ * The control methods are unused by the provider, but `Query` requires them.
+ */
+function createQuery(stream: AsyncGenerator<sdk.SDKMessage, void>): sdk.Query {
+  return Object.assign(stream, {
+    interrupt: vi.fn(),
+    setPermissionMode: vi.fn(),
+    setModel: vi.fn(),
+    setMaxThinkingTokens: vi.fn(),
+    initializationResult: vi.fn(),
+    supportedCommands: vi.fn(),
+    supportedModels: vi.fn(),
+    mcpServerStatus: vi.fn(),
+    accountInfo: vi.fn(),
+    rewindFiles: vi.fn(),
+    reconnectMcpServer: vi.fn(),
+    toggleMcpServer: vi.fn(),
+    setMcpServers: vi.fn(),
+    streamInput: vi.fn(),
+    close: vi.fn(),
+  });
+}
+
+function emptyQuery(): sdk.Query {
+  return createQuery((async function* () {})());
+}
+
 describe('claude-provider.ts', () => {
   let provider: ClaudeProvider;
 
@@ -54,17 +97,16 @@ describe('claude-provider.ts', () => {
 
   describe('executeQuery', () => {
     it('should execute simple text query', async () => {
-      const mockMessages = [
-        { type: 'text', text: 'Response 1' },
-        { type: 'text', text: 'Response 2' },
-      ];
+      const mockMessages = [assistantMessage('Response 1'), assistantMessage('Response 2')];
 
       vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          for (const msg of mockMessages) {
-            yield msg;
-          }
-        })()
+        createQuery(
+          (async function* () {
+            for (const msg of mockMessages) {
+              yield msg;
+            }
+          })()
+        )
       );
 
       const generator = provider.executeQuery({
@@ -76,16 +118,12 @@ describe('claude-provider.ts', () => {
       const results = await collectAsyncGenerator(generator);
 
       expect(results).toHaveLength(2);
-      expect(results[0]).toEqual({ type: 'text', text: 'Response 1' });
-      expect(results[1]).toEqual({ type: 'text', text: 'Response 2' });
+      expect(results[0]).toEqual(mockMessages[0]);
+      expect(results[1]).toEqual(mockMessages[1]);
     });
 
     it('should pass correct options to SDK', async () => {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const generator = provider.executeQuery({
         prompt: 'Test prompt',
@@ -114,11 +152,7 @@ describe('claude-provider.ts', () => {
     });
 
     it('should not include allowedTools when not specified (caller decides via sdk-options)', async () => {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const generator = provider.executeQuery({
         prompt: 'Test',
@@ -137,11 +171,7 @@ describe('claude-provider.ts', () => {
     });
 
     it('should pass abortController if provided', async () => {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const abortController = new AbortController();
 
@@ -163,11 +193,7 @@ describe('claude-provider.ts', () => {
     });
 
     it('should handle conversation history with sdkSessionId using resume option', async () => {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const conversationHistory = [
         { role: 'user' as const, content: 'Previous message' },
@@ -194,11 +220,7 @@ describe('claude-provider.ts', () => {
     });
 
     it('should handle array prompt (with images)', async () => {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const arrayPrompt = [
         { type: 'text', text: 'Describe this' },
@@ -219,11 +241,7 @@ describe('claude-provider.ts', () => {
     });
 
     it('should use maxTurns default of 1000', async () => {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const generator = provider.executeQuery({
         prompt: 'Test',
@@ -246,9 +264,11 @@ describe('claude-provider.ts', () => {
       const testError = new Error('SDK execution failed');
 
       vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          throw testError;
-        })()
+        createQuery(
+          (async function* () {
+            throw testError;
+          })()
+        )
       );
 
       const generator = provider.executeQuery({
@@ -309,11 +329,7 @@ describe('claude-provider.ts', () => {
     it('should pass ANTHROPIC_BASE_URL to SDK env', async () => {
       process.env.ANTHROPIC_BASE_URL = 'https://custom.example.com/v1';
 
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const generator = provider.executeQuery({
         prompt: 'Test',
@@ -336,11 +352,7 @@ describe('claude-provider.ts', () => {
     it('should pass ANTHROPIC_AUTH_TOKEN to SDK env', async () => {
       process.env.ANTHROPIC_AUTH_TOKEN = 'custom-auth-token';
 
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const generator = provider.executeQuery({
         prompt: 'Test',
@@ -364,11 +376,7 @@ describe('claude-provider.ts', () => {
       process.env.ANTHROPIC_BASE_URL = 'https://gateway.example.com';
       process.env.ANTHROPIC_AUTH_TOKEN = 'gateway-token';
 
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       const generator = provider.executeQuery({
         prompt: 'Test',
@@ -392,11 +400,7 @@ describe('claude-provider.ts', () => {
 
   describe('the model reaching the SDK', () => {
     async function modelSentToSdk(model: string): Promise<unknown> {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
 
       await collectAsyncGenerator(provider.executeQuery({ prompt: 'Test', model, cwd: '/test' }));
 
@@ -437,11 +441,7 @@ describe('claude-provider.ts', () => {
 
   describe('the wire boundary', () => {
     async function runQuery(model: string): Promise<void> {
-      vi.mocked(sdk.query).mockReturnValue(
-        (async function* () {
-          yield { type: 'text', text: 'test' };
-        })()
-      );
+      vi.mocked(sdk.query).mockReturnValue(emptyQuery());
       await collectAsyncGenerator(provider.executeQuery({ prompt: 'Test', model, cwd: '/test' }));
     }
 
@@ -603,11 +603,11 @@ describe('claude-provider.ts', () => {
 
     it('should merge config updates', () => {
       provider.setConfig({ apiKey: 'key1' });
-      provider.setConfig({ model: 'model1' });
+      provider.setConfig({ cliPath: '/usr/bin/claude' });
 
       const config = provider.getConfig();
       expect(config.apiKey).toBe('key1');
-      expect(config.model).toBe('model1');
+      expect(config.cliPath).toBe('/usr/bin/claude');
     });
   });
 });
