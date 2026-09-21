@@ -1,99 +1,106 @@
 /**
  * Event types for AutoMaker event system
+ *
+ * This is the single source of the WebSocket event vocabulary. `EVENT_TYPES` is
+ * the runtime list; `EventType` is derived from it so a name cannot exist in the
+ * type without existing at runtime, or vice versa.
  */
 
-export type EventType =
-  | 'agent:stream'
-  | 'auto-mode:event'
-  | 'auto-mode:started'
-  | 'auto-mode:stopped'
-  | 'auto-mode:idle'
-  | 'auto-mode:error'
-  | 'backlog-plan:event'
-  | 'feature:created'
-  | 'feature:started'
-  | 'feature:completed'
-  | 'feature:stopped'
-  | 'feature:error'
-  | 'feature:progress'
-  | 'feature:tool-use'
-  | 'feature:follow-up-started'
-  | 'feature:follow-up-completed'
-  | 'feature:verified'
-  | 'feature:committed'
-  | 'project:analysis-started'
-  | 'project:analysis-progress'
-  | 'project:analysis-completed'
-  | 'project:analysis-error'
-  | 'spec-regeneration:event'
-  | 'issue-validation:event'
-  | 'ideation:stream'
-  | 'ideation:session-started'
-  | 'ideation:session-ended'
-  | 'ideation:analysis'
-  | 'ideation:analysis-started'
-  | 'ideation:analysis-progress'
-  | 'ideation:analysis-complete'
-  | 'ideation:analysis-error'
-  | 'ideation:suggestions'
-  | 'ideation:idea-created'
-  | 'ideation:idea-updated'
-  | 'ideation:idea-deleted'
-  | 'ideation:idea-converted'
-  | 'worktree:copy-files:copied'
-  | 'worktree:copy-files:skipped'
-  | 'worktree:copy-files:failed'
-  | 'worktree:init-started'
-  | 'worktree:init-output'
-  | 'worktree:init-completed'
-  | 'dev-server:starting'
-  | 'dev-server:started'
-  | 'dev-server:output'
-  | 'dev-server:url-detected'
-  | 'dev-server:stopped'
-  | 'test-runner:started'
-  | 'test-runner:progress'
-  | 'test-runner:output'
-  | 'test-runner:completed'
-  | 'test-runner:error'
-  | 'test-runner:result'
-  | 'cherry-pick:started'
-  | 'cherry-pick:success'
-  | 'cherry-pick:conflict'
-  | 'cherry-pick:failure'
-  | 'cherry-pick:verify-failed'
-  | 'cherry-pick:abort'
-  | 'rebase:started'
-  | 'rebase:success'
-  | 'rebase:conflict'
-  | 'rebase:failure'
-  | 'stash:start'
-  | 'stash:progress'
-  | 'stash:conflicts'
-  | 'stash:success'
-  | 'stash:failure'
-  | 'merge:start'
-  | 'merge:success'
-  | 'merge:conflict'
-  | 'merge:error'
-  | 'conflict:aborted'
-  | 'conflict:resolved'
-  | 'branchCommitLog:start'
-  | 'branchCommitLog:progress'
-  | 'branchCommitLog:done'
-  | 'branchCommitLog:error'
-  | 'commitLog:start'
-  | 'commitLog:progress'
-  | 'commitLog:complete'
-  | 'commitLog:error'
-  | 'switch:start'
-  | 'switch:stash'
-  | 'switch:checkout'
-  | 'switch:pop'
-  | 'switch:done'
-  | 'switch:error'
-  | 'notification:created'
-  | 'worktree:deleted'
-  | 'feature:migrated';
+export const EVENT_TYPES = [
+  'agent:stream',
+  'auto-mode:event',
+  'auto-mode:started',
+  'auto-mode:stopped',
+  'auto-mode:idle',
+  'auto-mode:error',
+  'backlog-plan:event',
+  'feature:created',
+  'feature:started',
+  'feature:completed',
+  'feature:stopped',
+  'feature:error',
+  'feature:progress',
+  'feature:tool-use',
+  'feature:follow-up-started',
+  'feature:follow-up-completed',
+  'feature:verified',
+  'feature:committed',
+  'project:analysis-started',
+  'project:analysis-progress',
+  'project:analysis-completed',
+  'project:analysis-error',
+  'spec-regeneration:event',
+  'issue-validation:event',
+  'ideation:stream',
+  'ideation:session-started',
+  'ideation:session-ended',
+  'ideation:analysis',
+  'ideation:analysis-started',
+  'ideation:analysis-progress',
+  'ideation:analysis-complete',
+  'ideation:analysis-error',
+  'ideation:suggestions',
+  'ideation:idea-created',
+  'ideation:idea-updated',
+  'ideation:idea-deleted',
+  'ideation:idea-converted',
+  'worktree:copy-files:copied',
+  'worktree:copy-files:skipped',
+  'worktree:copy-files:failed',
+  'worktree:init-started',
+  'worktree:init-output',
+  'worktree:init-completed',
+  'dev-server:starting',
+  'dev-server:started',
+  'dev-server:output',
+  'dev-server:url-detected',
+  'dev-server:stopped',
+  'test-runner:started',
+  'test-runner:progress',
+  'test-runner:output',
+  'test-runner:completed',
+  'test-runner:error',
+  'test-runner:result',
+  'cherry-pick:started',
+  'cherry-pick:success',
+  'cherry-pick:conflict',
+  'cherry-pick:failure',
+  'cherry-pick:verify-failed',
+  'cherry-pick:abort',
+  'rebase:started',
+  'rebase:success',
+  'rebase:conflict',
+  'rebase:failure',
+  'stash:start',
+  'stash:progress',
+  'stash:conflicts',
+  'stash:success',
+  'stash:failure',
+  'merge:start',
+  'merge:success',
+  'merge:conflict',
+  'merge:error',
+  'conflict:aborted',
+  'conflict:resolved',
+  'branchCommitLog:start',
+  'branchCommitLog:progress',
+  'branchCommitLog:done',
+  'branchCommitLog:error',
+  'commitLog:start',
+  'commitLog:progress',
+  'commitLog:complete',
+  'commitLog:error',
+  'switch:start',
+  'switch:stash',
+  'switch:checkout',
+  'switch:pop',
+  'switch:done',
+  'switch:error',
+  'notification:created',
+  'worktree:deleted',
+  'feature:migrated',
+] as const;
+
+export type EventType = (typeof EVENT_TYPES)[number];
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

@@ -8,7 +8,7 @@ import type { IdeationContextSources } from '@automaker/types';
 import { createLogger } from '@automaker/utils';
 import { getErrorMessage, logError } from '../common.js';
 
-const logger = createLogger('ideation:suggestions-generate');
+const logger = createLogger('ideation-suggestions-generate');
 
 /**
  * Creates an Express route handler for generating AI-powered ideation suggestions.

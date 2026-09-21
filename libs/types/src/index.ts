@@ -120,8 +120,12 @@ export {
   type ModelId,
 } from './model.js';
 
-// Event types
+// Event types (the single source of the WebSocket event vocabulary)
+export { EVENT_TYPES } from './event.js';
 export type { EventType, EventCallback } from './event.js';
+
+// Event payload unions shared by the server (emitter) and UI (consumer)
+export type { AutoModeEvent, AutoModeEventType } from './event-payloads.js';
 
 // Spec types
 export type { SpecOutput } from './spec.js';

@@ -26,7 +26,7 @@ import {
 import { getFeatureDir, getFeaturesDir } from '@automaker/platform';
 import * as secureFs from '../lib/secure-fs.js';
 import type { EventEmitter } from '../lib/events.js';
-import type { AutoModeEventType } from './typed-event-bus.js';
+import type { AutoModeEventType } from '@automaker/types';
 import { getNotificationService } from './notification-service.js';
 import { FeatureLoader } from './feature-loader.js';
 import { pipelineService } from './pipeline-service.js';

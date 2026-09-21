@@ -43,6 +43,7 @@ import type {
   OperationDefinition,
   RequestOf,
   ResponseOf,
+  EventType,
 } from '@automaker/types';
 import { OPERATIONS, operationPath } from '@automaker/types';
 import type { Message, SessionListItem } from '@/types/electron';
@@ -636,27 +637,6 @@ export const checkSandboxEnvironment = async (): Promise<{
     return { isContainerized: false, error: 'Network error' };
   }
 };
-
-type EventType =
-  | 'agent:stream'
-  | 'auto-mode:event'
-  | 'spec-regeneration:event'
-  | 'issue-validation:event'
-  | 'backlog-plan:event'
-  | 'ideation:stream'
-  | 'ideation:analysis'
-  | 'worktree:init-started'
-  | 'worktree:init-output'
-  | 'worktree:init-completed'
-  | 'dev-server:starting'
-  | 'dev-server:started'
-  | 'dev-server:output'
-  | 'dev-server:stopped'
-  | 'dev-server:url-detected'
-  | 'test-runner:started'
-  | 'test-runner:output'
-  | 'test-runner:completed'
-  | 'notification:created';
 
 /**
  * Dev server log event payloads for WebSocket streaming
