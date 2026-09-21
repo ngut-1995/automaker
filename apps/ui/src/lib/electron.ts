@@ -120,6 +120,11 @@ export interface IdeationAPI {
     projectPath: string
   ) => Promise<{ success: boolean; analysis?: ProjectAnalysisResult; error?: string }>;
 
+  // Get the cached project analysis
+  getAnalysis: (
+    projectPath: string
+  ) => Promise<{ success: boolean; result?: ProjectAnalysisResult | null; error?: string }>;
+
   // Generate suggestions from a prompt
   generateSuggestions: (
     projectPath: string,
@@ -149,6 +154,11 @@ export interface IdeationAPI {
     categories?: PromptCategory[];
     error?: string;
   }>;
+
+  // Get guided prompts for a single category
+  getPromptsByCategory: (
+    category: IdeaCategory
+  ) => Promise<{ success: boolean; prompts?: IdeationPrompt[]; error?: string }>;
 
   // Event subscriptions
   onStream: (callback: (event: IdeationStreamEvent) => void) => () => void;
@@ -409,6 +419,11 @@ export interface GitHubAPI {
     projectPath: string,
     issueNumber: number
   ) => Promise<{ success: boolean; error?: string }>;
+  /** Delete a stored validation */
+  deleteValidation: (
+    projectPath: string,
+    issueNumber: number
+  ) => Promise<{ success: boolean; deleted?: boolean; error?: string }>;
   /** Subscribe to validation events */
   onValidationEvent: (callback: (event: IssueValidationEvent) => void) => () => void;
   /** Fetch comments for a specific issue */

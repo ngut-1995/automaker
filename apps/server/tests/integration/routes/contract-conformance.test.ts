@@ -35,6 +35,11 @@ import {
   SPEC_REGENERATION_MOUNT,
 } from '@/routes/app-spec/index.js';
 import { createBacklogPlanHandlers, BACKLOG_PLAN_MOUNT } from '@/routes/backlog-plan/index.js';
+import { createIdeationHandlers, IDEATION_MOUNT } from '@/routes/ideation/index.js';
+import { createGitHubHandlers, GITHUB_MOUNT } from '@/routes/github/index.js';
+import { createGitHandlers, GIT_MOUNT } from '@/routes/git/index.js';
+import { createTemplatesHandlers, TEMPLATES_MOUNT } from '@/routes/templates/index.js';
+import { createModelsHandlers, MODELS_MOUNT } from '@/routes/models/index.js';
 import { registerContractOperations, missingContractHandlers } from '@/routes/contract.js';
 import type { OperationHandlers } from '@/routes/contract.js';
 
@@ -140,5 +145,28 @@ describe('contract conformance', () => {
 
   it('backlog-plan mount', () => {
     expectContractMount(BACKLOG_PLAN_MOUNT, createBacklogPlanHandlers({} as never));
+  });
+
+  it('ideation mount', () => {
+    expectContractMount(
+      IDEATION_MOUNT,
+      createIdeationHandlers({} as never, {} as never, {} as never)
+    );
+  });
+
+  it('github mount', () => {
+    expectContractMount(GITHUB_MOUNT, createGitHubHandlers({} as never));
+  });
+
+  it('git mount', () => {
+    expectContractMount(GIT_MOUNT, createGitHandlers());
+  });
+
+  it('templates mount', () => {
+    expectContractMount(TEMPLATES_MOUNT, createTemplatesHandlers());
+  });
+
+  it('models mount', () => {
+    expectContractMount(MODELS_MOUNT, createModelsHandlers());
   });
 });

@@ -18,8 +18,26 @@ import type { EventType } from './event.js';
 import type { Feature } from './feature.js';
 import type { MergeStateInfo } from './worktree.js';
 import type { MultiProjectOverview } from './project-overview.js';
-import type { AgentDefinition } from './provider.js';
-import type { Credentials, GlobalSettings, ProjectSettings } from './settings.js';
+import type { AgentDefinition, ReasoningEffort } from './provider.js';
+import type { Credentials, GlobalSettings, ProjectSettings, ThinkingLevel } from './settings.js';
+import type {
+  AnalysisSuggestion,
+  ConvertToFeatureOptions,
+  CreateIdeaInput,
+  Idea,
+  IdeaCategory,
+  IdeationContextSources,
+  IdeationMessage,
+  IdeationPrompt,
+  IdeationSession,
+  ProjectAnalysisResult,
+  PromptCategory,
+  SendMessageOptions,
+  StartSessionOptions,
+  UpdateIdeaInput,
+} from './ideation.js';
+import type { GitHubComment, LinkedPRInfo, StoredValidation } from './issue-validation.js';
+import type { ModelId } from './model.js';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -1663,6 +1681,531 @@ export interface BacklogPlanClearResponse {
   error?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Ideation mount (/api/ideation)
+// ---------------------------------------------------------------------------
+
+export interface IdeationSessionStartRequest {
+  projectPath: string;
+  options?: StartSessionOptions;
+}
+export interface IdeationSessionStartResponse {
+  success: boolean;
+  session?: IdeationSession;
+  error?: string;
+}
+
+export interface IdeationSessionMessageRequest {
+  sessionId: string;
+  message: string;
+  options?: SendMessageOptions;
+}
+export interface IdeationSessionMessageResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface IdeationSessionStopRequest {
+  sessionId: string;
+  projectPath?: string;
+}
+export interface IdeationSessionStopResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface IdeationSessionGetRequest {
+  projectPath: string;
+  sessionId: string;
+}
+export interface IdeationSessionGetResponse {
+  success: boolean;
+  session?: IdeationSession & { isRunning?: boolean };
+  messages?: IdeationMessage[];
+  error?: string;
+}
+
+export interface IdeationIdeasListRequest {
+  projectPath: string;
+}
+export interface IdeationIdeasListResponse {
+  success: boolean;
+  ideas?: Idea[];
+  error?: string;
+}
+
+export interface IdeationIdeasCreateRequest {
+  projectPath: string;
+  idea: CreateIdeaInput;
+}
+export interface IdeationIdeasCreateResponse {
+  success: boolean;
+  idea?: Idea;
+  error?: string;
+}
+
+export interface IdeationIdeasGetRequest {
+  projectPath: string;
+  ideaId: string;
+}
+export interface IdeationIdeasGetResponse {
+  success: boolean;
+  idea?: Idea;
+  error?: string;
+}
+
+export interface IdeationIdeasUpdateRequest {
+  projectPath: string;
+  ideaId: string;
+  updates: UpdateIdeaInput;
+}
+export interface IdeationIdeasUpdateResponse {
+  success: boolean;
+  idea?: Idea;
+  error?: string;
+}
+
+export interface IdeationIdeasDeleteRequest {
+  projectPath: string;
+  ideaId: string;
+}
+export interface IdeationIdeasDeleteResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface IdeationAnalyzeRequest {
+  projectPath: string;
+}
+export interface IdeationAnalyzeResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface IdeationAnalysisRequest {
+  projectPath: string;
+}
+export interface IdeationAnalysisResponse {
+  success: boolean;
+  result?: ProjectAnalysisResult | null;
+  error?: string;
+}
+
+export interface IdeationConvertRequest extends ConvertToFeatureOptions {
+  projectPath: string;
+  ideaId: string;
+}
+export interface IdeationConvertResponse {
+  success: boolean;
+  feature?: Feature;
+  featureId?: string;
+  error?: string;
+}
+
+export interface IdeationAddSuggestionRequest {
+  projectPath: string;
+  suggestion: AnalysisSuggestion;
+}
+export interface IdeationAddSuggestionResponse {
+  success: boolean;
+  featureId?: string;
+  error?: string;
+}
+
+export type IdeationPromptsRequest = Record<string, never>;
+export interface IdeationPromptsResponse {
+  success: boolean;
+  prompts?: IdeationPrompt[];
+  categories?: PromptCategory[];
+  error?: string;
+}
+
+export interface IdeationPromptsByCategoryRequest {
+  category: IdeaCategory;
+}
+export interface IdeationPromptsByCategoryResponse {
+  success: boolean;
+  prompts?: IdeationPrompt[];
+  error?: string;
+}
+
+export interface IdeationSuggestionsGenerateRequest {
+  projectPath: string;
+  promptId: string;
+  category: IdeaCategory;
+  count?: number;
+  contextSources?: IdeationContextSources;
+}
+export interface IdeationSuggestionsGenerateResponse {
+  success: boolean;
+  suggestions?: AnalysisSuggestion[];
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// GitHub mount (/api/github)
+// ---------------------------------------------------------------------------
+
+export interface GitHubLabelShape {
+  name: string;
+  color: string;
+}
+export interface GitHubAuthorShape {
+  login: string;
+  avatarUrl?: string;
+}
+export interface GitHubAssigneeShape {
+  login: string;
+  avatarUrl?: string;
+}
+export interface GitHubLinkedPullRequestShape {
+  number: number;
+  title: string;
+  state: string;
+  url: string;
+}
+export interface GitHubIssueShape {
+  number: number;
+  title: string;
+  state: string;
+  author: GitHubAuthorShape;
+  createdAt: string;
+  labels: GitHubLabelShape[];
+  url: string;
+  body: string;
+  assignees: GitHubAssigneeShape[];
+  linkedPRs?: GitHubLinkedPullRequestShape[];
+}
+export interface GitHubPRShape {
+  number: number;
+  title: string;
+  state: string;
+  author: GitHubAuthorShape;
+  createdAt: string;
+  labels: GitHubLabelShape[];
+  url: string;
+  isDraft: boolean;
+  headRefName: string;
+  reviewDecision: string | null;
+  mergeable: string;
+  body: string;
+}
+/** Mirrors the UI's `PRReviewComment` (the contract cannot import from the UI). */
+export interface PRReviewCommentShape {
+  id: string;
+  author: string;
+  avatarUrl?: string;
+  body: string;
+  path?: string;
+  line?: number;
+  createdAt: string;
+  updatedAt?: string;
+  isReviewComment: boolean;
+  isOutdated?: boolean;
+  isResolved?: boolean;
+  threadId?: string;
+  diffHunk?: string;
+  side?: string;
+  commitId?: string;
+  isBot?: boolean;
+}
+
+export interface GitHubCheckRemoteRequest {
+  projectPath: string;
+}
+export interface GitHubCheckRemoteResponse {
+  success: boolean;
+  hasGitHubRemote?: boolean;
+  remoteUrl?: string | null;
+  owner?: string | null;
+  repo?: string | null;
+  error?: string;
+}
+
+export interface GitHubListIssuesRequest {
+  projectPath: string;
+}
+export interface GitHubListIssuesResponse {
+  success: boolean;
+  openIssues?: GitHubIssueShape[];
+  closedIssues?: GitHubIssueShape[];
+  error?: string;
+}
+
+export interface GitHubListPRsRequest {
+  projectPath: string;
+}
+export interface GitHubListPRsResponse {
+  success: boolean;
+  openPRs?: GitHubPRShape[];
+  mergedPRs?: GitHubPRShape[];
+  error?: string;
+}
+
+export interface GitHubGetIssueCommentsRequest {
+  projectPath: string;
+  issueNumber: number;
+  cursor?: string;
+}
+export interface GitHubGetIssueCommentsResponse {
+  success: boolean;
+  comments?: GitHubComment[];
+  totalCount?: number;
+  hasNextPage?: boolean;
+  endCursor?: string;
+  error?: string;
+}
+
+export interface GitHubGetPRReviewCommentsRequest {
+  projectPath: string;
+  prNumber: number;
+}
+export interface GitHubGetPRReviewCommentsResponse {
+  success: boolean;
+  comments?: PRReviewCommentShape[];
+  totalCount?: number;
+  error?: string;
+}
+
+export interface GitHubResolveReviewThreadRequest {
+  projectPath: string;
+  threadId: string;
+  resolve: boolean;
+}
+export interface GitHubResolveReviewThreadResponse {
+  success: boolean;
+  isResolved?: boolean;
+  error?: string;
+}
+
+export interface GitHubValidateIssueRequest {
+  projectPath: string;
+  issueNumber: number;
+  issueTitle: string;
+  issueBody: string;
+  issueLabels?: string[];
+  model?: ModelId;
+  thinkingLevel?: ThinkingLevel;
+  reasoningEffort?: ReasoningEffort;
+  providerId?: string;
+  comments?: GitHubComment[];
+  linkedPRs?: LinkedPRInfo[];
+}
+export interface GitHubValidateIssueResponse {
+  success: boolean;
+  message?: string;
+  issueNumber?: number;
+  error?: string;
+}
+
+export interface GitHubGetValidationStatusRequest {
+  projectPath: string;
+  issueNumber?: number;
+}
+export interface GitHubGetValidationStatusResponse {
+  success: boolean;
+  isRunning?: boolean;
+  startedAt?: string;
+  runningIssues?: number[];
+  error?: string;
+}
+
+export interface GitHubStopValidationRequest {
+  projectPath: string;
+  issueNumber: number;
+}
+export interface GitHubStopValidationResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface GitHubGetValidationsRequest {
+  projectPath: string;
+  issueNumber?: number;
+}
+export interface GitHubGetValidationsResponse {
+  success: boolean;
+  validation?: StoredValidation | null;
+  validations?: StoredValidation[];
+  isStale?: boolean;
+  error?: string;
+}
+
+export interface GitHubDeleteValidationRequest {
+  projectPath: string;
+  issueNumber: number;
+}
+export interface GitHubDeleteValidationResponse {
+  success: boolean;
+  deleted?: boolean;
+  error?: string;
+}
+
+export interface GitHubMarkValidationViewedRequest {
+  projectPath: string;
+  issueNumber: number;
+}
+export interface GitHubMarkValidationViewedResponse {
+  success: boolean;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Git mount (/api/git)
+// ---------------------------------------------------------------------------
+
+export interface GitDiffsRequest {
+  projectPath: string;
+}
+export interface GitDiffsResponse {
+  success: boolean;
+  diff?: string;
+  files?: WorktreeFileStatus[];
+  hasChanges?: boolean;
+  error?: string;
+  mergeState?: MergeStateInfo;
+}
+
+export interface GitFileDiffRequest {
+  projectPath: string;
+  filePath: string;
+}
+export interface GitFileDiffResponse {
+  success: boolean;
+  diff?: string;
+  filePath?: string;
+  error?: string;
+}
+
+export interface GitStageFilesRequest {
+  projectPath: string;
+  files: string[];
+  operation: 'stage' | 'unstage';
+}
+export interface GitStageFilesResponse {
+  success: boolean;
+  result?: {
+    operation: 'stage' | 'unstage';
+    filesCount: number;
+  };
+  error?: string;
+}
+
+/** Mirrors the UI's `GitFileDetails` (the contract cannot import from the UI). */
+export interface GitFileDetailsShape {
+  branch: string;
+  lastCommitHash: string;
+  lastCommitMessage: string;
+  lastCommitAuthor: string;
+  lastCommitTimestamp: string;
+  linesAdded: number;
+  linesRemoved: number;
+  isConflicted: boolean;
+  isStaged: boolean;
+  isUnstaged: boolean;
+  statusLabel: string;
+}
+
+export interface GitDetailsRequest {
+  projectPath: string;
+  filePath?: string;
+}
+export interface GitDetailsResponse {
+  success: boolean;
+  details?: GitFileDetailsShape;
+  error?: string;
+}
+
+/** Mirrors the UI's `EnhancedFileStatus` (the contract cannot import from the UI). */
+export interface GitEnhancedFileStatusShape {
+  path: string;
+  indexStatus: string;
+  workTreeStatus: string;
+  isConflicted: boolean;
+  isStaged: boolean;
+  isUnstaged: boolean;
+  linesAdded: number;
+  linesRemoved: number;
+  statusLabel: string;
+}
+
+export interface GitEnhancedStatusRequest {
+  projectPath: string;
+}
+export interface GitEnhancedStatusResponse {
+  success: boolean;
+  branch?: string;
+  files?: GitEnhancedFileStatusShape[];
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Templates mount (/api/templates)
+// ---------------------------------------------------------------------------
+
+export interface TemplatesCloneRequest {
+  repoUrl: string;
+  projectName: string;
+  parentDir: string;
+}
+export interface TemplatesCloneResponse {
+  success: boolean;
+  projectPath?: string;
+  projectName?: string;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Models mount (/api/models)
+// ---------------------------------------------------------------------------
+
+/** Mirrors the UI's `ModelDefinition` (the contract cannot import from the UI). */
+export interface ModelDefinitionShape {
+  id: string;
+  name: string;
+  modelString: string;
+  provider: string;
+  description: string;
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  supportsVision?: boolean;
+  supportsTools?: boolean;
+  tier?: 'basic' | 'standard' | 'premium' | string;
+  default?: boolean;
+  hasReasoning?: boolean;
+}
+
+/** Mirrors the UI's `ProviderStatus` (the contract cannot import from the UI). */
+export interface ModelProviderStatusShape {
+  status: 'installed' | 'not_installed' | 'api_key_only';
+  method?: string;
+  version?: string;
+  path?: string;
+  recommendation?: string;
+  installCommands?: {
+    macos?: string;
+    windows?: string;
+    linux?: string;
+    npm?: string;
+  };
+}
+
+export type ModelsAvailableRequest = Record<string, never>;
+export interface ModelsAvailableResponse {
+  success: boolean;
+  models?: ModelDefinitionShape[];
+  error?: string;
+}
+
+export type ModelsProvidersRequest = Record<string, never>;
+export interface ModelsProvidersResponse {
+  success: boolean;
+  providers?: Record<string, ModelProviderStatusShape>;
+  error?: string;
+}
+
 /**
  * The registry. Add one entry per operation, named `<namespace>.<method>` where
  * the namespace matches the client's API namespace.
@@ -2537,6 +3080,287 @@ export const OPERATIONS = {
     request: null as unknown as BacklogPlanClearRequest,
     response: null as unknown as BacklogPlanClearResponse,
     pathParams: ['projectPath'],
+  },
+  'ideation.sessionStart': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/session/start',
+    request: null as unknown as IdeationSessionStartRequest,
+    response: null as unknown as IdeationSessionStartResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.sessionMessage': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/session/message',
+    request: null as unknown as IdeationSessionMessageRequest,
+    response: null as unknown as IdeationSessionMessageResponse,
+  },
+  'ideation.sessionStop': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/session/stop',
+    request: null as unknown as IdeationSessionStopRequest,
+    response: null as unknown as IdeationSessionStopResponse,
+  },
+  'ideation.sessionGet': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/session/get',
+    request: null as unknown as IdeationSessionGetRequest,
+    response: null as unknown as IdeationSessionGetResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.ideasList': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/ideas/list',
+    request: null as unknown as IdeationIdeasListRequest,
+    response: null as unknown as IdeationIdeasListResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.ideasCreate': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/ideas/create',
+    request: null as unknown as IdeationIdeasCreateRequest,
+    response: null as unknown as IdeationIdeasCreateResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.ideasGet': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/ideas/get',
+    request: null as unknown as IdeationIdeasGetRequest,
+    response: null as unknown as IdeationIdeasGetResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.ideasUpdate': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/ideas/update',
+    request: null as unknown as IdeationIdeasUpdateRequest,
+    response: null as unknown as IdeationIdeasUpdateResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.ideasDelete': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/ideas/delete',
+    request: null as unknown as IdeationIdeasDeleteRequest,
+    response: null as unknown as IdeationIdeasDeleteResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.analyze': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/analyze',
+    request: null as unknown as IdeationAnalyzeRequest,
+    response: null as unknown as IdeationAnalyzeResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.analysis': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/analysis',
+    request: null as unknown as IdeationAnalysisRequest,
+    response: null as unknown as IdeationAnalysisResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.convert': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/convert',
+    request: null as unknown as IdeationConvertRequest,
+    response: null as unknown as IdeationConvertResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.addSuggestion': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/add-suggestion',
+    request: null as unknown as IdeationAddSuggestionRequest,
+    response: null as unknown as IdeationAddSuggestionResponse,
+    pathParams: ['projectPath'],
+  },
+  'ideation.prompts': {
+    method: 'GET',
+    mount: '/api/ideation',
+    path: '/prompts',
+    request: null as unknown as IdeationPromptsRequest,
+    response: null as unknown as IdeationPromptsResponse,
+  },
+  'ideation.promptsByCategory': {
+    method: 'GET',
+    mount: '/api/ideation',
+    path: '/prompts/:category',
+    request: null as unknown as IdeationPromptsByCategoryRequest,
+    response: null as unknown as IdeationPromptsByCategoryResponse,
+  },
+  'ideation.suggestionsGenerate': {
+    method: 'POST',
+    mount: '/api/ideation',
+    path: '/suggestions/generate',
+    request: null as unknown as IdeationSuggestionsGenerateRequest,
+    response: null as unknown as IdeationSuggestionsGenerateResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.checkRemote': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/check-remote',
+    request: null as unknown as GitHubCheckRemoteRequest,
+    response: null as unknown as GitHubCheckRemoteResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.listIssues': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/issues',
+    request: null as unknown as GitHubListIssuesRequest,
+    response: null as unknown as GitHubListIssuesResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.listPRs': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/prs',
+    request: null as unknown as GitHubListPRsRequest,
+    response: null as unknown as GitHubListPRsResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.getIssueComments': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/issue-comments',
+    request: null as unknown as GitHubGetIssueCommentsRequest,
+    response: null as unknown as GitHubGetIssueCommentsResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.getPRReviewComments': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/pr-review-comments',
+    request: null as unknown as GitHubGetPRReviewCommentsRequest,
+    response: null as unknown as GitHubGetPRReviewCommentsResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.resolveReviewThread': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/resolve-pr-comment',
+    request: null as unknown as GitHubResolveReviewThreadRequest,
+    response: null as unknown as GitHubResolveReviewThreadResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.validateIssue': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/validate-issue',
+    request: null as unknown as GitHubValidateIssueRequest,
+    response: null as unknown as GitHubValidateIssueResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.getValidationStatus': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/validation-status',
+    request: null as unknown as GitHubGetValidationStatusRequest,
+    response: null as unknown as GitHubGetValidationStatusResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.stopValidation': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/validation-stop',
+    request: null as unknown as GitHubStopValidationRequest,
+    response: null as unknown as GitHubStopValidationResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.getValidations': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/validations',
+    request: null as unknown as GitHubGetValidationsRequest,
+    response: null as unknown as GitHubGetValidationsResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.deleteValidation': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/validation-delete',
+    request: null as unknown as GitHubDeleteValidationRequest,
+    response: null as unknown as GitHubDeleteValidationResponse,
+    pathParams: ['projectPath'],
+  },
+  'github.markValidationViewed': {
+    method: 'POST',
+    mount: '/api/github',
+    path: '/validation-mark-viewed',
+    request: null as unknown as GitHubMarkValidationViewedRequest,
+    response: null as unknown as GitHubMarkValidationViewedResponse,
+    pathParams: ['projectPath'],
+  },
+  'git.diffs': {
+    method: 'POST',
+    mount: '/api/git',
+    path: '/diffs',
+    request: null as unknown as GitDiffsRequest,
+    response: null as unknown as GitDiffsResponse,
+    pathParams: ['projectPath'],
+  },
+  'git.fileDiff': {
+    method: 'POST',
+    mount: '/api/git',
+    path: '/file-diff',
+    request: null as unknown as GitFileDiffRequest,
+    response: null as unknown as GitFileDiffResponse,
+    pathParams: ['projectPath', 'filePath'],
+  },
+  'git.stageFiles': {
+    method: 'POST',
+    mount: '/api/git',
+    path: '/stage-files',
+    request: null as unknown as GitStageFilesRequest,
+    response: null as unknown as GitStageFilesResponse,
+    pathParams: ['projectPath', 'files[]'],
+  },
+  'git.details': {
+    method: 'POST',
+    mount: '/api/git',
+    path: '/details',
+    request: null as unknown as GitDetailsRequest,
+    response: null as unknown as GitDetailsResponse,
+    pathParams: ['projectPath', 'filePath?'],
+  },
+  'git.enhancedStatus': {
+    method: 'POST',
+    mount: '/api/git',
+    path: '/enhanced-status',
+    request: null as unknown as GitEnhancedStatusRequest,
+    response: null as unknown as GitEnhancedStatusResponse,
+    pathParams: ['projectPath'],
+  },
+  'templates.clone': {
+    method: 'POST',
+    mount: '/api/templates',
+    path: '/clone',
+    request: null as unknown as TemplatesCloneRequest,
+    response: null as unknown as TemplatesCloneResponse,
+  },
+  'models.available': {
+    method: 'GET',
+    mount: '/api/models',
+    path: '/available',
+    request: null as unknown as ModelsAvailableRequest,
+    response: null as unknown as ModelsAvailableResponse,
+  },
+  'models.providers': {
+    method: 'GET',
+    mount: '/api/models',
+    path: '/providers',
+    request: null as unknown as ModelsProvidersRequest,
+    response: null as unknown as ModelsProvidersResponse,
   },
 } as const satisfies Record<string, OperationDefinition<unknown, unknown>>;
 

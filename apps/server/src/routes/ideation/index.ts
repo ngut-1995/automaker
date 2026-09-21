@@ -1,12 +1,15 @@
 /**
  * Ideation routes - HTTP API for brainstorming and idea management
+ *
+ * Routes are registered from the shared operation contract; this file only maps
+ * each operation to the handler that implements it.
  */
 
 import { Router } from 'express';
 import type { EventEmitter } from '../../lib/events.js';
-import { validatePathParams } from '../../middleware/validate-paths.js';
 import type { IdeationService } from '../../services/ideation-service.js';
 import type { FeatureLoader } from '../../services/feature-loader.js';
+import { registerContractOperations, type OperationHandlers } from '../contract.js';
 
 // Route handlers
 import { createSessionStartHandler } from './routes/session-start.js';
@@ -24,86 +27,54 @@ import { createAddSuggestionHandler } from './routes/add-suggestion.js';
 import { createPromptsHandler, createPromptsByCategoryHandler } from './routes/prompts.js';
 import { createSuggestionsGenerateHandler } from './routes/suggestions-generate.js';
 
+export const IDEATION_MOUNT = '/api/ideation';
+
+export function createIdeationHandlers(
+  events: EventEmitter,
+  ideationService: IdeationService,
+  featureLoader: FeatureLoader
+): OperationHandlers {
+  return {
+    // Session management
+    'ideation.sessionStart': createSessionStartHandler(ideationService),
+    'ideation.sessionMessage': createSessionMessageHandler(ideationService),
+    'ideation.sessionStop': createSessionStopHandler(events, ideationService),
+    'ideation.sessionGet': createSessionGetHandler(ideationService),
+
+    // Ideas CRUD
+    'ideation.ideasList': createIdeasListHandler(ideationService),
+    'ideation.ideasCreate': createIdeasCreateHandler(events, ideationService),
+    'ideation.ideasGet': createIdeasGetHandler(ideationService),
+    'ideation.ideasUpdate': createIdeasUpdateHandler(events, ideationService),
+    'ideation.ideasDelete': createIdeasDeleteHandler(events, ideationService),
+
+    // Project analysis
+    'ideation.analyze': createAnalyzeHandler(ideationService),
+    'ideation.analysis': createGetAnalysisHandler(ideationService),
+
+    // Convert to feature
+    'ideation.convert': createConvertHandler(events, ideationService, featureLoader),
+
+    // Add suggestion to board as a feature
+    'ideation.addSuggestion': createAddSuggestionHandler(ideationService, featureLoader),
+
+    // Guided prompts (no validation needed - static data)
+    'ideation.prompts': createPromptsHandler(ideationService),
+    'ideation.promptsByCategory': createPromptsByCategoryHandler(ideationService),
+
+    // Generate suggestions (structured output)
+    'ideation.suggestionsGenerate': createSuggestionsGenerateHandler(ideationService),
+  };
+}
+
 export function createIdeationRoutes(
   events: EventEmitter,
   ideationService: IdeationService,
   featureLoader: FeatureLoader
 ): Router {
-  const router = Router();
-
-  // Session management
-  router.post(
-    '/session/start',
-    validatePathParams('projectPath'),
-    createSessionStartHandler(ideationService)
+  return registerContractOperations(
+    Router(),
+    IDEATION_MOUNT,
+    createIdeationHandlers(events, ideationService, featureLoader)
   );
-  router.post('/session/message', createSessionMessageHandler(ideationService));
-  router.post('/session/stop', createSessionStopHandler(events, ideationService));
-  router.post(
-    '/session/get',
-    validatePathParams('projectPath'),
-    createSessionGetHandler(ideationService)
-  );
-
-  // Ideas CRUD
-  router.post(
-    '/ideas/list',
-    validatePathParams('projectPath'),
-    createIdeasListHandler(ideationService)
-  );
-  router.post(
-    '/ideas/create',
-    validatePathParams('projectPath'),
-    createIdeasCreateHandler(events, ideationService)
-  );
-  router.post(
-    '/ideas/get',
-    validatePathParams('projectPath'),
-    createIdeasGetHandler(ideationService)
-  );
-  router.post(
-    '/ideas/update',
-    validatePathParams('projectPath'),
-    createIdeasUpdateHandler(events, ideationService)
-  );
-  router.post(
-    '/ideas/delete',
-    validatePathParams('projectPath'),
-    createIdeasDeleteHandler(events, ideationService)
-  );
-
-  // Project analysis
-  router.post('/analyze', validatePathParams('projectPath'), createAnalyzeHandler(ideationService));
-  router.post(
-    '/analysis',
-    validatePathParams('projectPath'),
-    createGetAnalysisHandler(ideationService)
-  );
-
-  // Convert to feature
-  router.post(
-    '/convert',
-    validatePathParams('projectPath'),
-    createConvertHandler(events, ideationService, featureLoader)
-  );
-
-  // Add suggestion to board as a feature
-  router.post(
-    '/add-suggestion',
-    validatePathParams('projectPath'),
-    createAddSuggestionHandler(ideationService, featureLoader)
-  );
-
-  // Guided prompts (no validation needed - static data)
-  router.get('/prompts', createPromptsHandler(ideationService));
-  router.get('/prompts/:category', createPromptsByCategoryHandler(ideationService));
-
-  // Generate suggestions (structured output)
-  router.post(
-    '/suggestions/generate',
-    validatePathParams('projectPath'),
-    createSuggestionsGenerateHandler(ideationService)
-  );
-
-  return router;
 }

@@ -52,7 +52,7 @@ import type {
   GeminiUsage,
   ZaiUsageResponse,
 } from '@/store/app-store';
-import type { WorktreeAPI, GitAPI, ModelDefinition, ProviderStatus } from '@/types/electron';
+import type { WorktreeAPI, GitAPI } from '@/types/electron';
 import type { ModelId, ThinkingLevel, ReasoningEffort, Feature } from '@automaker/types';
 import { getGlobalFileBrowser } from '@/contexts/file-browser-context';
 
@@ -72,6 +72,34 @@ const appendQuery = (path: string, input: unknown): string => {
   }
   const query = params.toString();
   return query ? `${path}?${query}` : path;
+};
+
+/** Matches `:param` segments in a contract path. */
+const PATH_PARAM_PATTERN = /:([A-Za-z0-9_]+)/g;
+
+/**
+ * Substitute any `:param` segment in a contract path with the matching request
+ * value. Most contract paths are static, so this is a no-op for them.
+ */
+const resolvePathParams = (path: string, input: unknown): string => {
+  if (!input || typeof input !== 'object') return path;
+  return path.replace(PATH_PARAM_PATTERN, (token, key: string) => {
+    const value = (input as Record<string, unknown>)[key];
+    return value === undefined || value === null ? token : encodeURIComponent(String(value));
+  });
+};
+
+/**
+ * Drop values already consumed as `:param` segments so they are not repeated in
+ * the query string of a GET request.
+ */
+const queryInputWithoutPathParams = (path: string, input: unknown): unknown => {
+  if (!input || typeof input !== 'object') return input;
+  const keys = [...path.matchAll(PATH_PARAM_PATTERN)].map((match) => match[1]);
+  if (keys.length === 0) return input;
+  const rest = { ...(input as Record<string, unknown>) };
+  for (const key of keys) delete rest[key];
+  return rest;
 };
 
 // Cached server URL (set during initialization in Electron mode)
@@ -1179,16 +1207,19 @@ export class HttpApiClient implements ElectronAPI {
     options?: { signal?: AbortSignal }
   ): Promise<ResponseOf<N>> {
     const path = operationPath(name);
+    const resolvedPath = resolvePathParams(path, input);
     const definition: OperationDefinition<unknown, unknown> = OPERATIONS[name];
     switch (definition.method) {
       case 'GET':
-        return this.get<ResponseOf<N>>(appendQuery(path, input));
+        return this.get<ResponseOf<N>>(
+          appendQuery(resolvedPath, queryInputWithoutPathParams(path, input))
+        );
       case 'PUT':
-        return this.put<ResponseOf<N>>(path, input, options?.signal);
+        return this.put<ResponseOf<N>>(resolvedPath, input, options?.signal);
       case 'DELETE':
-        return this.httpDelete<ResponseOf<N>>(path, input, options?.signal);
+        return this.httpDelete<ResponseOf<N>>(resolvedPath, input, options?.signal);
       default:
-        return this.post<ResponseOf<N>>(path, input, options?.signal);
+        return this.post<ResponseOf<N>>(resolvedPath, input, options?.signal);
     }
   }
 
@@ -1463,19 +1494,11 @@ export class HttpApiClient implements ElectronAPI {
 
   // Model API
   model = {
-    getAvailable: async (): Promise<{
-      success: boolean;
-      models?: ModelDefinition[];
-      error?: string;
-    }> => {
-      return this.get('/api/models/available');
+    getAvailable: async () => {
+      return this.request('models.available');
     },
-    checkProviders: async (): Promise<{
-      success: boolean;
-      providers?: Record<string, ProviderStatus>;
-      error?: string;
-    }> => {
-      return this.get('/api/models/providers');
+    checkProviders: async () => {
+      return this.request('models.providers');
     },
   };
 
@@ -2406,15 +2429,14 @@ export class HttpApiClient implements ElectronAPI {
 
   // Git API
   git: GitAPI = {
-    getDiffs: (projectPath: string) => this.post('/api/git/diffs', { projectPath }),
+    getDiffs: (projectPath: string) => this.request('git.diffs', { projectPath }),
     getFileDiff: (projectPath: string, filePath: string) =>
-      this.post('/api/git/file-diff', { projectPath, filePath }),
+      this.request('git.fileDiff', { projectPath, filePath }),
     stageFiles: (projectPath: string, files: string[], operation: 'stage' | 'unstage') =>
-      this.post('/api/git/stage-files', { projectPath, files, operation }),
+      this.request('git.stageFiles', { projectPath, files, operation }),
     getDetails: (projectPath: string, filePath?: string) =>
-      this.post('/api/git/details', { projectPath, filePath }),
-    getEnhancedStatus: (projectPath: string) =>
-      this.post('/api/git/enhanced-status', { projectPath }),
+      this.request('git.details', { projectPath, filePath }),
+    getEnhancedStatus: (projectPath: string) => this.request('git.enhancedStatus', { projectPath }),
   };
 
   // Spec Regeneration API
@@ -2467,9 +2489,9 @@ export class HttpApiClient implements ElectronAPI {
 
   // GitHub API
   github: GitHubAPI = {
-    checkRemote: (projectPath: string) => this.post('/api/github/check-remote', { projectPath }),
-    listIssues: (projectPath: string) => this.post('/api/github/issues', { projectPath }),
-    listPRs: (projectPath: string) => this.post('/api/github/prs', { projectPath }),
+    checkRemote: (projectPath: string) => this.request('github.checkRemote', { projectPath }),
+    listIssues: (projectPath: string) => this.request('github.listIssues', { projectPath }),
+    listPRs: (projectPath: string) => this.request('github.listPRs', { projectPath }),
     validateIssue: (
       projectPath: string,
       issue: IssueValidationInput,
@@ -2478,7 +2500,7 @@ export class HttpApiClient implements ElectronAPI {
       reasoningEffort?: ReasoningEffort,
       providerId?: string
     ) =>
-      this.post('/api/github/validate-issue', {
+      this.request('github.validateIssue', {
         projectPath,
         ...issue,
         model,
@@ -2487,21 +2509,23 @@ export class HttpApiClient implements ElectronAPI {
         providerId,
       }),
     getValidationStatus: (projectPath: string, issueNumber?: number) =>
-      this.post('/api/github/validation-status', { projectPath, issueNumber }),
+      this.request('github.getValidationStatus', { projectPath, issueNumber }),
     stopValidation: (projectPath: string, issueNumber: number) =>
-      this.post('/api/github/validation-stop', { projectPath, issueNumber }),
+      this.request('github.stopValidation', { projectPath, issueNumber }),
     getValidations: (projectPath: string, issueNumber?: number) =>
-      this.post('/api/github/validations', { projectPath, issueNumber }),
+      this.request('github.getValidations', { projectPath, issueNumber }),
+    deleteValidation: (projectPath: string, issueNumber: number) =>
+      this.request('github.deleteValidation', { projectPath, issueNumber }),
     markValidationViewed: (projectPath: string, issueNumber: number) =>
-      this.post('/api/github/validation-mark-viewed', { projectPath, issueNumber }),
+      this.request('github.markValidationViewed', { projectPath, issueNumber }),
     onValidationEvent: (callback: (event: IssueValidationEvent) => void) =>
       this.subscribeToEvent('issue-validation:event', callback as EventCallback),
     getIssueComments: (projectPath: string, issueNumber: number, cursor?: string) =>
-      this.post('/api/github/issue-comments', { projectPath, issueNumber, cursor }),
+      this.request('github.getIssueComments', { projectPath, issueNumber, cursor }),
     getPRReviewComments: (projectPath: string, prNumber: number) =>
-      this.post('/api/github/pr-review-comments', { projectPath, prNumber }),
+      this.request('github.getPRReviewComments', { projectPath, prNumber }),
     resolveReviewThread: (projectPath: string, threadId: string, resolve: boolean) =>
-      this.post('/api/github/resolve-pr-comment', { projectPath, threadId, resolve }),
+      this.request('github.resolveReviewThread', { projectPath, threadId, resolve }),
   };
 
   // Workspace API
@@ -2616,16 +2640,8 @@ export class HttpApiClient implements ElectronAPI {
 
   // Templates API
   templates = {
-    clone: (
-      repoUrl: string,
-      projectName: string,
-      parentDir: string
-    ): Promise<{
-      success: boolean;
-      projectPath?: string;
-      projectName?: string;
-      error?: string;
-    }> => this.post('/api/templates/clone', { repoUrl, projectName, parentDir }),
+    clone: (repoUrl: string, projectName: string, parentDir: string) =>
+      this.request('templates.clone', { repoUrl, projectName, parentDir }),
   };
 
   // Settings API - persistent file-based settings
@@ -2794,34 +2810,36 @@ export class HttpApiClient implements ElectronAPI {
   // Ideation API - brainstorming and idea management
   ideation: IdeationAPI = {
     startSession: (projectPath: string, options?: StartSessionOptions) =>
-      this.post('/api/ideation/session/start', { projectPath, options }),
+      this.request('ideation.sessionStart', { projectPath, options }),
 
     getSession: (projectPath: string, sessionId: string) =>
-      this.post('/api/ideation/session/get', { projectPath, sessionId }),
+      this.request('ideation.sessionGet', { projectPath, sessionId }),
 
     sendMessage: (
       sessionId: string,
       message: string,
       options?: { imagePaths?: string[]; model?: string }
-    ) => this.post('/api/ideation/session/message', { sessionId, message, options }),
+    ) => this.request('ideation.sessionMessage', { sessionId, message, options }),
 
-    stopSession: (sessionId: string) => this.post('/api/ideation/session/stop', { sessionId }),
+    stopSession: (sessionId: string) => this.request('ideation.sessionStop', { sessionId }),
 
-    listIdeas: (projectPath: string) => this.post('/api/ideation/ideas/list', { projectPath }),
+    listIdeas: (projectPath: string) => this.request('ideation.ideasList', { projectPath }),
 
     createIdea: (projectPath: string, idea: CreateIdeaInput) =>
-      this.post('/api/ideation/ideas/create', { projectPath, idea }),
+      this.request('ideation.ideasCreate', { projectPath, idea }),
 
     getIdea: (projectPath: string, ideaId: string) =>
-      this.post('/api/ideation/ideas/get', { projectPath, ideaId }),
+      this.request('ideation.ideasGet', { projectPath, ideaId }),
 
     updateIdea: (projectPath: string, ideaId: string, updates: UpdateIdeaInput) =>
-      this.post('/api/ideation/ideas/update', { projectPath, ideaId, updates }),
+      this.request('ideation.ideasUpdate', { projectPath, ideaId, updates }),
 
     deleteIdea: (projectPath: string, ideaId: string) =>
-      this.post('/api/ideation/ideas/delete', { projectPath, ideaId }),
+      this.request('ideation.ideasDelete', { projectPath, ideaId }),
 
-    analyzeProject: (projectPath: string) => this.post('/api/ideation/analyze', { projectPath }),
+    analyzeProject: (projectPath: string) => this.request('ideation.analyze', { projectPath }),
+
+    getAnalysis: (projectPath: string) => this.request('ideation.analysis', { projectPath }),
 
     generateSuggestions: (
       projectPath: string,
@@ -2830,7 +2848,7 @@ export class HttpApiClient implements ElectronAPI {
       count?: number,
       contextSources?: IdeationContextSources
     ) =>
-      this.post('/api/ideation/suggestions/generate', {
+      this.request('ideation.suggestionsGenerate', {
         projectPath,
         promptId,
         category,
@@ -2839,15 +2857,15 @@ export class HttpApiClient implements ElectronAPI {
       }),
 
     convertToFeature: (projectPath: string, ideaId: string, options?: ConvertToFeatureOptions) =>
-      this.post('/api/ideation/convert', { projectPath, ideaId, ...options }),
+      this.request('ideation.convert', { projectPath, ideaId, ...options }),
 
-    addSuggestionToBoard: (
-      projectPath: string,
-      suggestion: AnalysisSuggestion
-    ): Promise<{ success: boolean; featureId?: string; error?: string }> =>
-      this.post('/api/ideation/add-suggestion', { projectPath, suggestion }),
+    addSuggestionToBoard: (projectPath: string, suggestion: AnalysisSuggestion) =>
+      this.request('ideation.addSuggestion', { projectPath, suggestion }),
 
-    getPrompts: () => this.get('/api/ideation/prompts'),
+    getPrompts: () => this.request('ideation.prompts'),
+
+    getPromptsByCategory: (category: IdeaCategory) =>
+      this.request('ideation.promptsByCategory', { category }),
 
     onStream: (callback: (event: IdeationStreamEvent) => void): (() => void) => {
       return this.subscribeToEvent('ideation:stream', callback as EventCallback);
