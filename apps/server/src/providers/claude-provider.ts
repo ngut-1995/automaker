@@ -11,7 +11,9 @@ import { classifyError, getUserFriendlyErrorMessage, createLogger } from '@autom
 import { getClaudeAuthIndicators } from '@automaker/platform';
 import {
   getThinkingTokenBudget,
+  isClaudeCanonicalId,
   validateBareModelId,
+  type ClaudeCanonicalId,
   type ClaudeApiProfile,
   type ClaudeCompatibleProvider,
   type Credentials,
@@ -50,6 +52,38 @@ const SYSTEM_ENV_VARS = [
   'XDG_CACHE_HOME',
   'XDG_STATE_HOME',
 ];
+
+/**
+ * Canonical ID -> tier alias, the Claude SDK's wire format for a tier.
+ *
+ * This is the single boundary where a tier alias comes into existence. The SDK
+ * resolves the alias to whatever model is current for that tier on this account,
+ * and `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` -- which Automaker sets from a
+ * Claude-compatible provider's tier mappings -- is what captures it.
+ *
+ * Neither `stripProviderPrefix` nor `getBareModelIdForCli` does this: both pass the
+ * `claude-` prefix through deliberately, because every other consumer wants the
+ * canonical ID. See docs/adr/0001-claude-tier-aliases.md.
+ */
+const CLAUDE_TIER_ALIASES: Record<ClaudeCanonicalId, string> = {
+  'claude-opus': 'opus',
+  'claude-sonnet': 'sonnet',
+  'claude-haiku': 'haiku',
+};
+
+/**
+ * Translate a model string into the value sent to the Claude Agent SDK.
+ *
+ * A canonical ID becomes its tier alias. Everything else -- a hand-written pinned
+ * model ID, a Claude-compatible provider's own model -- is passed through
+ * unchanged, because Automaker has no business rewriting a model it did not choose.
+ */
+export function toClaudeWireModel(model: string): string {
+  if (isClaudeCanonicalId(model)) {
+    return CLAUDE_TIER_ALIASES[model];
+  }
+  return model;
+}
 
 /**
  * Check if the config is a ClaudeCompatibleProvider (new system)
@@ -218,8 +252,10 @@ export class ClaudeProvider extends BaseProvider {
       thinkingLevel === 'adaptive' ? undefined : getThinkingTokenBudget(thinkingLevel);
 
     // Build Claude SDK options
+    // The tier alias is produced here and nowhere else: `model` stays canonical
+    // for every other consumer.
     const sdkOptions: Options = {
-      model,
+      model: toClaudeWireModel(model),
       systemPrompt,
       maxTurns,
       cwd,
@@ -370,15 +406,19 @@ export class ClaudeProvider extends BaseProvider {
 
   /**
    * Get available Claude models
+   *
+   * Tiers, not versions. Automaker addresses Claude by tier and the provider picks
+   * the model, so listing pinned model IDs here would advertise versions Automaker
+   * no longer sends and cannot keep current.
    */
   getAvailableModels(): ModelDefinition[] {
     const models = [
       {
-        id: 'claude-opus-4-6',
-        name: 'Claude Opus 4.6',
-        modelString: 'claude-opus-4-6',
+        id: 'claude-opus',
+        name: 'Claude Opus',
+        modelString: 'claude-opus',
         provider: 'anthropic',
-        description: 'Most capable Claude model with adaptive thinking',
+        description: 'Most capable Claude tier',
         contextWindow: 200000,
         maxOutputTokens: 128000,
         supportsVision: true,
@@ -387,11 +427,11 @@ export class ClaudeProvider extends BaseProvider {
         default: true,
       },
       {
-        id: 'claude-sonnet-4-6',
-        name: 'Claude Sonnet 4.6',
-        modelString: 'claude-sonnet-4-6',
+        id: 'claude-sonnet',
+        name: 'Claude Sonnet',
+        modelString: 'claude-sonnet',
         provider: 'anthropic',
-        description: 'Balanced performance and cost with enhanced reasoning',
+        description: 'Balanced Claude tier for everyday work',
         contextWindow: 200000,
         maxOutputTokens: 64000,
         supportsVision: true,
@@ -399,35 +439,11 @@ export class ClaudeProvider extends BaseProvider {
         tier: 'standard' as const,
       },
       {
-        id: 'claude-sonnet-4-20250514',
-        name: 'Claude Sonnet 4',
-        modelString: 'claude-sonnet-4-20250514',
+        id: 'claude-haiku',
+        name: 'Claude Haiku',
+        modelString: 'claude-haiku',
         provider: 'anthropic',
-        description: 'Balanced performance and cost',
-        contextWindow: 200000,
-        maxOutputTokens: 16000,
-        supportsVision: true,
-        supportsTools: true,
-        tier: 'standard' as const,
-      },
-      {
-        id: 'claude-3-5-sonnet-20241022',
-        name: 'Claude 3.5 Sonnet',
-        modelString: 'claude-3-5-sonnet-20241022',
-        provider: 'anthropic',
-        description: 'Fast and capable',
-        contextWindow: 200000,
-        maxOutputTokens: 8000,
-        supportsVision: true,
-        supportsTools: true,
-        tier: 'standard' as const,
-      },
-      {
-        id: 'claude-haiku-4-5-20251001',
-        name: 'Claude Haiku 4.5',
-        modelString: 'claude-haiku-4-5-20251001',
-        provider: 'anthropic',
-        description: 'Fastest Claude model',
+        description: 'Fastest, cheapest Claude tier',
         contextWindow: 200000,
         maxOutputTokens: 8000,
         supportsVision: true,

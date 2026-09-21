@@ -92,9 +92,9 @@ export interface StreamingQueryOptions extends SimpleQueryOptions {
 }
 
 /**
- * Default model to use when none specified
+ * Default model to use when none specified (canonical ID: names a tier, not a version)
  */
-const DEFAULT_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_MODEL = 'claude-sonnet';
 
 /**
  * Execute a simple query and return the text result

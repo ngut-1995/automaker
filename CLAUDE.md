@@ -157,11 +157,22 @@ Project-specific rules are stored in `.automaker/context/` and automatically loa
 
 ### Model Resolution
 
-Use `resolveModelString()` from `@automaker/model-resolver` to convert model aliases:
+Use `resolveModelString()` from `@automaker/model-resolver` to normalise any model
+string to a **canonical ID**. Claude is addressed by tier, never by version:
 
-- `haiku` → `claude-haiku-4-5`
-- `sonnet` → `claude-sonnet-4-20250514`
-- `opus` → `claude-opus-4-6`
+- `haiku` → `claude-haiku`
+- `sonnet` → `claude-sonnet`
+- `opus` → `claude-opus`
+
+A canonical ID names a capability tier; which concrete model runs is the provider's
+decision. The resolver never expands a canonical ID into a pinned version, and never
+returns a bare tier alias — a bare alias would reach code that infers capability from
+the model string. The translation from canonical ID to the tier alias the SDK expects
+(`claude-opus` → `opus`) lives at the Claude provider boundary and nowhere else.
+
+A hand-written pinned model ID (`claude-opus-4-1-20250805`) passes through untouched.
+See `CONTEXT.md` for the vocabulary and `docs/adr/0001-claude-tier-aliases.md` for the
+decision.
 
 ## Environment Variables
 
@@ -174,3 +185,20 @@ Use `resolveModelString()` from `@automaker/model-resolver` to convert model ali
 - `AUTOMAKER_MOCK_AGENT=true` - Enable mock agent mode for CI testing
 - `AUTOMAKER_AUTO_LOGIN=true` - Skip login prompt in development (disabled when NODE_ENV=production)
 - `VITE_HOSTNAME` - Hostname for frontend API URLs (default: localhost)
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues in `ngut-1995/harbor` (not this clone), always via an explicit `--repo` flag.
+See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label named after its role.
+See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root.
+See `docs/agents/domain.md`.

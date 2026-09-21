@@ -124,7 +124,7 @@ const feature: Feature = {
 };
 
 const options: ExecuteOptions = {
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet', // canonical ID: names a tier, not a version
   temperature: 0.7,
 };
 ```

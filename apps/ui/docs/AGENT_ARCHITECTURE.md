@@ -199,7 +199,7 @@ The agent is configured with:
 
 ```javascript
 {
-  model: "claude-opus-4-6",
+  model: "claude-opus",  // canonical ID; the provider resolves the tier
   maxTurns: 20,
   cwd: workingDirectory,
   allowedTools: [

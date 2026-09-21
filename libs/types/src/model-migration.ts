@@ -14,7 +14,7 @@ import {
   RETIRED_OPENCODE_MODEL_MAP,
 } from './opencode-models.js';
 import type { ClaudeCanonicalId } from './model.js';
-import { LEGACY_CLAUDE_ALIAS_MAP, CLAUDE_CANONICAL_MAP, CLAUDE_MODEL_MAP } from './model.js';
+import { LEGACY_CLAUDE_ALIAS_MAP, isClaudeCanonicalId } from './model.js';
 import type { PhaseModelEntry } from './settings.js';
 
 /**
@@ -80,8 +80,8 @@ export function migrateModelId(legacyId: string | undefined | null): string {
     return LEGACY_OPENCODE_MODEL_MAP[legacyId];
   }
 
-  // Already has claude- prefix and is in canonical map
-  if (legacyId.startsWith('claude-') && legacyId in CLAUDE_CANONICAL_MAP) {
+  // Already a canonical Claude ID
+  if (isClaudeCanonicalId(legacyId)) {
     return legacyId;
   }
 

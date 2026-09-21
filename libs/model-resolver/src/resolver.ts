@@ -2,7 +2,7 @@
  * Model resolution utilities for handling model string mapping
  *
  * Provides centralized model resolution logic:
- * - Maps Claude model aliases to full model strings
+ * - Normalises Claude model strings to canonical IDs (never to a pinned version)
  * - Passes through Cursor models unchanged (handled by CursorProvider)
  * - Passes through Copilot models unchanged (handled by CopilotProvider)
  * - Passes through Gemini models unchanged (handled by GeminiProvider)
@@ -19,7 +19,7 @@
 
 import {
   CLAUDE_MODEL_MAP,
-  CLAUDE_CANONICAL_MAP,
+  isClaudeCanonicalId,
   CURSOR_MODEL_MAP,
   CODEX_MODEL_MAP,
   DEFAULT_MODELS,
@@ -41,7 +41,7 @@ const OPENAI_O_SERIES_PATTERN = /^o\d/;
 const OPENAI_O_SERIES_ALLOWED_MODELS = new Set<string>();
 
 /**
- * Resolve a model key/alias to a full model string
+ * Resolve a model key/alias to a canonical model ID
  *
  * Handles both canonical prefixed IDs and legacy aliases:
  * - Canonical: cursor-auto, cursor-gpt-5.2, opencode-big-pickle, claude-sonnet
@@ -103,24 +103,27 @@ export function resolveModelString(
   }
 
   // Claude canonical ID (claude-haiku, claude-sonnet, claude-opus)
-  // Map to full model string
-  if (canonicalKey in CLAUDE_CANONICAL_MAP) {
-    const resolved = CLAUDE_CANONICAL_MAP[canonicalKey as keyof typeof CLAUDE_CANONICAL_MAP];
-    console.log(`[ModelResolver] Resolved Claude canonical ID: "${canonicalKey}" -> "${resolved}"`);
-    return resolved;
+  // Kept as-is: a canonical ID names a tier, and the version it runs is the
+  // provider's decision. The Claude provider boundary translates it to the tier
+  // alias the SDK expects; nothing upstream ever sees that alias.
+  if (isClaudeCanonicalId(canonicalKey)) {
+    console.log(`[ModelResolver] Resolved Claude canonical ID: "${canonicalKey}"`);
+    return canonicalKey;
   }
 
-  // Full Claude model string (e.g., claude-sonnet-4-6) - pass through
+  // Hand-written pinned Claude model ID (e.g., claude-sonnet-4-6) - pass through
   if (canonicalKey.includes('claude-')) {
     console.log(`[ModelResolver] Using full Claude model string: ${canonicalKey}`);
     return canonicalKey;
   }
 
   // Legacy Claude model alias (sonnet, opus, haiku) - support for backward compatibility
-  const resolved = CLAUDE_MODEL_MAP[canonicalKey];
-  if (resolved) {
-    console.log(`[ModelResolver] Resolved Claude legacy alias: "${canonicalKey}" -> "${resolved}"`);
-    return resolved;
+  const canonicalFromAlias = CLAUDE_MODEL_MAP[canonicalKey];
+  if (canonicalFromAlias) {
+    console.log(
+      `[ModelResolver] Resolved Claude legacy alias: "${canonicalKey}" -> "${canonicalFromAlias}"`
+    );
+    return canonicalFromAlias;
   }
 
   // OpenAI/Codex models - check for gpt- prefix

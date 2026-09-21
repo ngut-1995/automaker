@@ -12,24 +12,31 @@ import type { GeminiModelId } from './gemini-models.js';
 export type ClaudeCanonicalId = 'claude-haiku' | 'claude-sonnet' | 'claude-opus';
 
 /**
- * Canonical Claude model map - maps prefixed IDs to full model strings
- * Use these IDs for internal storage and routing.
+ * Every canonical Claude ID.
+ *
+ * A canonical ID names a tier, never a version: Automaker does not know, and must
+ * not decide, which concrete model a tier resolves to. The translation from a
+ * canonical ID to the tier alias the SDK expects lives at the Claude provider
+ * boundary and nowhere else (see docs/adr/0001-claude-tier-aliases.md).
  */
-export const CLAUDE_CANONICAL_MAP: Record<ClaudeCanonicalId, string> = {
-  'claude-haiku': 'claude-haiku-4-5-20251001',
-  'claude-sonnet': 'claude-sonnet-4-6',
-  'claude-opus': 'claude-opus-4-6',
-} as const;
+export const CLAUDE_CANONICAL_IDS = ['claude-haiku', 'claude-sonnet', 'claude-opus'] as const;
 
 /**
- * Legacy Claude model aliases (short names) for backward compatibility
- * These map to the same full model strings as the canonical map.
- * @deprecated Use CLAUDE_CANONICAL_MAP for new code
+ * Check whether a model string is one of Automaker's canonical Claude IDs.
  */
-export const CLAUDE_MODEL_MAP: Record<string, string> = {
-  haiku: 'claude-haiku-4-5-20251001',
-  sonnet: 'claude-sonnet-4-6',
-  opus: 'claude-opus-4-6',
+export function isClaudeCanonicalId(model: string): model is ClaudeCanonicalId {
+  return (CLAUDE_CANONICAL_IDS as readonly string[]).includes(model);
+}
+
+/**
+ * Legacy Claude model aliases (short names) for backward compatibility.
+ * These map to the canonical ID for the same tier.
+ * @deprecated Use canonical IDs (`claude-opus`, …) for new code
+ */
+export const CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalId> = {
+  haiku: 'claude-haiku',
+  sonnet: 'claude-sonnet',
+  opus: 'claude-opus',
 } as const;
 
 /**
@@ -127,7 +134,7 @@ export function getAllCodexModelIds(): CodexModelId[] {
  * Uses canonical prefixed IDs for consistent routing.
  */
 export const DEFAULT_MODELS = {
-  claude: 'claude-opus-4-6',
+  claude: 'claude-opus', // Canonical ID: the provider decides which Opus-class model runs
   cursor: 'cursor-auto', // Cursor's recommended default (with prefix)
   codex: CODEX_MODEL_MAP.gpt53Codex, // GPT-5.3-Codex is the latest frontier agentic coding model
 } as const;

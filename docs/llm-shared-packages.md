@@ -132,17 +132,21 @@ import { getFeatureDir, ensureAutomakerDir } from '@automaker/platform';
 ```typescript
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
 
-// Convert user input to model ID
-const modelId = resolveModelString('sonnet'); // → 'claude-sonnet-4-20250514'
+// Normalise user input to a canonical ID
+const modelId = resolveModelString('sonnet'); // → 'claude-sonnet'
 ```
 
 **Never import from:** `lib/model-resolver`
 
-**Model aliases:**
+**Claude canonical IDs (tiers, not versions):**
 
-- `haiku` → `claude-haiku-4-5` (fast, simple tasks)
-- `sonnet` → `claude-sonnet-4-20250514` (balanced, recommended)
-- `opus` → `claude-opus-4-6` (maximum capability)
+- `haiku` → `claude-haiku` (fast, simple tasks)
+- `sonnet` → `claude-sonnet` (balanced, recommended)
+- `opus` → `claude-opus` (maximum capability)
+
+The resolver never expands a canonical ID into a pinned version; the Claude provider
+boundary translates it to a tier alias (`opus`) and the provider picks the model.
+See `docs/adr/0001-claude-tier-aliases.md`.
 
 ### @automaker/dependency-resolver
 

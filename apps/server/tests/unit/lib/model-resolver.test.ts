@@ -23,19 +23,19 @@ describe('model-resolver.ts', () => {
   });
 
   describe('resolveModelString', () => {
-    it("should resolve 'haiku' alias to full model string", () => {
+    it("should resolve 'haiku' alias to its canonical ID", () => {
       const result = resolveModelString('haiku');
       expect(result).toBe(CLAUDE_MODEL_MAP.haiku);
     });
 
-    it("should resolve 'sonnet' alias to full model string", () => {
+    it("should resolve 'sonnet' alias to its canonical ID", () => {
       const result = resolveModelString('sonnet');
       expect(result).toBe(CLAUDE_MODEL_MAP.sonnet);
     });
 
-    it("should resolve 'opus' alias to full model string", () => {
+    it("should resolve 'opus' alias to its canonical ID", () => {
       const result = resolveModelString('opus');
-      expect(result).toBe('claude-opus-4-6');
+      expect(result).toBe(CLAUDE_MODEL_MAP.opus);
       expect(consoleSpy.log).toHaveBeenCalledWith(
         expect.stringContaining('Migrated legacy ID: "opus" -> "claude-opus"')
       );
@@ -52,12 +52,20 @@ describe('model-resolver.ts', () => {
       });
     });
 
-    it('should pass through full Claude model strings', () => {
+    it('should pass through canonical Claude IDs', () => {
       const models = [CLAUDE_MODEL_MAP.opus, CLAUDE_MODEL_MAP.sonnet, CLAUDE_MODEL_MAP.haiku];
       models.forEach((model) => {
         const result = resolveModelString(model);
         expect(result).toBe(model);
       });
+      expect(consoleSpy.log).toHaveBeenCalledWith(
+        expect.stringContaining('Resolved Claude canonical ID')
+      );
+    });
+
+    it('should pass through a hand-written pinned Claude model ID', () => {
+      const handWrittenPin = 'claude-opus-4-1-20250805';
+      expect(resolveModelString(handWrittenPin)).toBe(handWrittenPin);
       expect(consoleSpy.log).toHaveBeenCalledWith(
         expect.stringContaining('Using full Claude model string')
       );
@@ -117,7 +125,7 @@ describe('model-resolver.ts', () => {
   describe('getEffectiveModel', () => {
     it('should prioritize explicit model over session and default', () => {
       const result = getEffectiveModel('opus', 'haiku', 'gpt-5.2');
-      expect(result).toBe('claude-opus-4-6');
+      expect(result).toBe(CLAUDE_MODEL_MAP.opus);
     });
 
     it('should use session model when explicit is not provided', () => {
@@ -149,7 +157,7 @@ describe('model-resolver.ts', () => {
       expect(CLAUDE_MODEL_MAP).toHaveProperty('opus');
     });
 
-    it('should have valid Claude model strings', () => {
+    it('should map each legacy alias to its canonical ID', () => {
       expect(CLAUDE_MODEL_MAP.haiku).toContain('haiku');
       expect(CLAUDE_MODEL_MAP.sonnet).toContain('sonnet');
       expect(CLAUDE_MODEL_MAP.opus).toContain('opus');

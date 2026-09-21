@@ -210,12 +210,14 @@ Centralized model string mapping and resolution for handling model aliases and p
 Model alias mapping for Claude models.
 
 ```typescript
-export const CLAUDE_MODEL_MAP: Record<string, string> = {
-  haiku: 'claude-haiku-4-5',
-  sonnet: 'claude-sonnet-4-20250514',
-  opus: 'claude-opus-4-6',
+export const CLAUDE_MODEL_MAP: Record<string, ClaudeCanonicalId> = {
+  haiku: 'claude-haiku',
+  sonnet: 'claude-sonnet',
+  opus: 'claude-opus',
 } as const;
 ```
+
+Values are canonical IDs: each names a tier, never a version.
 
 #### `DEFAULT_MODELS`
 
@@ -223,7 +225,7 @@ Default models per provider.
 
 ```typescript
 export const DEFAULT_MODELS = {
-  claude: 'claude-opus-4-6',
+  claude: 'claude-opus',
   openai: 'gpt-5.2',
 } as const;
 ```
@@ -232,15 +234,16 @@ export const DEFAULT_MODELS = {
 
 #### `resolveModelString(modelKey?: string, defaultModel: string = DEFAULT_MODELS.claude): string`
 
-Resolve a model key/alias to a full model string.
+Normalise a model key/alias to a canonical model ID.
 
 **Logic**:
 
 1. If `modelKey` is undefined → return `defaultModel`
 2. If starts with `"gpt-"` or `"o"` → pass through (OpenAI/Codex model)
-3. If includes `"claude-"` → pass through (full Claude model string)
-4. If in `CLAUDE_MODEL_MAP` → return mapped value
-5. Otherwise → return `defaultModel` with warning
+3. If it is a canonical Claude ID → return it unchanged (never expanded to a version)
+4. If includes `"claude-"` → pass through (hand-written pinned model ID)
+5. If in `CLAUDE_MODEL_MAP` → return the canonical ID for that tier
+6. Otherwise → pass through unchanged (may be a Claude-compatible provider model)
 
 **Example**:
 
@@ -248,20 +251,20 @@ Resolve a model key/alias to a full model string.
 import { resolveModelString, DEFAULT_MODELS } from '../lib/model-resolver.js';
 
 resolveModelString('opus');
-// Returns: "claude-opus-4-6"
-// Logs: "[ModelResolver] Resolved model alias: "opus" -> "claude-opus-4-6""
+// Returns: "claude-opus"
+// Logs: "[ModelResolver] Migrated legacy ID: "opus" -> "claude-opus""
 
 resolveModelString('gpt-5.2');
 // Returns: "gpt-5.2"
 // Logs: "[ModelResolver] Using OpenAI/Codex model: gpt-5.2"
 
-resolveModelString('claude-sonnet-4-20250514');
-// Returns: "claude-sonnet-4-20250514"
-// Logs: "[ModelResolver] Using full Claude model string: claude-sonnet-4-20250514"
+resolveModelString('claude-opus-4-1-20250805');
+// Returns: "claude-opus-4-1-20250805" (a pin the user wrote by hand)
+// Logs: "[ModelResolver] Using full Claude model string: claude-opus-4-1-20250805"
 
-resolveModelString('invalid-model');
-// Returns: "claude-opus-4-6"
-// Logs: "[ModelResolver] Unknown model key "invalid-model", using default: "claude-opus-4-6""
+resolveModelString('GLM-4.7');
+// Returns: "GLM-4.7"
+// Logs: "[ModelResolver] Unknown model key "GLM-4.7", passing through unchanged"
 ```
 
 ---
@@ -279,11 +282,11 @@ import { getEffectiveModel } from '../lib/model-resolver.js';
 
 // Explicit model takes precedence
 getEffectiveModel('sonnet', 'opus');
-// Returns: "claude-sonnet-4-20250514"
+// Returns: "claude-sonnet"
 
 // Falls back to session model
 getEffectiveModel(undefined, 'haiku');
-// Returns: "claude-haiku-4-5"
+// Returns: "claude-haiku"
 
 // Falls back to default
 getEffectiveModel(undefined, undefined, 'gpt-5.2');

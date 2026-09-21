@@ -13,8 +13,8 @@ import type { ClaudeCompatibleProvider, ProviderModel } from '@automaker/types';
 
 describe('agent-context-parser.ts', () => {
   describe('DEFAULT_MODEL', () => {
-    it('should be claude-opus-4-6', () => {
-      expect(DEFAULT_MODEL).toBe('claude-opus-4-6');
+    it('should be a canonical ID, not a pinned version', () => {
+      expect(DEFAULT_MODEL).toBe('claude-opus');
     });
   });
 

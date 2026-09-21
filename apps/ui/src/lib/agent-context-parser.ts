@@ -28,9 +28,9 @@ export interface AgentTaskInfo {
 }
 
 /**
- * Default model used by the feature executor
+ * Default model used by the feature executor (canonical ID: names a tier, not a version)
  */
-export const DEFAULT_MODEL = 'claude-opus-4-6';
+export const DEFAULT_MODEL = 'claude-opus';
 
 /**
  * Options for formatting model names

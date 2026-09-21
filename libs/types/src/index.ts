@@ -88,7 +88,8 @@ export type { ImageData, ImageContentBlock } from './image.js';
 // Model types and constants
 export {
   CLAUDE_MODEL_MAP,
-  CLAUDE_CANONICAL_MAP,
+  CLAUDE_CANONICAL_IDS,
+  isClaudeCanonicalId,
   LEGACY_CLAUDE_ALIAS_MAP,
   CODEX_MODEL_MAP,
   CODEX_MODEL_IDS,

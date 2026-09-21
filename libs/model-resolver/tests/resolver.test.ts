@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resolveModelString, getEffectiveModel, resolvePhaseModel } from '../src/resolver';
 import {
+  CLAUDE_CANONICAL_IDS,
   CLAUDE_MODEL_MAP,
   CURSOR_MODEL_MAP,
   DEFAULT_MODELS,
@@ -40,7 +41,42 @@ describe('model-resolver', () => {
       });
     });
 
-    describe('with full Claude model strings', () => {
+    describe('with canonical Claude IDs', () => {
+      it.each(CLAUDE_CANONICAL_IDS)('should return %s unchanged', (canonicalId) => {
+        expect(resolveModelString(canonicalId)).toBe(canonicalId);
+      });
+
+      it('should never expand a canonical ID to a pinned model ID', () => {
+        // A canonical ID names a tier. Expanding it here would pin a version that
+        // Automaker has no business choosing.
+        for (const canonicalId of CLAUDE_CANONICAL_IDS) {
+          const result = resolveModelString(canonicalId);
+          expect(result).toBe(canonicalId);
+          expect(result).toMatch(/^claude-(opus|sonnet|haiku)$/);
+        }
+      });
+
+      it('should never return a bare tier alias', () => {
+        // The resolved string is assigned back onto the running feature and emitted
+        // to the UI, where a bare alias would reach code that infers capability from
+        // the string. The alias is produced at the Claude provider boundary only.
+        const inputs = [...CLAUDE_CANONICAL_IDS, 'opus', 'sonnet', 'haiku', undefined, ''];
+
+        for (const input of inputs) {
+          const result = resolveModelString(input);
+          expect(['opus', 'sonnet', 'haiku']).not.toContain(result);
+        }
+      });
+    });
+
+    describe('with hand-written pinned Claude model IDs', () => {
+      it('should pass through a pinned Claude model ID unchanged', () => {
+        const pinned = 'claude-sonnet-4-6';
+        const result = resolveModelString(pinned);
+
+        expect(result).toBe(pinned);
+      });
+
       it('should pass through full Claude model string unchanged', () => {
         const fullModel = 'claude-sonnet-4-6';
         const result = resolveModelString(fullModel);

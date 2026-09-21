@@ -119,7 +119,7 @@ async function enhanceDescription(description: string, mode: string) {
   const { systemPrompt, userPrompt } = getEnhancementPrompt(mode, description);
 
   const response = await claude.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet',
     max_tokens: 1024,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
@@ -184,7 +184,7 @@ app.post('/api/enhance', async (req, res) => {
     const { systemPrompt, userPrompt } = getEnhancementPrompt(mode, description);
 
     const result = await claude.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet',
       max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],

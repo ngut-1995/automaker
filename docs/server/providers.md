@@ -175,8 +175,12 @@ Uses `@anthropic-ai/claude-agent-sdk` for direct SDK integration.
 
 Routes models that:
 
-- Start with `"claude-"` (e.g., `"claude-opus-4-6"`)
+- Start with `"claude-"` (e.g., the canonical ID `"claude-opus"`)
 - Are Claude aliases: `"opus"`, `"sonnet"`, `"haiku"`
+
+The provider translates a canonical ID into the tier alias the SDK expects
+(`claude-opus` → `opus`); see `docs/adr/0001-claude-tier-aliases.md`. Any other model
+string — a hand-written pin, a Claude-compatible provider's model — is sent unchanged.
 
 #### Authentication
 
@@ -191,7 +195,7 @@ const provider = new ClaudeProvider();
 
 const stream = provider.executeQuery({
   prompt: 'What is 2+2?',
-  model: 'claude-opus-4-6',
+  model: 'claude-opus',
   cwd: '/project/path',
   systemPrompt: 'You are a helpful assistant.',
   maxTurns: 20,
@@ -701,7 +705,7 @@ Test provider interaction with services:
 ```typescript
 describe('Provider Integration', () => {
   it('should work with AgentService', async () => {
-    const provider = ProviderFactory.getProviderForModel('claude-opus-4-6');
+    const provider = ProviderFactory.getProviderForModel('claude-opus');
 
     // Test full workflow
   });

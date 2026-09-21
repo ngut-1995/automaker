@@ -50,7 +50,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Hello',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -70,7 +70,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test prompt',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test/dir',
         systemPrompt: 'You are helpful',
         maxTurns: 10,
@@ -82,7 +82,8 @@ describe('claude-provider.ts', () => {
       expect(sdk.query).toHaveBeenCalledWith({
         prompt: 'Test prompt',
         options: expect.objectContaining({
-          model: 'claude-opus-4-6',
+          // Canonical ID in, tier alias out: the SDK resolves the tier
+          model: 'opus',
           systemPrompt: 'You are helpful',
           maxTurns: 10,
           cwd: '/test/dir',
@@ -102,7 +103,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -127,7 +128,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
         abortController,
       });
@@ -156,7 +157,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Current message',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
         conversationHistory,
         sdkSessionId: 'test-session-id',
@@ -187,7 +188,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: arrayPrompt as any,
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -207,7 +208,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -233,7 +234,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -297,7 +298,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -324,7 +325,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -352,7 +353,7 @@ describe('claude-provider.ts', () => {
 
       const generator = provider.executeQuery({
         prompt: 'Test',
-        model: 'claude-opus-4-6',
+        model: 'claude-opus',
         cwd: '/test',
       });
 
@@ -370,48 +371,68 @@ describe('claude-provider.ts', () => {
     });
   });
 
+  describe('the model reaching the SDK', () => {
+    async function modelSentToSdk(model: string): Promise<unknown> {
+      vi.mocked(sdk.query).mockReturnValue(
+        (async function* () {
+          yield { type: 'text', text: 'test' };
+        })()
+      );
+
+      await collectAsyncGenerator(provider.executeQuery({ prompt: 'Test', model, cwd: '/test' }));
+
+      return vi.mocked(sdk.query).mock.calls[0][0].options?.model;
+    }
+
+    it.each([
+      ['claude-opus', 'opus'],
+      ['claude-sonnet', 'sonnet'],
+      ['claude-haiku', 'haiku'],
+    ])('should send the tier alias for %s', async (canonicalId, tierAlias) => {
+      expect(await modelSentToSdk(canonicalId)).toBe(tierAlias);
+    });
+
+    it('should send a hand-written pinned model ID unchanged', async () => {
+      // A version the user pinned on purpose is theirs, not Automaker's to rewrite.
+      const handWrittenPin = 'claude-opus-4-1-20250805';
+      expect(await modelSentToSdk(handWrittenPin)).toBe(handWrittenPin);
+    });
+
+    it.each(['GLM-4.7', 'MiniMax-M2.1'])(
+      "should send a Claude-compatible provider's model %s unchanged",
+      async (providerModel) => {
+        expect(await modelSentToSdk(providerModel)).toBe(providerModel);
+      }
+    );
+  });
+
   describe('getAvailableModels', () => {
-    it('should return 5 Claude models', () => {
+    it('should return one entry per Claude tier', () => {
       const models = provider.getAvailableModels();
 
-      expect(models).toHaveLength(5);
+      expect(models.map((m) => m.id)).toEqual(['claude-opus', 'claude-sonnet', 'claude-haiku']);
     });
 
-    it('should include Claude Opus 4.6', () => {
+    it('should name tiers rather than versions', () => {
       const models = provider.getAvailableModels();
 
-      const opus = models.find((m) => m.id === 'claude-opus-4-6');
-      expect(opus).toBeDefined();
-      expect(opus?.name).toBe('Claude Opus 4.6');
-      expect(opus?.provider).toBe('anthropic');
+      expect(models.map((m) => m.name)).toEqual(['Claude Opus', 'Claude Sonnet', 'Claude Haiku']);
+      expect(models.every((m) => m.provider === 'anthropic')).toBe(true);
     });
 
-    it('should include Claude Sonnet 4.6', () => {
+    it('should not advertise a pinned model ID', () => {
       const models = provider.getAvailableModels();
 
-      const sonnet = models.find((m) => m.id === 'claude-sonnet-4-6');
-      expect(sonnet).toBeDefined();
-      expect(sonnet?.name).toBe('Claude Sonnet 4.6');
-    });
-
-    it('should include Claude 3.5 Sonnet', () => {
-      const models = provider.getAvailableModels();
-
-      const sonnet35 = models.find((m) => m.id === 'claude-3-5-sonnet-20241022');
-      expect(sonnet35).toBeDefined();
-    });
-
-    it('should include Claude Haiku 4.5', () => {
-      const models = provider.getAvailableModels();
-
-      const haiku = models.find((m) => m.id === 'claude-haiku-4-5-20251001');
-      expect(haiku).toBeDefined();
+      for (const model of models) {
+        expect(model.id).toMatch(/^claude-(opus|sonnet|haiku)$/);
+        expect(model.modelString).toBe(model.id);
+      }
     });
 
     it('should mark Opus as default', () => {
       const models = provider.getAvailableModels();
 
-      const opus = models.find((m) => m.id === 'claude-opus-4-6');
+      const opus = models.find((m) => m.id === 'claude-opus');
       expect(opus?.default).toBe(true);
     });
 

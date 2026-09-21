@@ -1,10 +1,20 @@
 # @automaker/model-resolver
 
-Claude model resolution and mapping utilities.
+Model normalisation utilities.
 
 ## Overview
 
-This package handles Claude model resolution, converting user-friendly aliases to actual Claude model identifiers and providing default model configurations.
+This package normalises any model string to a **canonical ID** — Automaker's internal
+spelling of a capability tier (`claude-opus`, `cursor-auto`, `opencode-big-pickle`).
+
+Claude is addressed by tier, not by version. The resolver never expands a canonical ID
+into a pinned model ID, and never returns a bare tier alias (`opus`): its output is
+assigned back onto the running feature and emitted to the UI, where a bare alias would
+reach code that infers capability from the model string. Translating a canonical ID
+into the tier alias the SDK expects happens at the Claude provider boundary only.
+
+See `CONTEXT.md` for the vocabulary and `docs/adr/0001-claude-tier-aliases.md` for the
+decision and its consequences.
 
 ## Installation
 
@@ -16,29 +26,27 @@ npm install @automaker/model-resolver
 
 ### Model Resolution
 
-Convert model aliases to full model identifiers.
+Normalise any model string to a canonical ID.
 
 ```typescript
 import { resolveModelString, DEFAULT_MODELS } from '@automaker/model-resolver';
 import { CLAUDE_MODEL_MAP } from '@automaker/types';
 
-// Resolve model string
+// Legacy bare aliases become canonical IDs
 const model = resolveModelString('sonnet');
-// Returns: 'claude-sonnet-4-20250514'
+// Returns: 'claude-sonnet'
 
-const model2 = resolveModelString('haiku');
-// Returns: 'claude-haiku-4-5'
-
-const model3 = resolveModelString('opus');
-// Returns: 'claude-opus-4-6'
+// Canonical IDs are returned unchanged -- never expanded to a version
+const model2 = resolveModelString('claude-opus');
+// Returns: 'claude-opus'
 
 // Use with custom default
-const model4 = resolveModelString(undefined, 'claude-sonnet-4-20250514');
-// Returns: 'claude-sonnet-4-20250514' (default)
+const model3 = resolveModelString(undefined, 'claude-sonnet');
+// Returns: 'claude-sonnet' (default)
 
-// Direct model ID passthrough
-const model5 = resolveModelString('claude-opus-4-6');
-// Returns: 'claude-opus-4-6' (unchanged)
+// A pinned model ID a user wrote by hand passes through untouched
+const model4 = resolveModelString('claude-opus-4-1-20250805');
+// Returns: 'claude-opus-4-1-20250805' (unchanged)
 ```
 
 ### Get Effective Model
@@ -52,7 +60,7 @@ import { getEffectiveModel } from '@automaker/model-resolver';
 const model = getEffectiveModel({
   requestedModel: 'sonnet',
   featureModel: undefined,
-  defaultModel: 'claude-sonnet-4-20250514',
+  defaultModel: 'claude-sonnet',
 });
 ```
 
@@ -64,15 +72,14 @@ Access model mappings and defaults.
 import { DEFAULT_MODELS } from '@automaker/model-resolver';
 import { CLAUDE_MODEL_MAP } from '@automaker/types';
 
-// Default models for different contexts
-console.log(DEFAULT_MODELS.claude); // 'claude-sonnet-4-20250514'
-console.log(DEFAULT_MODELS.autoMode); // 'claude-sonnet-4-20250514'
-console.log(DEFAULT_MODELS.chat); // 'claude-sonnet-4-20250514'
+// Default model per provider (canonical IDs)
+console.log(DEFAULT_MODELS.claude); // 'claude-opus'
+console.log(DEFAULT_MODELS.cursor); // 'cursor-auto'
 
-// Model alias mappings
-console.log(CLAUDE_MODEL_MAP.haiku); // 'claude-haiku-4-5'
-console.log(CLAUDE_MODEL_MAP.sonnet); // 'claude-sonnet-4-20250514'
-console.log(CLAUDE_MODEL_MAP.opus); // 'claude-opus-4-6'
+// Legacy bare alias -> canonical ID
+console.log(CLAUDE_MODEL_MAP.haiku); // 'claude-haiku'
+console.log(CLAUDE_MODEL_MAP.sonnet); // 'claude-sonnet'
+console.log(CLAUDE_MODEL_MAP.opus); // 'claude-opus'
 ```
 
 ## Usage Example
@@ -103,16 +110,19 @@ const feature: Feature = {
 };
 
 prepareFeatureExecution(feature);
-// Output: Executing feature with model: claude-opus-4-6
+// Output: Executing feature with model: claude-opus
 ```
 
 ## Supported Models
 
-### Current Model Aliases
+### Claude canonical IDs
 
-- `haiku` → `claude-haiku-4-5`
-- `sonnet` → `claude-sonnet-4-20250514`
-- `opus` → `claude-opus-4-6`
+- `haiku` → `claude-haiku`
+- `sonnet` → `claude-sonnet`
+- `opus` → `claude-opus`
+
+Each names a tier. Which concrete model a tier runs is decided by the provider, and can
+be pinned deliberately through `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL`.
 
 ### Model Selection Guide
 
@@ -130,6 +140,7 @@ prepareFeatureExecution(feature);
 
 ## Notes
 
-- Model strings that don't match aliases are passed through unchanged
-- This allows direct use of specific model versions like `claude-sonnet-4-20250514`
+- Model strings that don't match a known alias are passed through unchanged
+- This allows direct use of a pinned version like `claude-opus-4-1-20250805`, and of a
+  Claude-compatible provider's own models
 - Always falls back to a sensible default if no model is specified
