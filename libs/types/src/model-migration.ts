@@ -63,11 +63,17 @@ export function isLegacyClaudeAlias(id: string): boolean {
  * -- is returned unchanged.
  *
  * @param modelId - The model ID to migrate
- * @returns The canonical Claude ID, or the input unchanged
+ * @returns The canonical Claude ID, or the input unchanged when it is falsy
  */
-export function migrateClaudeModelId(modelId: string | undefined | null): string {
+export function migrateClaudeModelId(modelId: string): string;
+export function migrateClaudeModelId(modelId: undefined): undefined;
+export function migrateClaudeModelId(modelId: null): null;
+export function migrateClaudeModelId(modelId: string | undefined | null): string | undefined | null;
+export function migrateClaudeModelId(
+  modelId: string | undefined | null
+): string | undefined | null {
   if (!modelId) {
-    return modelId as string;
+    return modelId;
   }
 
   // Already a canonical Claude ID
@@ -106,11 +112,15 @@ export function migrateClaudeModelId(modelId: string | undefined | null): string
  *   deliberate pin keeps working
  *
  * @param legacyId - The model ID to migrate
- * @returns The canonical model ID
+ * @returns The canonical model ID, or the input unchanged when it is falsy
  */
-export function migrateModelId(legacyId: string | undefined | null): string {
+export function migrateModelId(legacyId: string): string;
+export function migrateModelId(legacyId: undefined): undefined;
+export function migrateModelId(legacyId: null): null;
+export function migrateModelId(legacyId: string | undefined | null): string | undefined | null;
+export function migrateModelId(legacyId: string | undefined | null): string | undefined | null {
   if (!legacyId) {
-    return legacyId as string;
+    return legacyId;
   }
 
   // Already has cursor- prefix and is in the map - it's canonical

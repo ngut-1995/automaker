@@ -112,6 +112,12 @@ describe('pinned-by-accident Claude model IDs', () => {
       expect(migrateModelId('codex-gpt-5.3-codex')).toBe('codex-gpt-5.3-codex');
       expect(migrateModelId('GLM-4.7')).toBe('GLM-4.7');
     });
+
+    it('returns a falsy input unchanged', () => {
+      expect(migrateModelId(undefined)).toBeUndefined();
+      expect(migrateModelId(null)).toBeNull();
+      expect(migrateModelId('')).toBe('');
+    });
   });
 
   describe('migrateClaudeModelId', () => {
