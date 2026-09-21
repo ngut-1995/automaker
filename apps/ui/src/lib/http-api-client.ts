@@ -2089,36 +2089,36 @@ export class HttpApiClient implements ElectronAPI {
   // Auto Mode API
   autoMode: AutoModeAPI = {
     start: (projectPath: string, branchName?: string | null, maxConcurrency?: number) =>
-      this.post('/api/auto-mode/start', { projectPath, branchName, maxConcurrency }),
+      this.request('autoMode.start', { projectPath, branchName, maxConcurrency }),
     stop: (projectPath: string, branchName?: string | null) =>
-      this.post('/api/auto-mode/stop', { projectPath, branchName }),
-    stopFeature: (featureId: string) => this.post('/api/auto-mode/stop-feature', { featureId }),
+      this.request('autoMode.stop', { projectPath, branchName }),
+    stopFeature: (featureId: string) => this.request('autoMode.stopFeature', { featureId }),
     status: (projectPath?: string, branchName?: string | null) =>
-      this.post('/api/auto-mode/status', { projectPath, branchName }),
+      this.request('autoMode.status', { projectPath, branchName }),
     runFeature: (
       projectPath: string,
       featureId: string,
       useWorktrees?: boolean,
       worktreePath?: string
     ) =>
-      this.post('/api/auto-mode/run-feature', {
+      this.request('autoMode.runFeature', {
         projectPath,
         featureId,
         useWorktrees,
         worktreePath,
       }),
     verifyFeature: (projectPath: string, featureId: string) =>
-      this.post('/api/auto-mode/verify-feature', { projectPath, featureId }),
+      this.request('autoMode.verifyFeature', { projectPath, featureId }),
     resumeFeature: (projectPath: string, featureId: string, useWorktrees?: boolean) =>
-      this.post('/api/auto-mode/resume-feature', {
+      this.request('autoMode.resumeFeature', {
         projectPath,
         featureId,
         useWorktrees,
       }),
     contextExists: (projectPath: string, featureId: string) =>
-      this.post('/api/auto-mode/context-exists', { projectPath, featureId }),
+      this.request('autoMode.contextExists', { projectPath, featureId }),
     analyzeProject: (projectPath: string) =>
-      this.post('/api/auto-mode/analyze-project', { projectPath }),
+      this.request('autoMode.analyzeProject', { projectPath }),
     followUpFeature: (
       projectPath: string,
       featureId: string,
@@ -2126,7 +2126,7 @@ export class HttpApiClient implements ElectronAPI {
       imagePaths?: string[],
       useWorktrees?: boolean
     ) =>
-      this.post('/api/auto-mode/follow-up-feature', {
+      this.request('autoMode.followUpFeature', {
         projectPath,
         featureId,
         prompt,
@@ -2134,7 +2134,7 @@ export class HttpApiClient implements ElectronAPI {
         useWorktrees,
       }),
     commitFeature: (projectPath: string, featureId: string, worktreePath?: string) =>
-      this.post('/api/auto-mode/commit-feature', {
+      this.request('autoMode.commitFeature', {
         projectPath,
         featureId,
         worktreePath,
@@ -2146,7 +2146,7 @@ export class HttpApiClient implements ElectronAPI {
       editedPlan?: string,
       feedback?: string
     ) =>
-      this.post('/api/auto-mode/approve-plan', {
+      this.request('autoMode.approvePlan', {
         projectPath,
         featureId,
         approved,
@@ -2154,7 +2154,8 @@ export class HttpApiClient implements ElectronAPI {
         feedback,
       }),
     resumeInterrupted: (projectPath: string) =>
-      this.post('/api/auto-mode/resume-interrupted', { projectPath }),
+      this.request('autoMode.resumeInterrupted', { projectPath }),
+    reconcile: (projectPath: string) => this.request('autoMode.reconcile', { projectPath }),
     onEvent: (callback: (event: AutoModeEvent) => void) => {
       return this.subscribeToEvent('auto-mode:event', callback as EventCallback);
     },
@@ -2473,17 +2474,7 @@ export class HttpApiClient implements ElectronAPI {
 
   // Running Agents API
   runningAgents = {
-    getAll: (): Promise<{
-      success: boolean;
-      runningAgents?: Array<{
-        featureId: string;
-        projectPath: string;
-        projectName: string;
-        isAutoMode: boolean;
-      }>;
-      totalCount?: number;
-      error?: string;
-    }> => this.get('/api/running-agents'),
+    getAll: () => this.request('runningAgents.getAll'),
   };
 
   // GitHub API

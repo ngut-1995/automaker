@@ -16,6 +16,16 @@ import {
   createFeaturesHandlers,
   FEATURES_MOUNT,
 } from '@/routes/features/index.js';
+import {
+  createAutoModeRoutes,
+  createAutoModeHandlers,
+  AUTO_MODE_MOUNT,
+} from '@/routes/auto-mode/index.js';
+import {
+  createRunningAgentsRoutes,
+  createRunningAgentsHandlers,
+  RUNNING_AGENTS_MOUNT,
+} from '@/routes/running-agents/index.js';
 import { registerContractOperations, missingContractHandlers } from '@/routes/contract.js';
 import type { OperationHandlers } from '@/routes/contract.js';
 
@@ -75,6 +85,24 @@ describe('contract conformance', () => {
     // The public factory builds the same router.
     expect(registeredRoutes(createFeaturesRoutes({} as never)).length).toBe(
       operationNamesForMount(FEATURES_MOUNT).length
+    );
+  });
+
+  it('auto-mode mount', () => {
+    const handlers = createAutoModeHandlers({} as never);
+    expectContractMount(AUTO_MODE_MOUNT, handlers);
+    // The public factory builds the same router.
+    expect(registeredRoutes(createAutoModeRoutes({} as never)).length).toBe(
+      operationNamesForMount(AUTO_MODE_MOUNT).length
+    );
+  });
+
+  it('running-agents mount', () => {
+    const handlers = createRunningAgentsHandlers({} as never);
+    expectContractMount(RUNNING_AGENTS_MOUNT, handlers);
+    // The public factory builds the same router.
+    expect(registeredRoutes(createRunningAgentsRoutes({} as never)).length).toBe(
+      operationNamesForMount(RUNNING_AGENTS_MOUNT).length
     );
   });
 });

@@ -242,6 +242,189 @@ export interface FeaturesBulkResolveOrphanedResponse {
   error?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Auto Mode mount (/api/auto-mode)
+// ---------------------------------------------------------------------------
+
+export interface AutoModeStartRequest {
+  projectPath: string;
+  branchName?: string | null;
+  maxConcurrency?: number;
+}
+export interface AutoModeStartResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AutoModeStopRequest {
+  projectPath: string;
+  branchName?: string | null;
+}
+export interface AutoModeStopResponse {
+  success: boolean;
+  error?: string;
+  runningFeatures?: number;
+}
+
+export interface AutoModeStopFeatureRequest {
+  featureId: string;
+}
+export interface AutoModeStopFeatureResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AutoModeStatusRequest {
+  projectPath?: string;
+  branchName?: string | null;
+}
+export interface AutoModeStatusResponse {
+  success: boolean;
+  isRunning?: boolean;
+  isAutoLoopRunning?: boolean;
+  currentFeatureId?: string | null;
+  runningFeatures?: string[];
+  runningProjects?: string[];
+  runningCount?: number;
+  maxConcurrency?: number;
+  error?: string;
+}
+
+export interface AutoModeRunFeatureRequest {
+  projectPath: string;
+  featureId: string;
+  useWorktrees?: boolean;
+  worktreePath?: string;
+}
+export interface AutoModeRunFeatureResponse {
+  success: boolean;
+  passes?: boolean;
+  error?: string;
+}
+
+export interface AutoModeVerifyFeatureRequest {
+  projectPath: string;
+  featureId: string;
+}
+export interface AutoModeVerifyFeatureResponse {
+  success: boolean;
+  passes?: boolean;
+  error?: string;
+}
+
+export interface AutoModeResumeFeatureRequest {
+  projectPath: string;
+  featureId: string;
+  useWorktrees?: boolean;
+}
+export interface AutoModeResumeFeatureResponse {
+  success: boolean;
+  passes?: boolean;
+  error?: string;
+}
+
+export interface AutoModeContextExistsRequest {
+  projectPath: string;
+  featureId: string;
+}
+export interface AutoModeContextExistsResponse {
+  success: boolean;
+  exists?: boolean;
+  error?: string;
+}
+
+export interface AutoModeAnalyzeProjectRequest {
+  projectPath: string;
+}
+export interface AutoModeAnalyzeProjectResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface AutoModeFollowUpFeatureRequest {
+  projectPath: string;
+  featureId: string;
+  prompt: string;
+  imagePaths?: string[];
+  useWorktrees?: boolean;
+}
+export interface AutoModeFollowUpFeatureResponse {
+  success: boolean;
+  passes?: boolean;
+  error?: string;
+}
+
+export interface AutoModeCommitFeatureRequest {
+  projectPath: string;
+  featureId: string;
+  worktreePath?: string;
+}
+export interface AutoModeCommitFeatureResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AutoModeApprovePlanRequest {
+  projectPath: string;
+  featureId: string;
+  approved: boolean;
+  editedPlan?: string;
+  feedback?: string;
+}
+export interface AutoModeApprovePlanResponse {
+  success: boolean;
+  error?: string;
+}
+
+export interface AutoModeResumeInterruptedRequest {
+  projectPath: string;
+}
+export interface AutoModeResumeInterruptedResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface AutoModeReconcileRequest {
+  projectPath: string;
+}
+export interface AutoModeReconcileResponse {
+  success: boolean;
+  reconciledCount?: number;
+  message?: string;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Running Agents mount (/api/running-agents)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors the UI's `RunningAgent` (the contract module cannot import from the
+ * UI). Kept structurally compatible so the client can return it unchanged.
+ */
+export interface RunningAgentSummary {
+  featureId: string;
+  projectPath: string;
+  projectName: string;
+  isAutoMode: boolean;
+  model?: string;
+  provider?: string;
+  title?: string;
+  description?: string;
+  branchName?: string;
+}
+
+export type RunningAgentsGetAllRequest = Record<string, never>;
+
+export interface RunningAgentsGetAllResponse {
+  success: boolean;
+  runningAgents?: RunningAgentSummary[];
+  totalCount?: number;
+  error?: string;
+}
+
 /**
  * The registry. Add one entry per operation, named `<namespace>.<method>` where
  * the namespace matches the client's API namespace.
@@ -381,6 +564,124 @@ export const OPERATIONS = {
     request: null as unknown as FeaturesBulkResolveOrphanedRequest,
     response: null as unknown as FeaturesBulkResolveOrphanedResponse,
     pathParams: ['projectPath'],
+  },
+  'autoMode.start': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/start',
+    request: null as unknown as AutoModeStartRequest,
+    response: null as unknown as AutoModeStartResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.stop': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/stop',
+    request: null as unknown as AutoModeStopRequest,
+    response: null as unknown as AutoModeStopResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.stopFeature': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/stop-feature',
+    request: null as unknown as AutoModeStopFeatureRequest,
+    response: null as unknown as AutoModeStopFeatureResponse,
+  },
+  'autoMode.status': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/status',
+    request: null as unknown as AutoModeStatusRequest,
+    response: null as unknown as AutoModeStatusResponse,
+    pathParams: ['projectPath?'],
+  },
+  'autoMode.runFeature': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/run-feature',
+    request: null as unknown as AutoModeRunFeatureRequest,
+    response: null as unknown as AutoModeRunFeatureResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.verifyFeature': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/verify-feature',
+    request: null as unknown as AutoModeVerifyFeatureRequest,
+    response: null as unknown as AutoModeVerifyFeatureResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.resumeFeature': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/resume-feature',
+    request: null as unknown as AutoModeResumeFeatureRequest,
+    response: null as unknown as AutoModeResumeFeatureResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.contextExists': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/context-exists',
+    request: null as unknown as AutoModeContextExistsRequest,
+    response: null as unknown as AutoModeContextExistsResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.analyzeProject': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/analyze-project',
+    request: null as unknown as AutoModeAnalyzeProjectRequest,
+    response: null as unknown as AutoModeAnalyzeProjectResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.followUpFeature': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/follow-up-feature',
+    request: null as unknown as AutoModeFollowUpFeatureRequest,
+    response: null as unknown as AutoModeFollowUpFeatureResponse,
+    pathParams: ['projectPath', 'imagePaths[]'],
+  },
+  'autoMode.commitFeature': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/commit-feature',
+    request: null as unknown as AutoModeCommitFeatureRequest,
+    response: null as unknown as AutoModeCommitFeatureResponse,
+    pathParams: ['projectPath', 'worktreePath?'],
+  },
+  'autoMode.approvePlan': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/approve-plan',
+    request: null as unknown as AutoModeApprovePlanRequest,
+    response: null as unknown as AutoModeApprovePlanResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.resumeInterrupted': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/resume-interrupted',
+    request: null as unknown as AutoModeResumeInterruptedRequest,
+    response: null as unknown as AutoModeResumeInterruptedResponse,
+    pathParams: ['projectPath'],
+  },
+  'autoMode.reconcile': {
+    method: 'POST',
+    mount: '/api/auto-mode',
+    path: '/reconcile',
+    request: null as unknown as AutoModeReconcileRequest,
+    response: null as unknown as AutoModeReconcileResponse,
+    pathParams: ['projectPath'],
+  },
+  'runningAgents.getAll': {
+    method: 'GET',
+    mount: '/api/running-agents',
+    path: '/',
+    request: null as unknown as RunningAgentsGetAllRequest,
+    response: null as unknown as RunningAgentsGetAllResponse,
   },
 } as const satisfies Record<string, OperationDefinition<unknown, unknown>>;
 

@@ -623,6 +623,12 @@ export interface AutoModeAPI {
   resumeInterrupted: (
     projectPath: string
   ) => Promise<{ success: boolean; message?: string; error?: string }>;
+  reconcile: (projectPath: string) => Promise<{
+    success: boolean;
+    reconciledCount?: number;
+    message?: string;
+    error?: string;
+  }>;
   onEvent: (callback: (event: AutoModeEvent) => void) => () => void;
 }
 
