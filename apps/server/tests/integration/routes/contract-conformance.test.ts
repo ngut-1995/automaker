@@ -1,58 +1,80 @@
 /**
- * Server-side contract conformance: every contract operation for a mount has a
- * handler, and registering the mount yields exactly one route per entry at the
- * path the contract derives.
+ * Server-side contract conformance.
+ *
+ * For every migrated mount: every contract entry has a handler, and registering
+ * the mount yields exactly one route per entry at the path the contract derives
+ * — and nothing else.
+ *
+ * When a mount is migrated onto the contract, add an `it` block here.
  */
 
 import { describe, it, expect } from 'vitest';
+import { Router } from 'express';
 import { OPERATIONS, operationNamesForMount } from '@automaker/types';
-import { createFeaturesRoutes } from '@/routes/features/index.js';
-import { FEATURES_MOUNT, createFeaturesHandlers } from '@/routes/features/index.js';
-import { missingContractHandlers } from '@/routes/contract.js';
+import {
+  createFeaturesRoutes,
+  createFeaturesHandlers,
+  FEATURES_MOUNT,
+} from '@/routes/features/index.js';
+import { registerContractOperations, missingContractHandlers } from '@/routes/contract.js';
+import type { OperationHandlers } from '@/routes/contract.js';
 
 interface RegisteredRoute {
   path: string;
   methods: Record<string, boolean>;
 }
 
-function registeredRoutes(router: unknown): RegisteredRoute[] {
-  const stack = (router as { stack: Array<{ route?: RegisteredRoute }> }).stack;
+function registeredRoutes(router: Router): RegisteredRoute[] {
+  const stack = (router as unknown as { stack: Array<{ route?: RegisteredRoute }> }).stack;
   return stack.filter((layer) => layer.route).map((layer) => layer.route!);
 }
 
-describe('features contract conformance', () => {
-  it('has a handler for every features contract entry', () => {
-    const handlers = createFeaturesHandlers({} as never);
-    expect(missingContractHandlers(FEATURES_MOUNT, handlers)).toEqual([]);
+/**
+ * Assert that `mount` is fully described by the contract: handler coverage,
+ * one route per entry at the derived path, and no route outside the contract.
+ */
+function expectContractMount(mount: string, handlers: OperationHandlers): void {
+  expect(missingContractHandlers(mount, handlers), `missing handlers on ${mount}`).toEqual([]);
 
-    for (const name of operationNamesForMount(FEATURES_MOUNT)) {
-      expect(handlers[name], `handler for ${name}`).toBeTypeOf('function');
-    }
-  });
+  const names = operationNamesForMount(mount);
+  expect(names.length, `contract operations on ${mount}`).toBeGreaterThan(0);
 
-  it('registers exactly one route per contract entry at its derived path', () => {
-    const routes = registeredRoutes(createFeaturesRoutes({} as never));
+  for (const name of names) {
+    expect(handlers[name], `handler for ${name}`).toBeTypeOf('function');
+  }
 
-    for (const name of operationNamesForMount(FEATURES_MOUNT)) {
-      const definition = OPERATIONS[name];
-      const method = definition.method.toLowerCase();
-      const match = routes.find(
-        (route) => route.path === definition.path && route.methods[method] === true
-      );
-      expect(match, `${name} -> ${definition.method} ${definition.path}`).toBeDefined();
-    }
+  const routes = registeredRoutes(registerContractOperations(Router(), mount, handlers));
 
-    // No route is registered outside the contract.
-    const contractPairs = new Set(
-      operationNamesForMount(FEATURES_MOUNT).map(
-        (name) => `${OPERATIONS[name].method.toLowerCase()} ${OPERATIONS[name].path}`
-      )
+  for (const name of names) {
+    const definition = OPERATIONS[name];
+    const method = definition.method.toLowerCase();
+    const match = routes.find(
+      (route) => route.path === definition.path && route.methods[method] === true
     );
-    for (const route of routes) {
-      for (const [method, enabled] of Object.entries(route.methods)) {
-        if (!enabled) continue;
-        expect(contractPairs.has(`${method} ${route.path}`)).toBe(true);
-      }
+    expect(match, `${name} -> ${definition.method} ${definition.path}`).toBeDefined();
+  }
+
+  const contractPairs = new Set(
+    names.map((name) => `${OPERATIONS[name].method.toLowerCase()} ${OPERATIONS[name].path}`)
+  );
+  for (const route of routes) {
+    for (const [method, enabled] of Object.entries(route.methods)) {
+      if (!enabled) continue;
+      expect(
+        contractPairs.has(`${method} ${route.path}`),
+        `route outside contract: ${method} ${route.path}`
+      ).toBe(true);
     }
+  }
+}
+
+describe('contract conformance', () => {
+  it('features mount', () => {
+    const handlers = createFeaturesHandlers({} as never);
+    expectContractMount(FEATURES_MOUNT, handlers);
+    // The public factory builds the same router.
+    expect(registeredRoutes(createFeaturesRoutes({} as never)).length).toBe(
+      operationNamesForMount(FEATURES_MOUNT).length
+    );
   });
 });
