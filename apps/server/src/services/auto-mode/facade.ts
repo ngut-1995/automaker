@@ -56,7 +56,6 @@ import type {
   AutoModeStatus,
   ProjectAutoModeStatus,
   WorktreeCapacityInfo,
-  RunningAgentInfo,
   OrphanedFeatureInfo,
 } from './types.js';
 
@@ -957,43 +956,6 @@ export class AutoModeServiceFacade {
   }
 
   /**
-   * Get detailed info about all running agents
-   */
-  async getRunningAgents(): Promise<RunningAgentInfo[]> {
-    const agents = await Promise.all(
-      this.concurrencyManager.getAllRunning().map(async (rf) => {
-        let title: string | undefined;
-        let description: string | undefined;
-        let branchName: string | undefined;
-
-        try {
-          const feature = await this.featureLoader.get(rf.projectPath, rf.featureId);
-          if (feature) {
-            title = feature.title;
-            description = feature.description;
-            branchName = feature.branchName ?? undefined;
-          }
-        } catch {
-          // Silently ignore
-        }
-
-        return {
-          featureId: rf.featureId,
-          projectPath: rf.projectPath,
-          projectName: path.basename(rf.projectPath),
-          isAutoMode: rf.isAutoMode,
-          model: rf.model,
-          provider: rf.provider,
-          title,
-          description,
-          branchName,
-        };
-      })
-    );
-    return agents;
-  }
-
-  /**
    * Check if there's capacity to start a feature on a worktree
    * @param featureId - The feature ID to check capacity for
    */
@@ -1172,28 +1134,6 @@ export class AutoModeServiceFacade {
     } catch (error) {
       logger.error('[detectOrphanedFeatures] Error:', error);
       return orphanedFeatures;
-    }
-  }
-
-  // ===========================================================================
-  // LIFECYCLE (1 method)
-  // ===========================================================================
-
-  /**
-   * Mark all running features as interrupted
-   * @param reason - Optional reason for the interruption
-   */
-  async markAllRunningFeaturesInterrupted(reason?: string): Promise<void> {
-    const allRunning = this.concurrencyManager.getAllRunning();
-
-    for (const rf of allRunning) {
-      await this.featureStateManager.markFeatureInterrupted(rf.projectPath, rf.featureId, reason);
-    }
-
-    if (allRunning.length > 0) {
-      logger.info(
-        `Marked ${allRunning.length} running feature(s) as interrupted: ${reason || 'no reason provided'}`
-      );
     }
   }
 
