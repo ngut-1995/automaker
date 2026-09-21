@@ -6,6 +6,8 @@ import {
   getBlockingDependenciesFromMap,
   resolveDependencies,
 } from '@automaker/dependency-resolver';
+import { isDoneFeatureStatus, isPipelineStatus } from '@automaker/types';
+import { isBacklogLikeStatus } from '../constants';
 
 type ColumnId = Feature['status'];
 
@@ -201,7 +203,7 @@ export function useBoardColumnFeatures({
 
     const hasUpdatedStatus = Array.from(currentRecentlyCompleted).some((featureId) => {
       const feature = features.find((f) => f.id === featureId);
-      return feature && (feature.status === 'verified' || feature.status === 'completed');
+      return feature && isDoneFeatureStatus(feature.status);
     });
 
     if (hasUpdatedStatus) {
@@ -312,7 +314,7 @@ export function useBoardColumnFeatures({
           return;
         }
 
-        if (status.startsWith('pipeline_')) {
+        if (isPipelineStatus(status)) {
           if (!map[status]) map[status] = [];
           map[status].push(f);
           return;
@@ -339,12 +341,7 @@ export function useBoardColumnFeatures({
       // - 'interrupted': Feature execution was aborted (e.g., user stopped it, server restart)
       // Both display in the backlog column and need the same allRunningTaskIds race-condition
       // protection as 'backlog' to prevent briefly flashing in backlog when already executing.
-      if (
-        status === 'backlog' ||
-        status === 'merge_conflict' ||
-        status === 'ready' ||
-        status === 'interrupted'
-      ) {
+      if (isBacklogLikeStatus(status)) {
         // IMPORTANT: Check if this feature is running on ANY worktree before placing in backlog.
         // This prevents a race condition where the feature has started executing on the server
         // (and is tracked in a different worktree's running list) but the disk status hasn't
@@ -372,7 +369,7 @@ export function useBoardColumnFeatures({
         if (matchesWorktree) {
           map[status].push(f);
         }
-      } else if (status.startsWith('pipeline_')) {
+      } else if (isPipelineStatus(status)) {
         // Handle pipeline statuses - initialize array if needed
         if (matchesWorktree) {
           if (!map[status]) {

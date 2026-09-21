@@ -19,7 +19,8 @@ import {
   DEFAULT_MAX_CONCURRENCY,
   DEFAULT_MODELS,
   stripProviderPrefix,
-  isPipelineStatus,
+  isRunnableFeatureStatus,
+  isDoneFeatureStatus,
 } from '@automaker/types';
 import { resolveModelString } from '@automaker/model-resolver';
 import { createLogger, loadContextFiles, classifyError } from '@automaker/utils';
@@ -98,13 +99,7 @@ export class AutoModeServiceFacade {
     branchName: string | null,
     primaryBranch: string | null
   ): boolean {
-    const isEligibleStatus =
-      feature.status === 'backlog' ||
-      feature.status === 'ready' ||
-      feature.status === 'interrupted' ||
-      isPipelineStatus(feature.status);
-
-    if (!isEligibleStatus) return false;
+    if (!isRunnableFeatureStatus(feature.status)) return false;
 
     // Filter by branch/worktree alignment
     if (branchName === null) {
@@ -430,10 +425,7 @@ export class AutoModeServiceFacade {
         getFacade().saveExecutionStateForProject(branchName, maxConcurrency),
       (pPath, branchName) => getFacade().clearExecutionState(branchName),
       (pPath) => featureStateManager.resetStuckFeatures(pPath),
-      (feature) =>
-        feature.status === 'completed' ||
-        feature.status === 'verified' ||
-        feature.status === 'waiting_approval',
+      (feature) => isDoneFeatureStatus(feature.status) || feature.status === 'waiting_approval',
       (featureId) => concurrencyManager.isRunning(featureId),
       async (pPath) => featureLoader.getAll(pPath)
     );

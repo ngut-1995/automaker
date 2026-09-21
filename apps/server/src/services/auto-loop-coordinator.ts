@@ -8,7 +8,7 @@ import { areDependenciesSatisfied } from '@automaker/dependency-resolver';
 import type { TypedEventBus } from './typed-event-bus.js';
 import type { ConcurrencyManager } from './concurrency-manager.js';
 import type { SettingsService } from './settings-service.js';
-import { DEFAULT_MAX_CONCURRENCY } from '@automaker/types';
+import { DEFAULT_MAX_CONCURRENCY, isInProgressFeatureStatus } from '@automaker/types';
 
 const logger = createLogger('AutoLoopCoordinator');
 
@@ -513,7 +513,7 @@ export class AutoLoopCoordinator {
     try {
       const allFeatures = await this.loadAllFeaturesFn(projectPath);
       return allFeatures.some(
-        (f) => f.status === 'in_progress' && this.featureBelongsToWorktree(f, branchName)
+        (f) => isInProgressFeatureStatus(f.status) && this.featureBelongsToWorktree(f, branchName)
       );
     } catch (error) {
       const errorInfo = classifyError(error);

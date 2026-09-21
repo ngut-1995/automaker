@@ -142,14 +142,7 @@ function getPrimaryAction(
   // Running task with stale status - show stop instead of Make
   // This handles the race window where the feature is tracked as running
   // but status hasn't updated to in_progress yet
-  if (
-    isRunningTask &&
-    (feature.status === 'backlog' ||
-      feature.status === 'merge_conflict' ||
-      feature.status === 'ready' ||
-      feature.status === 'interrupted') &&
-    handlers.onForceStop
-  ) {
+  if (isRunningTask && isBacklogLikeStatus(feature.status) && handlers.onForceStop) {
     return {
       icon: StopCircle,
       label: 'Stop',
