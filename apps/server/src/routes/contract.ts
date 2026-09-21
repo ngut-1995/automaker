@@ -15,6 +15,13 @@ import { validatePathParams } from '../middleware/validate-paths.js';
 /** Handlers for the operations of a single mount, keyed by operation name. */
 export type OperationHandlers = Partial<Record<OperationName, RequestHandler>>;
 
+/**
+ * Extra middleware per operation, keyed by operation name. Path-param
+ * validation comes from the contract entry; anything else (e.g. requiring a
+ * valid worktree) is declared here, next to the handler.
+ */
+export type OperationMiddleware = Partial<Record<OperationName, RequestHandler[]>>;
+
 /** Contract operations for a mount that the given handlers do not cover. */
 export function missingContractHandlers(
   mount: string,
@@ -35,7 +42,8 @@ export function missingContractHandlers(
 export function registerContractOperations(
   router: Router,
   mount: string,
-  handlers: OperationHandlers
+  handlers: OperationHandlers,
+  middleware: OperationMiddleware = {}
 ): Router {
   const missing = missingContractHandlers(mount, handlers);
   if (missing.length > 0) {
@@ -55,6 +63,7 @@ export function registerContractOperations(
     if (definition.pathParams && definition.pathParams.length > 0) {
       middlewares.push(validatePathParams(...definition.pathParams));
     }
+    middlewares.push(...(middleware[name] ?? []));
 
     switch (definition.method) {
       case 'GET':
