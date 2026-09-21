@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Feature } from '@/store/app-store';
 import { AlertCircle, CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isDoneFeatureStatus } from '@automaker/types';
 
 interface DependencyTreeDialogProps {
   open: boolean;
@@ -107,7 +108,7 @@ export function DependencyTreeDialog({
                     key={dep.id}
                     className={cn(
                       'border rounded-lg p-3 transition-colors',
-                      dep.status === 'completed' || dep.status === 'verified'
+                      isDoneFeatureStatus(dep.status)
                         ? 'bg-green-500/5 border-green-500/20'
                         : 'bg-muted/30 border-border'
                     )}
@@ -125,7 +126,7 @@ export function DependencyTreeDialog({
                       <span
                         className={cn(
                           'text-xs px-2 py-0.5 rounded-full',
-                          dep.status === 'completed' || dep.status === 'verified'
+                          isDoneFeatureStatus(dep.status)
                             ? 'bg-green-500/20 text-green-600'
                             : dep.status === 'in_progress'
                               ? 'bg-blue-500/20 text-blue-600'
@@ -171,7 +172,7 @@ export function DependencyTreeDialog({
                       <span
                         className={cn(
                           'text-xs px-2 py-0.5 rounded-full',
-                          dependent.status === 'completed' || dependent.status === 'verified'
+                          isDoneFeatureStatus(dependent.status)
                             ? 'bg-green-500/20 text-green-600'
                             : dependent.status === 'in_progress'
                               ? 'bg-blue-500/20 text-blue-600'
@@ -188,9 +189,7 @@ export function DependencyTreeDialog({
           </div>
 
           {/* Warning for incomplete dependencies */}
-          {dependencyTree.dependencies.some(
-            (d) => d.status !== 'completed' && d.status !== 'verified'
-          ) && (
+          {dependencyTree.dependencies.some((d) => !isDoneFeatureStatus(d.status)) && (
             <div className="flex items-start gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
               <div className="text-sm">

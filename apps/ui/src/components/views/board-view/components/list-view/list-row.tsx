@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertCircle, Lock, Hand, Sparkles, FileText, FileCheck } from 'lucide-react';
 import type { Feature } from '@/store/app-store';
+import { isInProgressFeatureStatus } from '@automaker/types';
 import { RowActions, type RowActionHandlers } from './row-actions';
 import { getColumnWidth, getColumnAlign } from './list-header';
 
@@ -223,9 +224,7 @@ export const ListRow = memo(function ListRow({
   // AND in an execution-compatible status. However, there's a race window where a feature
   // is tracked as running but its status hasn't caught up yet (still 'backlog', 'ready',
   // or 'interrupted'). We handle this with isRunningWithStaleStatus.
-  const isInExecutionState =
-    feature.status === 'in_progress' ||
-    (typeof feature.status === 'string' && feature.status.startsWith('pipeline_'));
+  const isInExecutionState = isInProgressFeatureStatus(feature.status);
   const isActivelyRunning = isCurrentAutoTask && isInExecutionState;
   // Feature is tracked as running but status hasn't updated yet - show running UI
   const isRunningWithStaleStatus =

@@ -63,6 +63,7 @@ export type {
   FeatureImagePath,
   FeatureTextFilePath,
   FeatureStatus,
+  StaticFeatureStatus,
   DescriptionHistoryEntry,
   FeatureExport,
   FeatureImport,
@@ -70,6 +71,7 @@ export type {
   ParsedTask,
   PlanSpec,
 } from './feature.js';
+export { STATIC_FEATURE_STATUSES } from './feature.js';
 
 // Feature lifecycle vocabulary and transition table
 export type {
@@ -79,6 +81,7 @@ export type {
 } from './feature-lifecycle.js';
 export {
   resolveTransition,
+  isFeatureStatus,
   isRunnableFeatureStatus,
   isInProgressFeatureStatus,
   isDoneFeatureStatus,

@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { COLUMNS } from '../../constants';
 import { isPipelineStatus } from '@automaker/types';
-import type { FeatureStatusWithPipeline, PipelineConfig } from '@automaker/types';
+import type { FeatureStatus, FeatureStatusWithPipeline, PipelineConfig } from '@automaker/types';
 
 /**
  * Status display configuration
@@ -17,7 +17,7 @@ interface StatusDisplay {
 /**
  * Base status display configurations using CSS variables
  */
-const BASE_STATUS_DISPLAY: Record<string, StatusDisplay> = {
+const BASE_STATUS_DISPLAY: Partial<Record<FeatureStatus, StatusDisplay>> = {
   backlog: {
     label: 'Backlog',
     colorClass: 'text-[var(--status-backlog)]',

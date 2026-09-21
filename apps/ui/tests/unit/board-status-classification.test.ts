@@ -8,21 +8,18 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { isRunnableFeatureStatus, isPipelineStatus } from '@automaker/types';
+import {
+  isRunnableFeatureStatus,
+  isInProgressFeatureStatus,
+  isDoneFeatureStatus,
+  isFeatureStatus,
+  isPipelineStatus,
+  STATIC_FEATURE_STATUSES,
+} from '@automaker/types';
 import type { FeatureStatus } from '@automaker/types';
 import { isBacklogLikeStatus } from '../../src/components/views/board-view/constants';
 
-const ALL_STATUSES: FeatureStatus[] = [
-  'backlog',
-  'ready',
-  'in_progress',
-  'interrupted',
-  'waiting_approval',
-  'verified',
-  'completed',
-  'merge_conflict',
-  'pipeline_code_review',
-];
+const ALL_STATUSES: FeatureStatus[] = [...STATIC_FEATURE_STATUSES, 'pipeline_code_review'];
 
 describe('board and auto-loop classification', () => {
   it('agree on the auto-mode-runnable predicate for every non-pipeline, non-manual status', () => {
@@ -49,5 +46,67 @@ describe('board and auto-loop classification', () => {
       expect(isRunnableFeatureStatus(status)).toBe(false);
       expect(isBacklogLikeStatus(status)).toBe(false);
     }
+  });
+
+  it('keeps the shared predicates mutually consistent for every status', () => {
+    for (const status of ALL_STATUSES) {
+      const inProgress = isInProgressFeatureStatus(status);
+      const done = isDoneFeatureStatus(status);
+      const backlogLike = isBacklogLikeStatus(status);
+
+      expect(done && inProgress).toBe(false);
+      expect(done && backlogLike).toBe(false);
+      expect(backlogLike && isPipelineStatus(status)).toBe(false);
+      if (isPipelineStatus(status)) {
+        expect(inProgress).toBe(true);
+        expect(done).toBe(false);
+        expect(backlogLike).toBe(false);
+      }
+    }
+  });
+
+  it('treats done statuses as completed + verified and nothing else', () => {
+    for (const status of ALL_STATUSES) {
+      expect(isDoneFeatureStatus(status)).toBe(status === 'completed' || status === 'verified');
+    }
+  });
+
+  describe('shared vocabulary', () => {
+    it('enumerates every concrete status at runtime', () => {
+      expect(STATIC_FEATURE_STATUSES).toEqual([
+        'backlog',
+        'ready',
+        'in_progress',
+        'interrupted',
+        'waiting_approval',
+        'verified',
+        'completed',
+        'merge_conflict',
+      ]);
+    });
+
+    it('accepts every canonical status and any well-formed pipeline status', () => {
+      for (const status of ALL_STATUSES) {
+        expect(isFeatureStatus(status)).toBe(true);
+      }
+    });
+
+    it('rejects unknown values and malformed pipeline statuses', () => {
+      expect(isFeatureStatus('archived')).toBe(false);
+      expect(isFeatureStatus('pipeline_')).toBe(false);
+      expect(isFeatureStatus(null)).toBe(false);
+      expect(isFeatureStatus(42)).toBe(false);
+    });
+
+    it('classifies a hypothetical new status as unknown until the shared type grows it', () => {
+      const newStatus = 'archived' as FeatureStatus;
+
+      expect(STATIC_FEATURE_STATUSES).not.toContain(newStatus);
+      expect(isFeatureStatus(newStatus)).toBe(false);
+      expect(isRunnableFeatureStatus(newStatus)).toBe(false);
+      expect(isInProgressFeatureStatus(newStatus)).toBe(false);
+      expect(isDoneFeatureStatus(newStatus)).toBe(false);
+      expect(isBacklogLikeStatus(newStatus)).toBe(false);
+    });
   });
 });

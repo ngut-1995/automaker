@@ -31,6 +31,7 @@ import { formatModelName, DEFAULT_MODEL } from '@/lib/agent-context-parser';
 import { DeleteConfirmDialog } from '@/components/ui/delete-confirm-dialog';
 import { getProviderIconForModel } from '@/components/ui/provider-icon';
 import { useAppStore } from '@/store/app-store';
+import { isBacklogLikeStatus } from '../../constants';
 
 function DuplicateMenuItems({
   onDuplicate,
@@ -238,79 +239,74 @@ export const CardHeaderSection = memo(function CardHeaderSection({
       )}
 
       {/* Backlog header (also handles 'interrupted' and 'ready' statuses that display in backlog column) */}
-      {!isCurrentAutoTask &&
-        !isSelectionMode &&
-        (feature.status === 'backlog' ||
-          feature.status === 'merge_conflict' ||
-          feature.status === 'interrupted' ||
-          feature.status === 'ready') && (
-          <div className="absolute top-2 right-2 flex items-center gap-1">
+      {!isCurrentAutoTask && !isSelectionMode && isBacklogLikeStatus(feature.status) && (
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSpawnTask?.();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            data-testid={`spawn-backlog-${feature.id}`}
+            title="Spawn Sub-Task"
+          >
+            <GitFork className="w-4 h-4" />
+          </Button>
+          {showBacklogLogsButton && (
             <Button
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 hover:bg-white/10 text-muted-foreground hover:text-foreground"
               onClick={(e) => {
                 e.stopPropagation();
-                onSpawnTask?.();
+                onViewOutput?.();
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              data-testid={`spawn-backlog-${feature.id}`}
-              title="Spawn Sub-Task"
+              data-testid={`logs-backlog-${feature.id}`}
+              title="Logs"
             >
-              <GitFork className="w-4 h-4" />
+              <FileText className="w-4 h-4" />
             </Button>
-            {showBacklogLogsButton && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewOutput?.();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                data-testid={`logs-backlog-${feature.id}`}
-                title="Logs"
-              >
-                <FileText className="w-4 h-4" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 hover:bg-white/10 text-muted-foreground hover:text-destructive"
-              onClick={handleDeleteClick}
-              onPointerDown={(e) => e.stopPropagation()}
-              data-testid={`delete-backlog-${feature.id}`}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-            {/* Only render overflow menu when there are actionable items */}
-            {onDuplicate && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-muted/80 rounded-md"
-                    onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    data-testid={`menu-backlog-${feature.id}`}
-                  >
-                    <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DuplicateMenuItems
-                    onDuplicate={onDuplicate}
-                    onDuplicateAsChild={onDuplicateAsChild}
-                    onDuplicateAsChildMultiple={onDuplicateAsChildMultiple}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        )}
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-white/10 text-muted-foreground hover:text-destructive"
+            onClick={handleDeleteClick}
+            onPointerDown={(e) => e.stopPropagation()}
+            data-testid={`delete-backlog-${feature.id}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+          {/* Only render overflow menu when there are actionable items */}
+          {onDuplicate && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-muted/80 rounded-md"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  data-testid={`menu-backlog-${feature.id}`}
+                >
+                  <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DuplicateMenuItems
+                  onDuplicate={onDuplicate}
+                  onDuplicateAsChild={onDuplicateAsChild}
+                  onDuplicateAsChildMultiple={onDuplicateAsChildMultiple}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      )}
 
       {/* Waiting approval / Verified header */}
       {!isCurrentAutoTask &&

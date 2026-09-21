@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { getElectronAPI } from '@/lib/electron';
 import { createLogger } from '@automaker/utils/logger';
+import { isInProgressFeatureStatus, isRunnableFeatureStatus } from '@automaker/types';
 import type { Feature } from '@/store/app-store';
 
 const logger = createLogger('BoardEffects');
@@ -90,14 +91,11 @@ export function useBoardEffects({
       const currentFeatures = featuresRef.current;
       const featuresWithPotentialContext = currentFeatures.filter(
         (f) =>
-          f.status === 'backlog' ||
-          f.status === 'merge_conflict' ||
-          f.status === 'ready' ||
-          f.status === 'interrupted' ||
-          f.status === 'in_progress' ||
+          isRunnableFeatureStatus(f.status) ||
+          isInProgressFeatureStatus(f.status) ||
           f.status === 'waiting_approval' ||
           f.status === 'verified' ||
-          (typeof f.status === 'string' && f.status.startsWith('pipeline_'))
+          f.status === 'merge_conflict'
       );
       const contextChecks = await Promise.all(
         featuresWithPotentialContext.map(async (f) => ({
