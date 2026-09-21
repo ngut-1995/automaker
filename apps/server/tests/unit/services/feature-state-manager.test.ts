@@ -1,15 +1,18 @@
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
+import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { FeatureStateManager } from '@/services/feature-state-manager.js';
+import { FeatureRecord } from '@/services/feature-record.js';
+import { TypedEventBus } from '@/services/typed-event-bus.js';
 import type { Feature } from '@automaker/types';
-import { isPipelineStatus } from '@automaker/types';
 
 const PIPELINE_SUMMARY_SEPARATOR = '\n\n---\n\n';
 const PIPELINE_SUMMARY_HEADER_PREFIX = '### ';
 import type { EventEmitter } from '@/lib/events.js';
-import type { FeatureLoader } from '@/services/feature-loader.js';
+import { FeatureLoader } from '@/services/feature-loader.js';
 import * as secureFs from '@/lib/secure-fs.js';
-import { atomicWriteJson, readJsonWithRecovery } from '@automaker/utils';
+import { atomicWriteJson, readJsonWithRecovery, logRecoveryWarning } from '@automaker/utils';
 import { getFeatureDir, getFeaturesDir } from '@automaker/platform';
 import { getNotificationService } from '@/services/notification-service.js';
 import { pipelineService } from '@/services/pipeline-service.js';
@@ -36,10 +39,14 @@ vi.mock('@automaker/utils', async (importOriginal) => {
   };
 });
 
-vi.mock('@automaker/platform', () => ({
-  getFeatureDir: vi.fn(),
-  getFeaturesDir: vi.fn(),
-}));
+vi.mock('@automaker/platform', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@automaker/platform')>();
+  return {
+    ...actual,
+    getFeatureDir: vi.fn(),
+    getFeaturesDir: vi.fn(),
+  };
+});
 
 vi.mock('@/services/notification-service.js', () => ({
   getNotificationService: vi.fn(() => ({
@@ -61,6 +68,7 @@ describe('FeatureStateManager', () => {
   let manager: FeatureStateManager;
   let mockEvents: EventEmitter;
   let mockFeatureLoader: FeatureLoader;
+  let mockFeatureRecord: { transition: Mock };
 
   const mockFeature: Feature = {
     id: 'feature-123',
@@ -82,9 +90,12 @@ describe('FeatureStateManager', () => {
 
     mockFeatureLoader = {
       syncFeatureToAppSpec: vi.fn(),
+      update: vi.fn().mockResolvedValue(undefined),
     } as unknown as FeatureLoader;
 
-    manager = new FeatureStateManager(mockEvents, mockFeatureLoader);
+    mockFeatureRecord = { transition: vi.fn() };
+
+    manager = new FeatureStateManager(mockEvents, mockFeatureLoader, mockFeatureRecord);
 
     // Default mocks
     (getFeatureDir as Mock).mockReturnValue('/project/.automaker/features/feature-123');
@@ -504,185 +515,183 @@ describe('FeatureStateManager', () => {
     });
   });
 
-  describe('markFeatureInterrupted', () => {
-    it('should mark feature as interrupted', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature, status: 'in_progress' },
-        recovered: false,
-        source: 'main',
-      });
+  describe('recovery transitions (real temp data dir)', () => {
+    let dataDir: string;
+    let realLoader: FeatureLoader;
+    let realEvents: EventEmitter;
+    let store: FeatureRecord;
 
-      await manager.markFeatureInterrupted('/project', 'feature-123', 'server shutdown');
+    const featureJsonPath = (featureId: string): string =>
+      path.join(dataDir, '.automaker', 'features', featureId, 'feature.json');
 
-      expect(atomicWriteJson).toHaveBeenCalled();
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.status).toBe('interrupted');
+    const seedFeature = async (feature: Feature): Promise<void> => {
+      const dir = path.join(dataDir, '.automaker', 'features', feature.id);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(featureJsonPath(feature.id), JSON.stringify(feature, null, 2), 'utf-8');
+    };
+
+    const readPersisted = async (featureId: string): Promise<Feature> =>
+      JSON.parse(await fs.readFile(featureJsonPath(featureId), 'utf-8')) as Feature;
+
+    const expectReaddirLists = (featureId: string): void => {
+      (secureFs.readdir as Mock).mockResolvedValue([{ name: featureId, isDirectory: () => true }]);
+    };
+
+    beforeEach(async () => {
+      const actualUtils =
+        await vi.importActual<typeof import('@automaker/utils')>('@automaker/utils');
+      const actualPlatform =
+        await vi.importActual<typeof import('@automaker/platform')>('@automaker/platform');
+
+      (atomicWriteJson as Mock).mockImplementation(
+        actualUtils.atomicWriteJson as unknown as (...args: unknown[]) => Promise<void>
+      );
+      (readJsonWithRecovery as Mock).mockImplementation(
+        actualUtils.readJsonWithRecovery as unknown as (...args: unknown[]) => Promise<unknown>
+      );
+      (logRecoveryWarning as Mock).mockImplementation(
+        actualUtils.logRecoveryWarning as unknown as (...args: unknown[]) => void
+      );
+      (getFeatureDir as Mock).mockImplementation(actualPlatform.getFeatureDir);
+      (getFeaturesDir as Mock).mockImplementation(actualPlatform.getFeaturesDir);
+
+      dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'fsm-recovery-'));
+      realLoader = new FeatureLoader();
+      realEvents = {
+        emit: vi.fn(),
+        subscribe: vi.fn(() => vi.fn()),
+      } as unknown as EventEmitter;
+      store = new FeatureRecord(new TypedEventBus(realEvents), realLoader);
+      manager = new FeatureStateManager(realEvents, realLoader, store);
     });
 
-    it('should preserve pipeline_* statuses', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature, status: 'pipeline_step_1' },
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.markFeatureInterrupted('/project', 'feature-123', 'server shutdown');
-
-      // Should NOT call atomicWriteJson because pipeline status is preserved
-      expect(atomicWriteJson).not.toHaveBeenCalled();
-      expect(isPipelineStatus('pipeline_step_1')).toBe(true);
+    afterEach(async () => {
+      await fs.rm(dataDir, { recursive: true, force: true });
     });
 
-    it('should preserve pipeline_complete status', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: { ...mockFeature, status: 'pipeline_complete' },
-        recovered: false,
-        source: 'main',
+    describe('markFeatureInterrupted', () => {
+      it('transitions an in_progress feature to interrupted', async () => {
+        const feature: Feature = { ...mockFeature, id: 'f-interrupt', status: 'in_progress' };
+        await seedFeature(feature);
+
+        await manager.markFeatureInterrupted(dataDir, feature.id, 'server shutdown');
+
+        expect((await readPersisted(feature.id)).status).toBe('interrupted');
       });
 
-      await manager.markFeatureInterrupted('/project', 'feature-123');
+      it('preserves a pipeline_* status without writing it', async () => {
+        const feature: Feature = { ...mockFeature, id: 'f-pipeline', status: 'pipeline_testing' };
+        await seedFeature(feature);
 
-      expect(atomicWriteJson).not.toHaveBeenCalled();
+        await manager.markFeatureInterrupted(dataDir, feature.id, 'server shutdown');
+
+        expect((await readPersisted(feature.id)).status).toBe('pipeline_testing');
+      });
+
+      it('does not throw when the feature does not exist', async () => {
+        await expect(
+          manager.markFeatureInterrupted(dataDir, 'missing-feature')
+        ).resolves.not.toThrow();
+      });
     });
 
-    it('should handle feature not found', async () => {
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: null,
-        recovered: true,
-        source: 'default',
+    describe('reconciliation / reset', () => {
+      it('resets in_progress with an approved plan to ready', async () => {
+        const feature: Feature = {
+          ...mockFeature,
+          id: 'f-approved',
+          status: 'in_progress',
+          planSpec: { status: 'approved', version: 1, reviewedByUser: true },
+        };
+        await seedFeature(feature);
+        expectReaddirLists(feature.id);
+
+        await manager.resetStuckFeatures(dataDir);
+
+        expect((await readPersisted(feature.id)).status).toBe('ready');
       });
 
-      // Should not throw
-      await expect(
-        manager.markFeatureInterrupted('/project', 'non-existent')
-      ).resolves.not.toThrow();
+      it('resets in_progress without an approved plan to backlog', async () => {
+        const feature: Feature = { ...mockFeature, id: 'f-no-plan', status: 'in_progress' };
+        await seedFeature(feature);
+        expectReaddirLists(feature.id);
+
+        await manager.resetStuckFeatures(dataDir);
+
+        expect((await readPersisted(feature.id)).status).toBe('backlog');
+      });
+
+      it('applies the same rule to interrupted features through reconcileAllFeatureStates', async () => {
+        const withPlan: Feature = {
+          ...mockFeature,
+          id: 'f-interrupted-approved',
+          status: 'interrupted',
+          planSpec: { status: 'approved', version: 1, reviewedByUser: true },
+        };
+        const withoutPlan: Feature = {
+          ...mockFeature,
+          id: 'f-interrupted-plain',
+          status: 'interrupted',
+        };
+        await seedFeature(withPlan);
+        await seedFeature(withoutPlan);
+        (secureFs.readdir as Mock).mockResolvedValue([
+          { name: withPlan.id, isDirectory: () => true },
+          { name: withoutPlan.id, isDirectory: () => true },
+        ]);
+
+        const reconciled = await manager.reconcileAllFeatureStates(dataDir);
+
+        expect(reconciled).toBe(2);
+        expect((await readPersisted(withPlan.id)).status).toBe('ready');
+        expect((await readPersisted(withoutPlan.id)).status).toBe('backlog');
+      });
+
+      it('preserves a pipeline_* status but persists planSpec and task resets through the loader', async () => {
+        const feature: Feature = {
+          ...mockFeature,
+          id: 'f-pipeline-reset',
+          status: 'pipeline_testing',
+          planSpec: {
+            status: 'generating',
+            version: 1,
+            reviewedByUser: false,
+            currentTaskId: 'task-1',
+            tasks: [{ id: 'task-1', title: 'Task 1', status: 'in_progress', description: '' }],
+          },
+        };
+        await seedFeature(feature);
+        expectReaddirLists(feature.id);
+
+        await manager.resetStuckFeatures(dataDir);
+
+        const persisted = await readPersisted(feature.id);
+        expect(persisted.status).toBe('pipeline_testing');
+        expect(persisted.planSpec?.status).toBe('pending');
+        expect(persisted.planSpec?.tasks?.[0].status).toBe('pending');
+        expect(persisted.planSpec?.currentTaskId).toBeUndefined();
+      });
+
+      it('persists a generating planSpec reset for a resting feature', async () => {
+        const feature: Feature = {
+          ...mockFeature,
+          id: 'f-generating',
+          status: 'pending',
+          planSpec: { status: 'generating', version: 1, reviewedByUser: false },
+        };
+        await seedFeature(feature);
+        expectReaddirLists(feature.id);
+
+        await manager.resetStuckFeatures(dataDir);
+
+        const persisted = await readPersisted(feature.id);
+        expect(persisted.status).toBe('pending');
+        expect(persisted.planSpec?.status).toBe('pending');
+      });
     });
   });
 
   describe('resetStuckFeatures', () => {
-    it('should reset in_progress features to ready if has approved plan', async () => {
-      const stuckFeature: Feature = {
-        ...mockFeature,
-        status: 'in_progress',
-        planSpec: { status: 'approved', version: 1, reviewedByUser: true },
-      };
-
-      (secureFs.readdir as Mock).mockResolvedValue([
-        { name: 'feature-123', isDirectory: () => true },
-      ]);
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: stuckFeature,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.resetStuckFeatures('/project');
-
-      expect(atomicWriteJson).toHaveBeenCalled();
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.status).toBe('ready');
-    });
-
-    it('should reset in_progress features to backlog if no approved plan', async () => {
-      const stuckFeature: Feature = {
-        ...mockFeature,
-        status: 'in_progress',
-        planSpec: undefined,
-      };
-
-      (secureFs.readdir as Mock).mockResolvedValue([
-        { name: 'feature-123', isDirectory: () => true },
-      ]);
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: stuckFeature,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.resetStuckFeatures('/project');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.status).toBe('backlog');
-    });
-
-    it('should preserve pipeline_* statuses during reset', async () => {
-      const pipelineFeature: Feature = {
-        ...mockFeature,
-        status: 'pipeline_testing',
-        planSpec: { status: 'approved', version: 1, reviewedByUser: true },
-      };
-
-      (secureFs.readdir as Mock).mockResolvedValue([
-        { name: 'feature-123', isDirectory: () => true },
-      ]);
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: pipelineFeature,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.resetStuckFeatures('/project');
-
-      // Status should NOT be changed, but needsUpdate might be true if other things reset
-      // In this case, nothing else should be reset, so atomicWriteJson shouldn't be called
-      expect(atomicWriteJson).not.toHaveBeenCalled();
-    });
-
-    it('should reset generating planSpec status to pending', async () => {
-      const stuckFeature: Feature = {
-        ...mockFeature,
-        status: 'pending',
-        planSpec: { status: 'generating', version: 1, reviewedByUser: false },
-      };
-
-      (secureFs.readdir as Mock).mockResolvedValue([
-        { name: 'feature-123', isDirectory: () => true },
-      ]);
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: stuckFeature,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.resetStuckFeatures('/project');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.planSpec?.status).toBe('pending');
-    });
-
-    it('should reset in_progress tasks to pending', async () => {
-      const stuckFeature: Feature = {
-        ...mockFeature,
-        status: 'pending',
-        planSpec: {
-          status: 'approved',
-          version: 1,
-          reviewedByUser: true,
-          tasks: [
-            { id: 'task-1', title: 'Task 1', status: 'completed', description: '' },
-            { id: 'task-2', title: 'Task 2', status: 'in_progress', description: '' },
-            { id: 'task-3', title: 'Task 3', status: 'pending', description: '' },
-          ],
-          currentTaskId: 'task-2',
-        },
-      };
-
-      (secureFs.readdir as Mock).mockResolvedValue([
-        { name: 'feature-123', isDirectory: () => true },
-      ]);
-      (readJsonWithRecovery as Mock).mockResolvedValue({
-        data: stuckFeature,
-        recovered: false,
-        source: 'main',
-      });
-
-      await manager.resetStuckFeatures('/project');
-
-      const savedFeature = (atomicWriteJson as Mock).mock.calls[0][1] as Feature;
-      expect(savedFeature.planSpec?.tasks?.[1].status).toBe('pending');
-      expect(savedFeature.planSpec?.currentTaskId).toBeUndefined();
-    });
-
     it('should skip non-directory entries', async () => {
       (secureFs.readdir as Mock).mockResolvedValue([
         { name: 'feature-123', isDirectory: () => true },
@@ -709,7 +718,7 @@ describe('FeatureStateManager', () => {
       await expect(manager.resetStuckFeatures('/project')).resolves.not.toThrow();
     });
 
-    it('should not update feature if nothing is stuck', async () => {
+    it('should not transition or persist a resting feature', async () => {
       const normalFeature: Feature = {
         ...mockFeature,
         status: 'completed',
@@ -727,6 +736,8 @@ describe('FeatureStateManager', () => {
 
       await manager.resetStuckFeatures('/project');
 
+      expect(mockFeatureRecord.transition).not.toHaveBeenCalled();
+      expect(mockFeatureLoader.update).not.toHaveBeenCalled();
       expect(atomicWriteJson).not.toHaveBeenCalled();
     });
   });
@@ -1513,7 +1524,7 @@ describe('FeatureStateManager', () => {
       (mockEvents.subscribe as Mock).mockReturnValue(unsubscribeFn);
 
       // Create a new manager to get a fresh subscription
-      const newManager = new FeatureStateManager(mockEvents, mockFeatureLoader);
+      const newManager = new FeatureStateManager(mockEvents, mockFeatureLoader, mockFeatureRecord);
 
       // Call destroy
       newManager.destroy();
@@ -1526,7 +1537,7 @@ describe('FeatureStateManager', () => {
       const unsubscribeFn = vi.fn();
       (mockEvents.subscribe as Mock).mockReturnValue(unsubscribeFn);
 
-      const newManager = new FeatureStateManager(mockEvents, mockFeatureLoader);
+      const newManager = new FeatureStateManager(mockEvents, mockFeatureLoader, mockFeatureRecord);
 
       // Call destroy multiple times
       newManager.destroy();

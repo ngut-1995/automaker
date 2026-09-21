@@ -22,6 +22,7 @@ import { getPromptCustomization } from '../lib/settings-helpers.js';
 import type { TypedEventBus } from './typed-event-bus.js';
 import type { ConcurrencyManager, RunningFeature } from './concurrency-manager.js';
 import type { SettingsService } from './settings-service.js';
+import type { FeatureTransitioner } from './feature-record.js';
 import type { PipelineStatusInfo } from './pipeline-orchestrator.js';
 
 const logger = createLogger('RecoveryService');
@@ -86,7 +87,8 @@ export class RecoveryService {
     private resumePipelineFn: ResumePipelineFn,
     private isFeatureRunningFn: IsFeatureRunningFn,
     private acquireRunningFeatureFn: AcquireRunningFeatureFn,
-    private releaseRunningFeatureFn: ReleaseRunningFeatureFn
+    private releaseRunningFeatureFn: ReleaseRunningFeatureFn,
+    private featureRecord: FeatureTransitioner
   ) {}
 
   async saveExecutionStateForProject(
@@ -217,6 +219,9 @@ export class RecoveryService {
       );
       if (pipelineInfo.isPipeline)
         return await this.resumePipelineFn(projectPath, feature, useWorktrees, pipelineInfo);
+      if (feature.status === 'interrupted') {
+        await this.featureRecord.transition(projectPath, featureId, 'resume');
+      }
       const hasContext = await this.contextExists(projectPath, featureId);
       if (hasContext) {
         const context = (await secureFs.readFile(

@@ -80,7 +80,7 @@ describe('Pipeline Summary Accumulation (Integration)', () => {
       syncFeatureToAppSpec: vi.fn(),
     } as unknown as FeatureLoader;
 
-    manager = new FeatureStateManager(mockEvents, mockFeatureLoader);
+    manager = new FeatureStateManager(mockEvents, mockFeatureLoader, { transition: vi.fn() });
 
     (getFeatureDir as Mock).mockReturnValue('/project/.automaker/features/pipeline-feature-1');
   });

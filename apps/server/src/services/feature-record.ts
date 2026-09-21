@@ -45,6 +45,19 @@ export interface TransitionResult {
   changed: boolean;
 }
 
+/**
+ * The narrow view of a Feature record used by services that only need to apply
+ * a lifecycle trigger. A FeatureRecord satisfies it structurally.
+ */
+export interface FeatureTransitioner {
+  transition(
+    projectPath: string,
+    featureId: string,
+    trigger: FeatureTrigger,
+    context?: TransitionContext
+  ): Promise<TransitionResult>;
+}
+
 export class FeatureRecord {
   private readonly locks = new Map<string, Promise<void>>();
 

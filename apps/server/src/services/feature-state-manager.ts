@@ -35,6 +35,7 @@ import type { EventEmitter } from '../lib/events.js';
 import type { AutoModeEventType } from '@automaker/types';
 import { getNotificationService } from './notification-service.js';
 import { FeatureLoader } from './feature-loader.js';
+import type { FeatureTransitioner } from './feature-record.js';
 import { pipelineService } from './pipeline-service.js';
 import { finalizeInProgressTasks } from './feature-plan-tasks.js';
 
@@ -84,7 +85,11 @@ export class FeatureStateManager {
   private featureLoader: FeatureLoader;
   private unsubscribe: (() => void) | null = null;
 
-  constructor(events: EventEmitter, featureLoader: FeatureLoader) {
+  constructor(
+    events: EventEmitter,
+    featureLoader: FeatureLoader,
+    private featureRecord: FeatureTransitioner
+  ) {
     this.events = events;
     this.featureLoader = featureLoader;
 
@@ -255,6 +260,11 @@ export class FeatureStateManager {
     const feature = await this.loadFeature(projectPath, featureId);
     const currentStatus = feature?.status;
 
+    if (!feature) {
+      logger.warn(`Feature ${featureId} not found; skipping interrupt`);
+      return;
+    }
+
     // Preserve pipeline_* statuses so resumePipelineFeature can resume from the correct step
     if (isPipelineStatus(currentStatus)) {
       logger.info(
@@ -269,7 +279,15 @@ export class FeatureStateManager {
       logger.info(`Marking feature ${featureId} as interrupted`);
     }
 
-    await this.updateFeatureStatus(projectPath, featureId, 'interrupted');
+    try {
+      await this.featureRecord.transition(projectPath, featureId, 'interrupt');
+    } catch (error) {
+      if (error instanceof Error && error.name === 'IllegalTransitionError') {
+        logger.debug(`Skipped interrupt for feature ${featureId}: ${error.message}`);
+        return;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -324,37 +342,26 @@ export class FeatureStateManager {
         const feature = result.data;
         if (!feature) continue;
 
-        let needsUpdate = false;
         const originalStatus = feature.status;
 
         // Reset features in active execution states back to a resting state
         // After a server restart, no processes are actually running
         const isActiveState = originalStatus === 'in_progress' || originalStatus === 'interrupted';
 
-        if (isActiveState) {
-          const hasApprovedPlan = feature.planSpec?.status === 'approved';
-          feature.status = hasApprovedPlan ? 'ready' : 'backlog';
-          needsUpdate = true;
-          logger.info(
-            `[${callerLabel}] Reset feature ${feature.id} from ${originalStatus} to ${feature.status}`
-          );
-        }
-
         // Handle pipeline_* statuses separately: preserve them so they can be resumed
-        // but still count them as needing attention if they were stuck.
+        // but still reset planSpec/task states through the loader.
         if (isPipelineStatus(originalStatus)) {
-          // We don't change the status, but we still want to reset planSpec/task states
-          // if they were stuck in transient generation/execution modes.
-          // No feature.status change here.
           logger.debug(
             `[${callerLabel}] Preserving pipeline status for feature ${feature.id}: ${originalStatus}`
           );
         }
 
+        let planSpecChanged = false;
+
         // Reset generating planSpec status back to pending (spec generation was interrupted)
         if (feature.planSpec?.status === 'generating') {
           feature.planSpec.status = 'pending';
-          needsUpdate = true;
+          planSpecChanged = true;
           logger.info(
             `[${callerLabel}] Reset feature ${feature.id} planSpec status from generating to pending`
           );
@@ -365,7 +372,7 @@ export class FeatureStateManager {
           for (const task of feature.planSpec.tasks) {
             if (task.status === 'in_progress') {
               task.status = 'pending';
-              needsUpdate = true;
+              planSpecChanged = true;
               logger.info(
                 `[${callerLabel}] Reset task ${task.id} for feature ${feature.id} from in_progress to pending`
               );
@@ -380,15 +387,46 @@ export class FeatureStateManager {
           }
         }
 
-        if (needsUpdate) {
-          feature.updatedAt = new Date().toISOString();
-          await atomicWriteJson(featurePath, feature, { backupCount: DEFAULT_BACKUP_COUNT });
+        if (planSpecChanged) {
+          await this.featureLoader.update(projectPath, feature.id, {
+            planSpec: feature.planSpec,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+
+        let newStatus = originalStatus;
+
+        if (isActiveState) {
+          const hasApprovedPlan = feature.planSpec?.status === 'approved';
+          try {
+            const transitionResult = await this.featureRecord.transition(
+              projectPath,
+              feature.id,
+              'reset',
+              { hasApprovedPlan }
+            );
+            newStatus = transitionResult.feature.status;
+            logger.info(
+              `[${callerLabel}] Reset feature ${feature.id} from ${originalStatus} to ${newStatus}`
+            );
+          } catch (error) {
+            if (error instanceof Error && error.name === 'IllegalTransitionError') {
+              logger.debug(
+                `[${callerLabel}] Skipped reset for feature ${feature.id}: ${error.message}`
+              );
+            } else {
+              throw error;
+            }
+          }
+        }
+
+        if (newStatus !== originalStatus || planSpecChanged) {
           reconciledCount++;
           reconciledFeatureIds.push(feature.id);
           reconciledFeatures.push({
             id: feature.id,
             previousStatus: originalStatus,
-            newStatus: feature.status,
+            newStatus,
           });
         }
       }

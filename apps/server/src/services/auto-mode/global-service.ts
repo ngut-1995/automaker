@@ -17,6 +17,7 @@ import { ConcurrencyManager } from '../concurrency-manager.js';
 import { WorktreeResolver } from '../worktree-resolver.js';
 import { AutoLoopCoordinator } from '../auto-loop-coordinator.js';
 import { FeatureStateManager } from '../feature-state-manager.js';
+import { FeatureRecord } from '../feature-record.js';
 import { FeatureLoader } from '../feature-loader.js';
 import type { SettingsService } from '../settings-service.js';
 import type { SharedServices, AutoModeStatus, RunningAgentInfo } from './types.js';
@@ -34,6 +35,7 @@ export class GlobalAutoModeService {
   private readonly autoLoopCoordinator: AutoLoopCoordinator;
   private readonly worktreeResolver: WorktreeResolver;
   private readonly featureStateManager: FeatureStateManager;
+  private readonly featureRecord: FeatureRecord;
   private readonly featureLoader: FeatureLoader;
 
   constructor(
@@ -47,7 +49,8 @@ export class GlobalAutoModeService {
     this.concurrencyManager = new ConcurrencyManager((p) =>
       this.worktreeResolver.getCurrentBranch(p)
     );
-    this.featureStateManager = new FeatureStateManager(events, featureLoader);
+    this.featureRecord = new FeatureRecord(this.eventBus, featureLoader);
+    this.featureStateManager = new FeatureStateManager(events, featureLoader, this.featureRecord);
 
     // Create AutoLoopCoordinator with callbacks
     // IMPORTANT: This coordinator is for MONITORING ONLY (getActiveProjects, getActiveWorktrees).
@@ -107,6 +110,7 @@ export class GlobalAutoModeService {
       concurrencyManager: this.concurrencyManager,
       autoLoopCoordinator: this.autoLoopCoordinator,
       worktreeResolver: this.worktreeResolver,
+      featureRecord: this.featureRecord,
     };
   }
 

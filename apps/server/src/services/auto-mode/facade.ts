@@ -176,8 +176,9 @@ export class AutoModeServiceFacade {
     const concurrencyManager =
       sharedServices?.concurrencyManager ??
       new ConcurrencyManager((p) => worktreeResolver.getCurrentBranch(p));
-    const featureStateManager = new FeatureStateManager(events, featureLoader);
-    const featureRecord = new FeatureRecord(eventBus, featureLoader);
+    const featureRecord =
+      sharedServices?.featureRecord ?? new FeatureRecord(eventBus, featureLoader);
+    const featureStateManager = new FeatureStateManager(events, featureLoader, featureRecord);
     const planApprovalService = new PlanApprovalService(
       eventBus,
       featureStateManager,
@@ -543,7 +544,8 @@ export class AutoModeServiceFacade {
         pipelineOrchestrator.resumePipeline(pPath, feature, useWorktrees, pipelineInfo),
       (featureId) => concurrencyManager.isRunning(featureId),
       (opts) => concurrencyManager.acquire(opts),
-      (featureId) => concurrencyManager.release(featureId)
+      (featureId) => concurrencyManager.release(featureId),
+      featureRecord
     );
 
     // Create the facade instance

@@ -16,6 +16,7 @@ import type { AutoLoopCoordinator } from '../auto-loop-coordinator.js';
 import type { WorktreeResolver } from '../worktree-resolver.js';
 import type { TypedEventBus } from '../typed-event-bus.js';
 import type { ClaudeUsageService } from '../claude-usage-service.js';
+import type { FeatureRecord } from '../feature-record.js';
 
 // Re-export types from extracted services for route consumption
 export type { AutoModeConfig, ProjectAutoLoopState } from '../auto-loop-coordinator.js';
@@ -42,6 +43,8 @@ export interface SharedServices {
   autoLoopCoordinator: AutoLoopCoordinator;
   /** WorktreeResolver for git worktree operations */
   worktreeResolver: WorktreeResolver;
+  /** FeatureRecord - the single writer of a Feature's persisted state */
+  featureRecord: FeatureRecord;
 }
 
 /**
